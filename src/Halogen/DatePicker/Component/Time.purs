@@ -3,7 +3,7 @@ module Halogen.Datapicker.Component.Time where
 import Prelude
 
 import Data.Formatter.DateTime as FDT
-import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..), Picker)
+import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Time
   ( Time
   , second
@@ -27,18 +27,19 @@ import Data.Map (Map, fromFoldable, toUnfoldable)
 import Halogen.Datapicker.Component.Time.Format as F
 import Text.Parsing.Parser (Parser, runParser)
 import Partial.Unsafe (unsafePartialBecause)
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
-type UIState = Map F.Command Int
+type State = Map F.Command Int
+type Query = PickerQuery Time
+type Message = PickerMessage
 
-initialStateFromFormat ∷ F.Format -> UIState
+initialStateFromFormat ∷ F.Format -> State
 initialStateFromFormat fmt = fmt <#> (\k -> Tuple k 0) # fromFoldable
 
-timeToState ∷ Time -> UIState
+timeToState ∷ Time -> State
 timeToState t = fromFoldable
   [ Tuple F.Second (second t # fromEnum)
   , Tuple F.Minute (minute t # fromEnum)
@@ -46,7 +47,7 @@ timeToState t = fromFoldable
   , Tuple F.Millisecond (millisecond t # fromEnum)
   ]
 
-stateToTime ∷ UIState -> Time
+stateToTime ∷ State -> Time
 stateToTime s = foldr f bottom ((toUnfoldable s) :: List (Tuple F.Command Int))
   where
   f (Tuple F.Second val) = setSecond $ unsafeToEnum val
@@ -59,10 +60,10 @@ stateToTime s = foldr f bottom ((toUnfoldable s) :: List (Tuple F.Command Int))
 dateTimeFromTime ∷ Time -> DateTime
 dateTimeFromTime = DateTime (canonicalDate bottom bottom bottom)
 
-mapCommands ∷ ∀ a. UIState -> (F.Command -> Int -> F.CommandProp -> a) -> Array a
+mapCommands ∷ ∀ a. State -> (F.Command -> Int -> F.CommandProp -> a) -> Array a
 mapCommands s f = toUnfoldable s <#> \(Tuple k v) -> f k v (F.getProps k)
 
-picker ∷ ∀ m. F.Format -> H.Component HH.HTML (PickerQuery Time) Unit PickerMessage m
+picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit Message m
 picker f = H.component
   { initialState: const $ initialStateFromFormat f
   , render: render
@@ -74,9 +75,9 @@ picker f = H.component
   unformat = FDT.unformatParser (F.toDateTimeFormatter f) <#> time
   format ∷ Time -> String
   format = FDT.format (F.toDateTimeFormatter f) <<< dateTimeFromTime
-  render ∷ UIState -> H.ComponentHTML (PickerQuery Time)
+  render ∷ State -> H.ComponentHTML Query
   render s = HH.li_ $ mapCommands s renderItem
-  renderItem ∷ F.Command -> Int -> F.CommandProp -> H.ComponentHTML (PickerQuery Time)
+  renderItem ∷ F.Command -> Int -> F.CommandProp -> H.ComponentHTML Query
   renderItem key value ({ placeholder }) = HH.input
     [ HP.type_ HP.InputNumber
     , HP.placeholder placeholder
@@ -85,7 +86,7 @@ picker f = H.component
     -- this is the part there TimeQ and PickerQ are different
     -- , HE.onValueChange (HE.input (UpdateCommand c))
     ]
-  eval ∷ (PickerQuery Time) ~> H.ComponentDSL UIState (PickerQuery Time) PickerMessage m
+  eval ∷ Query ~> H.ComponentDSL State Query Message m
   eval (SetValue strOrVal next) = do
     -- TODO this nested case can be refactored
     case strOrVal of

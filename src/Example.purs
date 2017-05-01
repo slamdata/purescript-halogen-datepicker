@@ -6,11 +6,8 @@ import Prelude
 import Data.List as L
 import Data.Maybe (Maybe(..))
 
-import Data.Time (Time)
-
 import Halogen.Datapicker.Component.Time.Format(Command(..))
-import Halogen.Datapicker.Component.Time (picker)
-import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
+import Halogen.Datapicker.Component.Time as Time
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -18,7 +15,7 @@ import Halogen.HTML.Events as HE
 
 data ExampleQuery a
   = SetTime String a
-  | HandleTimeMessage PickerMessage a
+  | HandleTimeMessage Time.Message a
 
 type State = Unit
 data ExampleSlot = TimeSlot
@@ -35,7 +32,7 @@ main =
     }
   where
   initialState = unit
-  render ∷ State -> H.ParentHTML ExampleQuery (PickerQuery Time) ExampleSlot m
+  render ∷ State -> H.ParentHTML ExampleQuery Time.Query ExampleSlot m
   render _ = HH.div_
     [ HH.h1_ [ HH.text "example" ]
     , renderTime
@@ -44,12 +41,12 @@ main =
       [ HH.text "set 13:45:50:599" ]
     ]
 
-  renderTime ∷ H.ParentHTML ExampleQuery (PickerQuery Time) ExampleSlot m
-  renderTime = HH.slot TimeSlot (picker timeFormat) unit (HE.input (HandleTimeMessage))
+  renderTime ∷ H.ParentHTML ExampleQuery Time.Query ExampleSlot m
+  renderTime = HH.slot TimeSlot (Time.picker timeFormat) unit (HE.input (HandleTimeMessage))
 
   timeFormat = L.fromFoldable [Hour, Minute, Second, Millisecond]
 
-  eval ∷ ExampleQuery ~> H.ParentDSL State ExampleQuery (PickerQuery Time) ExampleSlot Void m
+  eval ∷ ExampleQuery ~> H.ParentDSL State ExampleQuery Time.Query ExampleSlot Void m
   eval (SetTime str next) = do
     -- toggled <- H.query $ H.action $ SetValue $ Left str
     -- TODO check if toggled is Just
