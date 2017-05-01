@@ -1,0 +1,15 @@
+{
+  "name": "todo",
+  "private": true,
+  "dependencies": {
+    "purescript-formatters": "git://github.com/safareli/purescript-formatters.git#interval",
+    "purescript-datetime": "git://github.com/safareli/purescript-datetime.git#interval",
+    "purescript-halogen": "^2.0.1"
+  },
+  "resolutions": {
+    "purescript-formatters": "interval",
+    "purescript-datetime": "interval",
+    "purescript-lists": "somemany",
+    "purescript-transformers": "readermonoid"
+  }
+}
