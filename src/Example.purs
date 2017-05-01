@@ -4,10 +4,13 @@ import Prelude
 
 -- import Data.Map as M
 import Data.List as L
+import Debug.Trace as D
 import Data.Maybe (Maybe(..))
-
+import Data.Either (Either(..))
+import Data.Functor.Coproduct (left)
 import Halogen.Datapicker.Component.Time.Format(Command(..))
 import Halogen.Datapicker.Component.Time as Time
+import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 
 import Halogen as H
 import Halogen.HTML as HH
@@ -37,7 +40,7 @@ main =
     [ HH.h1_ [ HH.text "example" ]
     , renderTime
     , HH.button
-      [ HE.onClick (HE.input_ $ SetTime "13:45:50:599") ]
+      [ HE.onClick (HE.input_ $ SetTime "134550599") ]
       [ HH.text "set 13:45:50:599" ]
     ]
 
@@ -48,9 +51,11 @@ main =
 
   eval ∷ ExampleQuery ~> H.ParentDSL State ExampleQuery Time.Query ExampleSlot Void m
   eval (SetTime str next) = do
-    -- toggled <- H.query $ H.action $ SetValue $ Left str
+    toggled <- H.query TimeSlot $ H.action $ left <<< (SetValue $ Left str)
     -- TODO check if toggled is Just
+    D.traceAnyA toggled
     pure next
 
   eval (HandleTimeMessage msg next) = do
+    D.traceAnyA msg
     pure next
