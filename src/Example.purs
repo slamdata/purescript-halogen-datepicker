@@ -1,6 +1,7 @@
 module Example where
 
 import Prelude
+import Data.String (replaceAll, Pattern(..), Replacement(..))
 
 -- import Data.Map as M
 import Data.List as L
@@ -8,7 +9,7 @@ import Debug.Trace as D
 import Data.Maybe (Maybe(..))
 import Data.Either (Either(..))
 import Data.Functor.Coproduct (left)
-import Halogen.Datapicker.Component.Time.Format(Command(..))
+import Halogen.Datapicker.Component.Time.Format as TimeF
 import Halogen.Datapicker.Component.Time as Time
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 
@@ -16,12 +17,13 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
+type TimeIdx = Int
 data ExampleQuery a
-  = SetTime String a
-  | HandleTimeMessage Time.Message a
+  = SetTime TimeIdx String a
+  | HandleTimeMessage TimeIdx Time.Message a
 
 type State = Unit
-data ExampleSlot = TimeSlot
+data ExampleSlot = TimeSlot TimeIdx
 derive instance eqExampleSlot ∷ Eq ExampleSlot
 derive instance ordExampleSlot ∷ Ord ExampleSlot
 
@@ -38,24 +40,34 @@ main =
   render ∷ State -> H.ParentHTML ExampleQuery Time.Query ExampleSlot m
   render _ = HH.div_
     [ HH.h1_ [ HH.text "example" ]
-    , renderTime
-    , HH.button
-      [ HE.onClick (HE.input_ $ SetTime "134550599") ]
-      [ HH.text "set 13:45:50:599" ]
+    , renderTime 0 (L.fromFoldable [ TimeF.Hour, TimeF.Minute])
+    , setBtn 0 "13:45"
+    , renderTime 1 (L.fromFoldable [ TimeF.Hour, TimeF.Minute, TimeF.Second, TimeF.Millisecond])
+    , setBtn 1 "13:45:49:119"
+    , renderTime 2 (L.fromFoldable [ TimeF.Minute, TimeF.Second, TimeF.Millisecond])
+    , setBtn 2 "45:49:119"
+    , renderTime 3 (L.fromFoldable [ TimeF.Second, TimeF.Millisecond])
+    , setBtn 3 "49:119"
+    , renderTime 4 (L.fromFoldable [ TimeF.Millisecond, TimeF.Hour, TimeF.Minute])
+    , setBtn 4 "119:12:45"
     ]
 
-  renderTime ∷ H.ParentHTML ExampleQuery Time.Query ExampleSlot m
-  renderTime = HH.slot TimeSlot (Time.picker timeFormat) unit (HE.input (HandleTimeMessage))
+  renderTime ∷ TimeIdx -> TimeF.Format -> H.ParentHTML ExampleQuery Time.Query ExampleSlot m
+  renderTime idx fmt = HH.slot (TimeSlot idx) (Time.picker fmt) unit (HE.input (HandleTimeMessage idx))
 
-  timeFormat = L.fromFoldable [Hour, Minute, Second, Millisecond]
+  setBtn ∷ TimeIdx -> String -> H.ParentHTML ExampleQuery Time.Query ExampleSlot m
+  setBtn idx str = HH.button
+    [ HE.onClick $ HE.input_ $ SetTime idx $ replaceAll (Pattern ":") (Replacement "") str ]
+    [ HH.text $ "set: " <> str ]
 
   eval ∷ ExampleQuery ~> H.ParentDSL State ExampleQuery Time.Query ExampleSlot Void m
-  eval (SetTime str next) = do
-    toggled <- H.query TimeSlot $ H.action $ left <<< (SetValue $ Left str)
-    -- TODO check if toggled is Just
-    D.traceAnyA toggled
+  eval (SetTime idx str next) = do
+    isSet <- H.query (TimeSlot idx) $ H.action $ left <<< (SetValue $ Left str)
+    -- TODO check if isSet is Just
+    -- Looks like it's `Maybe Unit`
+    D.traceAnyA isSet
     pure next
 
-  eval (HandleTimeMessage msg next) = do
-    D.traceAnyA msg
+  eval (HandleTimeMessage idx msg next) = do
+    D.traceAnyA ({idx, msg})
     pure next

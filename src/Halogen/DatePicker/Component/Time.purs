@@ -6,15 +6,16 @@ import Debug.Trace as D
 import Data.Formatter.DateTime as FDT
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Time(Time, setSecond, setMinute, setHour, setMillisecond)
+import Control.Alternative(class Alternative, empty)
 import Data.Date (canonicalDate)
 import Data.DateTime (DateTime(..), time)
 import Data.List (List)
-import Data.Foldable (foldr, for_)
+import Data.Foldable (foldr, fold, for_)
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), fromJust)
+import Data.Maybe (Maybe(..), fromJust, maybe)
 import Data.Tuple (Tuple(..))
 import Data.Enum (class BoundedEnum, toEnum)
-import Data.Map (Map, fromFoldable, toUnfoldable, insert)
+import Data.Map (Map, fromFoldable, toUnfoldable, insert, lookup)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Halogen.Datapicker.Component.Time.Format as F
 import Text.Parsing.Parser (Parser, runParser)
@@ -52,23 +53,26 @@ stateToTime s = foldr f bottom ((toUnfoldable s) :: List (Tuple F.Command Int))
 dateTimeFromTime ∷ Time -> DateTime
 dateTimeFromTime = DateTime (canonicalDate bottom bottom bottom)
 
-mapCommands ∷ ∀ a. State -> (F.Command -> Int -> F.CommandProp -> a) -> Array a
-mapCommands s f = toUnfoldable s <#> \(Tuple k v) -> f k v (F.getProps k)
+toAlt :: ∀ f. Alternative f => Maybe ~> f
+toAlt = maybe empty pure
+
+mapCommands ∷ ∀ a. F.Format -> State -> (F.Command -> Int -> F.CommandProp -> a) -> Array a
+mapCommands fmt s f = fold $ fmt <#> \key -> (toAlt $ lookup key s) <#> \val -> f key val (F.getProps key)
 
 picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit Message m
-picker f = H.component
-  { initialState: const $ initialStateFromFormat f
+picker fmt = H.component
+  { initialState: const $ initialStateFromFormat fmt
   , render: render <#> (map right)
   , eval: coproduct evalPicker evalTime
   , receiver: const Nothing
   }
   where
   unformat ∷ Parser String Time
-  unformat = FDT.unformatParser (F.toDateTimeFormatter f) <#> time
+  unformat = FDT.unformatParser (F.toDateTimeFormatter fmt) <#> time
   format ∷ Time -> String
-  format = FDT.format (F.toDateTimeFormatter f) <<< dateTimeFromTime
+  format = FDT.format (F.toDateTimeFormatter fmt) <<< dateTimeFromTime
   render ∷ State -> HTML
-  render s = HH.li_ $ mapCommands s renderItem
+  render s = HH.li_ $ mapCommands fmt s renderItem
   renderItem ∷ F.Command -> Int -> F.CommandProp -> HTML
   renderItem key value ({ placeholder, range: (Tuple min max) }) = HH.input
     [ HP.type_ HP.InputNumber
@@ -89,8 +93,8 @@ picker f = H.component
     case strOrVal of
       Left str -> case runParser str unformat of
         Left err -> H.raise $ ParserFailed err str
-        Right val -> H.put (timeToState f val) *> (H.raise NotifyChange)
-      Right val -> H.put (timeToState f val) *> (H.raise NotifyChange)
+        Right val -> H.put (timeToState fmt val) *> (H.raise NotifyChange)
+      Right val -> H.put (timeToState fmt val) *> (H.raise NotifyChange)
     pure next
   evalPicker (GetValue next) = do
     t <- H.get <#> stateToTime
