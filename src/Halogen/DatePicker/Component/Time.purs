@@ -72,9 +72,9 @@ picker fmt = H.component
   format ∷ Time -> String
   format = FDT.format (F.toDateTimeFormatter fmt) <<< dateTimeFromTime
   render ∷ State -> HTML
-  render s = HH.li_ $ mapCommands fmt s renderItem
+  render s = HH.ul_ $ mapCommands fmt s renderItem
   renderItem ∷ F.Command -> Int -> F.CommandProp -> HTML
-  renderItem key value ({ placeholder, range: (Tuple min max) }) = HH.input
+  renderItem key value ({ placeholder, range: (Tuple min max) }) = HH.li_ $ pure $ HH.input
     [ HP.type_ HP.InputNumber
     , HP.placeholder placeholder
     , HP.value (show value)

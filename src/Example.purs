@@ -39,7 +39,7 @@ main =
   initialState = unit
   render ∷ State -> H.ParentHTML ExampleQuery Time.Query ExampleSlot m
   render _ = HH.div_
-    [ HH.h1_ [ HH.text "example" ]
+    [ HH.h1_ [ HH.text "Time" ]
     , renderTime 0 (L.fromFoldable [ TimeF.Hour, TimeF.Minute])
     , setBtn 0 "13:45"
     , renderTime 1 (L.fromFoldable [ TimeF.Hour, TimeF.Minute, TimeF.Second, TimeF.Millisecond])
@@ -50,6 +50,7 @@ main =
     , setBtn 3 "49:119"
     , renderTime 4 (L.fromFoldable [ TimeF.Millisecond, TimeF.Hour, TimeF.Minute])
     , setBtn 4 "119:12:45"
+    , HH.h1_ [ HH.text "Date" ]
     ]
 
   renderTime ∷ TimeIdx -> TimeF.Format -> H.ParentHTML ExampleQuery Time.Query ExampleSlot m
