@@ -15,21 +15,21 @@ allowedValues :: ∀ g f a. Eq a => Show a => Foldable f => Foldable g => f a ->
 allowedValues as as' = for_ as' \a ->
   if elem a as
   then pure unit
-  else invalid ["contains value: " <> (show a) <> " which is not allowed"]
+  else invalid ["Contains value: " <> (show a) <> " which is not allowed"]
 
 notEmpty :: ∀ g a. Foldable g => Constraint (g a)
-notEmpty as = if null as then invalid ["input must contain values"] else pure unit
+notEmpty as = if null as then invalid ["Input must contain values"] else pure unit
 
 allowNoneOrOne :: ∀ g f a. Eq a => Show (f a) => Foldable f => Foldable g => f a -> Constraint (g a)
 allowNoneOrOne as = f <<< usageCount as
   where
-  f c | c > 1 = invalid ["usage count (" <> show c <> ") for allowed ellements (" <> (show as) <> ") must be 0 or 1"]
+  f c | c > 1 = invalid ["Usage count (" <> show c <> ") for allowed elements (" <> (show as) <> ") must be 0 or 1"]
   f _ = pure unit
 
 allowNoneOrAll :: ∀ g f a. Eq a => Show (f a) => Foldable f => Foldable g => f a -> Constraint (g a)
 allowNoneOrAll as = f <<< usageCount as
   where
-  f c | c /= 0 && c /= length as = invalid ["usage count (" <> show c <> ") for allowed ellements (" <> (show as) <> ") must be 0 or all"]
+  f c | c /= 0 && c /= length as = invalid ["Usage count (" <> show c <> ") for allowed elements (" <> (show as) <> ") must be 0 or all"]
   f _ = pure unit
 
 
