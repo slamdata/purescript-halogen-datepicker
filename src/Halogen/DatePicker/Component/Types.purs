@@ -1,11 +1,9 @@
 module Halogen.Datapicker.Component.Types where
 
 import Prelude
-import Halogen as H
-import Halogen.HTML as HH
-import Data.Functor.Coproduct (Coproduct)
-import Data.Either (Either)
-import Data.Tuple (Tuple)
+-- import Halogen as H
+-- import Halogen.HTML as HH
+-- import Data.Functor.Coproduct (Coproduct)
 
 data PickerQuery z a
   = GetValue (z -> a)

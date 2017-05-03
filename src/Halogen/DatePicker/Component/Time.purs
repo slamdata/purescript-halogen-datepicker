@@ -1,9 +1,7 @@
 module Halogen.Datapicker.Component.Time where
 
 import Prelude
-import Debug.Trace as D
 
-import Data.Formatter.DateTime as FDT
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Time
   ( Time
@@ -16,13 +14,8 @@ import Data.Time
   , setSecond, setMinute, setHour, setMillisecond
   )
 import Data.Newtype (unwrap)
-import Control.Alternative(class Alternative, empty)
-import Data.Date (canonicalDate)
-import Data.DateTime (DateTime(..), time)
-import Data.List (List)
-import Data.Foldable (foldr, fold, for_, foldMap)
-import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), fromJust, maybe)
+import Data.Foldable (foldMap)
+import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Data.Enum (class BoundedEnum, class Enum, Cardinality(..), toEnum, fromEnum)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)

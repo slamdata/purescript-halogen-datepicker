@@ -8,7 +8,8 @@ module Halogen.Datapicker.Component.Time.Format
   ) where
 
 import Prelude
-import Data.Foldable (class Foldable, foldMap, foldl, foldr)
+import Data.Foldable (class Foldable, foldMap)
+import Data.String (joinWith)
 import Data.Traversable (traverse)
 import Data.List (List)
 import Data.DateTime (DateTime(..), canonicalDate, time)
@@ -68,10 +69,11 @@ fromString s = FDT.parseFormatString s >>= fromDateTimeFormatter
 
 fromDateTimeFormatter :: FDT.Formatter -> Either String Format
 fromDateTimeFormatter fmt = do
-  timeFormatConstraint fmt
+  let errs = Constraint.runConstraint timeFormatConstraint fmt
+  when (errs /= []) $ Left $ joinWith "; " errs
   case traverse toTimeCommand fmt of
     Just fmt' -> pure $ Format fmt'
-    Nothing -> Left "(unreachable) invlid FormatterCommand has leaked while checking constraints"
+    Nothing -> Left "(unreachable) invalid FormatterCommand has leaked while checking constraints"
   where
   toTimeCommand :: FDT.FormatterCommand -> Maybe Command
   toTimeCommand FDT.Hours24 = Just Hours24
@@ -116,12 +118,12 @@ timeFormatConstraint :: ∀ g. Foldable g => Constraint.Constraint g FDT.Formatt
 timeFormatConstraint
   =   Constraint.notEmpty
   <> (Constraint.allowedValues allowedCommands)
-  <> (Constraint.alloweNoneOrOne [FDT.Milliseconds, FDT.MillisecondsTwoDigits, FDT.MillisecondsShort])
-  <> (Constraint.alloweNoneOrOne [FDT.SecondsTwoDigits, FDT.Seconds])
-  <> (Constraint.alloweNoneOrOne [FDT.MinutesTwoDigits, FDT.Minutes])
-  <> (Constraint.alloweNoneOrOne [FDT.Hours24, FDT.Hours12])
-  <> (Constraint.alloweNoneOrOne [FDT.Hours24, FDT.Meridiem])
-  <> (Constraint.alloweNoneOrAll [FDT.Hours12, FDT.Meridiem])
+  <> (Constraint.allowNoneOrOne [FDT.Milliseconds, FDT.MillisecondsTwoDigits, FDT.MillisecondsShort])
+  <> (Constraint.allowNoneOrOne [FDT.SecondsTwoDigits, FDT.Seconds])
+  <> (Constraint.allowNoneOrOne [FDT.MinutesTwoDigits, FDT.Minutes])
+  <> (Constraint.allowNoneOrOne [FDT.Hours24, FDT.Hours12])
+  <> (Constraint.allowNoneOrOne [FDT.Hours24, FDT.Meridiem])
+  <> (Constraint.allowNoneOrAll [FDT.Hours12, FDT.Meridiem])
   where
   allowedCommands =
     [ FDT.Hours24
@@ -136,7 +138,7 @@ timeFormatConstraint
     , FDT.MillisecondsShort
     -- TODO at this point the Constraint is working with Equality
     -- so we cant have FDT.Placeholder of anything here
-    -- Constraint should be upadated to support that or ... 
+    -- Constraint should be upadated to support that or ...
     , FDT.Placeholder ","
     , FDT.Placeholder " "
     , FDT.Placeholder "."

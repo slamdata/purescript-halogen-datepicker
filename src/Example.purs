@@ -49,7 +49,10 @@ main =
     <> (renderTime times 0 "HH:mm" "13:45")
     <> (renderTime times 1 "HH:mm:ss,SSS" "13:45:49,119")
     <> (renderTime times 2 "mm:ss,SSS" "45:49,119")
-    <> (renderTime times 3 "ss,SSS" "49,119")
+    <> (renderTime times 3 "mm:ss,SSS" "45:49,119")
+    <> (renderTime times 4 "mm:ss,SS" "45:49,11")
+    <> (renderTime times 5 "mm:ss,S" "45:49,1")
+    <> (renderTime times (-1) "HH:mm:m:ss:SS,Sa" "---")
 
     -- pure $ HH.h1_ [ HH.text "Date" ]
     -- renderDate 0 "YYYY:MM:DD" "2017:12:27"
@@ -84,6 +87,5 @@ main =
   eval (HandleTimeMessage idx msg next) = do
     case msg of
       NotifyChange t -> H.modify \s -> s {times = insert idx (show t) s.times}
-      _ -> D.traceAnyA ({idx, msg})
 
     pure next
