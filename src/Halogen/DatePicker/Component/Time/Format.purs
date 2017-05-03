@@ -114,7 +114,7 @@ format fmt = FDT.format (toDateTimeFormatter fmt) <<< dateTimeFromTime
   dateTimeFromTime = DateTime (canonicalDate bottom bottom bottom)
 
 
-timeFormatConstraint :: ∀ g. Foldable g => Constraint.Constraint g FDT.FormatterCommand
+timeFormatConstraint :: ∀ g. Foldable g => Constraint.Constraint (g FDT.FormatterCommand)
 timeFormatConstraint
   =   Constraint.notEmpty
   <> (Constraint.allowedValues allowedCommands)
