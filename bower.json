@@ -4,7 +4,8 @@
   "dependencies": {
     "purescript-formatters": "git://github.com/safareli/purescript-formatters.git#interval",
     "purescript-datetime": "git://github.com/safareli/purescript-datetime.git#interval",
-    "purescript-halogen": "^2.0.1"
+    "purescript-halogen": "^2.0.1",
+    "purescript-generics-rep": "^5.0.0"
   },
   "resolutions": {
     "purescript-formatters": "interval",
