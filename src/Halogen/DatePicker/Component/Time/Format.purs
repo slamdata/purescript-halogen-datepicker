@@ -12,7 +12,7 @@ import Data.Foldable (class Foldable, foldMap)
 import Data.String (joinWith)
 import Data.Traversable (traverse)
 import Data.List (List)
-import Data.DateTime (DateTime(..), canonicalDate, time)
+import Data.DateTime (DateTime(..), time)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
@@ -22,19 +22,6 @@ import Data.Time (Time)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 
-{--
-Placeholder
---
-YearFull
-YearTwoDigits
-YearAbsolute
-MonthFull
-MonthShort
-MonthTwoDigits
-DayOfMonthTwoDigits
-DayOfMonth
-DayOfWeek
---}
 data Command
   = Hours24
   | Hours12
@@ -69,7 +56,7 @@ fromString s = FDT.parseFormatString s >>= fromDateTimeFormatter
 
 fromDateTimeFormatter :: FDT.Formatter -> Either String Format
 fromDateTimeFormatter fmt = do
-  let errs = Constraint.runConstraint timeFormatConstraint fmt
+  let errs = Constraint.runConstraint formatConstraint fmt
   when (errs /= []) $ Left $ joinWith "; " errs
   case traverse toTimeCommand fmt of
     Just fmt' -> pure $ Format fmt'
@@ -105,17 +92,17 @@ toDateTimeFormatter (Format fmt) = foldMap (pure <<< toDTCommand) fmt
   toDTCommand (Placeholder str) = FDT.Placeholder str
 
 unformat ∷ Format -> String -> Either String Time
-unformat fmt dateStr = FDT.unformat (toDateTimeFormatter fmt) dateStr  <#> time
+unformat fmt str = FDT.unformat (toDateTimeFormatter fmt) str  <#> time
 
 format ∷ Format -> Time -> String
-format fmt = FDT.format (toDateTimeFormatter fmt) <<< dateTimeFromTime
+format fmt = FDT.format (toDateTimeFormatter fmt) <<< toDateTime
   where
-  dateTimeFromTime ∷ Time -> DateTime
-  dateTimeFromTime = DateTime (canonicalDate bottom bottom bottom)
+  toDateTime ∷ Time -> DateTime
+  toDateTime = DateTime bottom
 
 
-timeFormatConstraint :: ∀ g. Foldable g => Constraint.Constraint (g FDT.FormatterCommand)
-timeFormatConstraint
+formatConstraint :: ∀ g. Foldable g => Constraint.Constraint (g FDT.FormatterCommand)
+formatConstraint
   =   Constraint.notEmpty
   <> (Constraint.allowedValues allowedCommands)
   <> (Constraint.allowNoneOrOne [FDT.Milliseconds, FDT.MillisecondsTwoDigits, FDT.MillisecondsShort])

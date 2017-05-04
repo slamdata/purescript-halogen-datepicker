@@ -1,16 +1,12 @@
 module Halogen.Datapicker.Component.Time where
 
 import Prelude
+import Debug.Trace as D
 
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Time
-  ( Time
-  , Hour
-  , Millisecond
-  , second
-  , minute
-  , hour
-  , millisecond
+  ( Time, Hour, Millisecond
+  , second, minute, hour, millisecond
   , setSecond, setMinute, setHour, setMillisecond
   )
 import Data.Newtype (unwrap)
@@ -40,9 +36,6 @@ type HTML = H.ComponentHTML TimeQuery
 
 initialStateFromFormat ∷ F.Format -> State
 initialStateFromFormat format = {format: format, time: bottom}
-
--- toAlt :: ∀ f. Alternative f => Maybe ~> f
--- toAlt = maybe empty pure
 
 picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit Message m
 picker fmt = H.component
@@ -116,16 +109,18 @@ choiseElement cmd {title, values} val = HH.select
 textElement :: {text :: String} -> HTML
 textElement {text} = HH.span_ [HH.text text]
 
+-- TODO switch to Validation/Either instead of Maybe to
+-- show helpful error messages instead of swallowing them.
 evalTime ∷ ∀ m . TimeQuery ~> DSL m
-evalTime (UpdateCommand component val next) = do
+evalTime (UpdateCommand command val next) = do
   {time} <- H.get
-  let time' = Int.fromString val >>= \n -> updateTime component n time
+  let time' = Int.fromString val >>= \n -> updateTime command n time
 
   case time' of
     Just time'' -> do
       H.modify _{ time = time'' }
       H.raise (NotifyChange time'')
-    Nothing -> pure unit
+    Nothing -> D.traceAnyA {val, command, msg: "parsing val or updating time has failed"}
   pure next
 
 updateTime :: F.Command -> Int -> Time -> Maybe Time
