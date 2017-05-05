@@ -14,28 +14,20 @@ import Halogen.Datapicker.Component.Internal.Enums
   , year4
   , year2
   )
-import Halogen.Datapicker.Component.Elements (textElement, numberElement, enumNumberElement, choiseElement)
+import Halogen.Datapicker.Component.Internal.Elements (textElement, enumNumberElement, choiseElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Date
   ( Date
-  , Year, Month, Day
   , year, month, day
-  , exactDate, canonicalDate
+  , canonicalDate
   )
-import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
-import Data.Newtype (class Newtype, unwrap)
+import Data.Newtype (unwrap)
 import Data.Foldable (foldMap)
-import Data.Unfoldable (unfoldr)
 import Data.Maybe (Maybe(..), fromJust)
-import Data.Tuple (Tuple(..))
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Halogen.Datapicker.Component.Date.Format as F
-import Data.String as Str
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 import Data.Int as Int
 import Partial.Unsafe (unsafePartialBecause)
 

@@ -13,26 +13,21 @@ import Halogen.Datapicker.Component.Internal.Enums
   , setMillisecond1
   )
 
-import Halogen.Datapicker.Component.Elements (textElement, enumNumberElement, numberElement, choiseElement)
+import Halogen.Datapicker.Component.Internal.Elements (textElement, enumNumberElement, choiseElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Time
-  ( Time, Hour, Millisecond
+  ( Time
   , second, minute, hour, millisecond
   , setSecond, setMinute, setHour, setMillisecond
   )
-import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
-import Data.Newtype (class Newtype, unwrap)
+import Data.Newtype (unwrap)
 import Data.Foldable (foldMap)
 import Data.Maybe (Maybe(..))
-import Data.Tuple (Tuple(..))
-import Data.Enum (class BoundedEnum, class Enum, Cardinality(..), toEnum, fromEnum, defaultSucc, defaultPred)
+import Data.Enum (toEnum)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Halogen.Datapicker.Component.Time.Format as F
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 import Data.Int as Int
 
 data TimeQuery a = UpdateCommand F.Command String a

@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.Elements where
+module Halogen.Datapicker.Component.Internal.Elements where
 
 import Prelude
 
