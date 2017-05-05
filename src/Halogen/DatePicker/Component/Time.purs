@@ -104,7 +104,7 @@ updateTime F.SecondsTwoDigits n t = toEnum n <#> ( _ `setSecond` t)
 updateTime F.Seconds n t = toEnum n <#> ( _ `setSecond` t)
 updateTime F.Milliseconds n t =toEnum n <#>  (_ `setMillisecond` t)
 updateTime F.MillisecondsTwoDigits n t = toEnum n >>= (_ `setMillisecond2` t)
-updateTime F.MillisecondsShort n t = toEnum n >>= (_ `setMillisecond2` t)
+updateTime F.MillisecondsShort n t = toEnum n >>= (_ `setMillisecond1` t)
 updateTime (F.Placeholder _) _ t = pure t
 
 evalPicker ∷ ∀ m . (PickerQuery Time) ~> DSL m

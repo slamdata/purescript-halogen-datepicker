@@ -17,7 +17,7 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Formatter.DateTime as FDT
-import Halogen.Datapicker.Constraint as Constraint
+import Halogen.Datapicker.Component.Internal.Constraint as Constraint
 import Data.Time (Time)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)

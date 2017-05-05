@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Constraint where
+module Halogen.Datapicker.Component.Internal.Constraint where
 
 import Prelude
 import Data.Validation.Semigroup (V, invalid, unV)
