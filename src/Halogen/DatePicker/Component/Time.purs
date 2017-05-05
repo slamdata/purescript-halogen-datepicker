@@ -3,7 +3,7 @@ module Halogen.Datapicker.Component.Time where
 import Prelude
 import Debug.Trace as D
 
-import Halogen.Datapicker.Component.Elements (numberElement)
+import Halogen.Datapicker.Component.Elements (numberElement, choiseElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Time
   ( Time, Hour, Millisecond
@@ -62,7 +62,7 @@ picker fmt = H.component
 renderCommand :: Time -> F.Command -> HTML
 renderCommand t cmd@F.Hours24               = numberElement (UpdateCommand cmd) { title: "Hours", min: 0, max: 23} (fromEnum $ hour t)
 renderCommand t cmd@F.Hours12               = numberElement (UpdateCommand cmd) { title: "Hours", min: 0, max: 11} (hour12 $ hour t)
-renderCommand t cmd@F.Meridiem              = choiseElement cmd { title: "Meridiem", values: [Tuple AM "AM", Tuple PM "PM"]} (meridiem $ hour t)
+renderCommand t cmd@F.Meridiem              = choiseElement (UpdateCommand cmd) { title: "Meridiem" } (meridiem $ hour t)
 renderCommand t cmd@F.MinutesTwoDigits      = numberElement (UpdateCommand cmd) { title: "Minutes", min: 0, max: 59} (fromEnum $ minute t)
 renderCommand t cmd@F.Minutes               = numberElement (UpdateCommand cmd) { title: "Minutes", min: 0, max: 59} (fromEnum $ minute t)
 renderCommand t cmd@F.SecondsTwoDigits      = numberElement (UpdateCommand cmd) { title: "Seconds", min: 0, max: 59} (fromEnum $ second t)
@@ -83,18 +83,6 @@ millisecond2 = fromEnum >>> (_ / 10)
 
 millisecond1 :: Millisecond -> Int
 millisecond1 = fromEnum >>> (_ / 100)
-
-choiseElement :: forall a. BoundedEnum a => F.Command -> {title :: String, values :: Array (Tuple a String)} -> a -> HTML
-choiseElement cmd {title, values} val = HH.select
-  [ HE.onValueChange (HE.input (UpdateCommand cmd))
-  , HP.title title
-  ] (values <#> renderVal)
-  where
-  renderVal (Tuple val' text) = HH.option
-    [ HP.value $ show $ fromEnum val'
-    , HP.selected (val' == val)
-    ]
-    [ HH.text text ]
 
 
 textElement :: {text :: String} -> HTML

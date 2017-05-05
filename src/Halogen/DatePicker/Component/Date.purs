@@ -3,7 +3,7 @@ module Halogen.Datapicker.Component.Date where
 import Prelude
 import Debug.Trace as D
 
-import Halogen.Datapicker.Component.Elements (numberElement)
+import Halogen.Datapicker.Component.Elements (numberElement, choiseElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Date
   ( Date
@@ -75,8 +75,8 @@ renderCommand :: Date -> F.Command -> HTML
 renderCommand t cmd@F.YearFull            = numberElement (UpdateCommand cmd) { title: "Year", min: 0, max: 9999} (fromEnum $ year t)
 renderCommand t cmd@F.YearTwoDigits       = numberElement (UpdateCommand cmd) { title: "Year", min: 0, max: 99} (year99 $ year t)
 renderCommand t cmd@F.YearAbsolute        = numberElement (UpdateCommand cmd) { title: "Year", min: fromEnum (bottom :: Year) , max: fromEnum (top :: Year)} (fromEnum $ year t)
-renderCommand t cmd@F.MonthFull           = choiseElement cmd { title: "Month" } (month t)
-renderCommand t cmd@F.MonthShort          = choiseElement cmd { title: "Month" } (MonthShort $ month t)
+renderCommand t cmd@F.MonthFull           = choiseElement (UpdateCommand cmd) { title: "Month" } (month t)
+renderCommand t cmd@F.MonthShort          = choiseElement (UpdateCommand cmd) { title: "Month" } (MonthShort $ month t)
 renderCommand t cmd@F.MonthTwoDigits      = numberElement (UpdateCommand cmd) { title: "Month", min: 1, max: 12} (fromEnum $ month t)
 renderCommand t cmd@F.DayOfMonthTwoDigits = numberElement (UpdateCommand cmd) { title: "Day", min: 1, max: 31} (fromEnum $ day t)
 renderCommand t cmd@F.DayOfMonth          = numberElement (UpdateCommand cmd) { title: "Day", min: 1, max: 31} (fromEnum $ day t)
@@ -92,20 +92,6 @@ unPrecise :: Int -> Int -> Int
 unPrecise n by = n / by * by
 
 
-choiseElement :: forall a. Show a => BoundedEnum a => F.Command -> {title :: String } -> a -> HTML
-choiseElement cmd {title} val = HH.select
-  [ HE.onValueChange (HE.input (UpdateCommand cmd))
-  , HP.title title
-  ] (values <#> renderVal)
-  where
-  values = unfoldr genValues bottom
-  genValues n = succ n <#> \a -> Tuple n a
-
-  renderVal val' = HH.option
-    [ HP.value $ show $ fromEnum val'
-    , HP.selected (val' == val)
-    ]
-    [ HH.text $ show val' ]
 
 
 textElement :: {text :: String} -> HTML
