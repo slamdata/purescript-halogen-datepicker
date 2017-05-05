@@ -9,13 +9,13 @@ import Data.Date
   ( Date
   , Year, Month, Day
   , year, month, day
-  , exactDate
+  , exactDate, canonicalDate
   )
 import Data.Generic.Rep (class Generic)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Foldable (foldMap)
 import Data.Unfoldable (unfoldr)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromJust)
 import Data.Tuple (Tuple(..))
 import Data.Enum
   ( class Enum
@@ -34,6 +34,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Data.Int as Int
+import Partial.Unsafe (unsafePartialBecause)
 
 data DateQuery a = UpdateCommand F.Command String a
 
@@ -48,7 +49,8 @@ type DSL = H.ComponentDSL State Query Message
 type HTML = H.ComponentHTML DateQuery
 
 initialStateFromFormat ∷ F.Format -> State
-initialStateFromFormat format = {format: format, date: bottom}
+initialStateFromFormat format = {format: format, date: canonicalDate year bottom bottom}
+  where year = unsafePartialBecause "unreachable as `0` year is in bounds" fromJust $ toEnum 0
 
 picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit Message m
 picker fmt = H.component
