@@ -42,3 +42,7 @@ choiseElement query {title} val = HH.select
     , HP.selected (val' == val)
     ]
     [ HH.text $ show val' ]
+
+
+textElement :: ∀ query. {text :: String} -> H.ComponentHTML query
+textElement {text} = HH.span_ [HH.text text]

@@ -3,7 +3,7 @@ module Halogen.Datapicker.Component.Date where
 import Prelude
 import Debug.Trace as D
 
-import Halogen.Datapicker.Component.Elements (numberElement, enumNumberElement, choiseElement)
+import Halogen.Datapicker.Component.Elements (textElement, numberElement, enumNumberElement, choiseElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Date
   ( Date
@@ -94,10 +94,6 @@ unPrecise :: Int -> Int -> Int
 unPrecise n by = n / by * by
 
 
-
-
-textElement :: {text :: String} -> HTML
-textElement {text} = HH.span_ [HH.text text]
 
 -- TODO switch to Validation/Either instead of Maybe to
 -- show helpful error messages instead of swallowing them.

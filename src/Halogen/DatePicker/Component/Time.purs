@@ -3,7 +3,7 @@ module Halogen.Datapicker.Component.Time where
 import Prelude
 import Debug.Trace as D
 
-import Halogen.Datapicker.Component.Elements (enumNumberElement, numberElement, choiseElement)
+import Halogen.Datapicker.Component.Elements (textElement, enumNumberElement, numberElement, choiseElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Time
   ( Time, Hour, Millisecond
@@ -83,9 +83,6 @@ millisecond2 = fromEnum >>> (_ / 10)
 
 millisecond1 :: Millisecond -> Int
 millisecond1 = fromEnum >>> (_ / 100)
-
-textElement :: {text :: String} -> HTML
-textElement {text} = HH.span_ [HH.text text]
 
 -- TODO switch to Validation/Either instead of Maybe to
 -- show helpful error messages instead of swallowing them.
