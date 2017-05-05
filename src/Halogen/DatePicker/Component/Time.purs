@@ -169,8 +169,8 @@ instance meridiemEnum ∷ Enum Meridiem where
 
 instance meridiemBoundedEnum ∷ BoundedEnum Meridiem where
   cardinality = Cardinality 2
-  toEnum 0 = Just AM
-  toEnum 1 = Just PM
+  toEnum 1 = Just AM
+  toEnum 2 = Just PM
   toEnum _ = Nothing
-  fromEnum AM = 0
-  fromEnum PM = 1
+  fromEnum AM = 1
+  fromEnum PM = 2

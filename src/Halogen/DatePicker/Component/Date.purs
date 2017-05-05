@@ -107,8 +107,8 @@ choiseElement cmd {title} val = HH.select
   , HP.title title
   ] (values <#> renderVal)
   where
-  values = unfoldr genValues 0
-  genValues n = toEnum n <#> \a -> Tuple a (n + 1)
+  values = unfoldr genValues bottom
+  genValues n = succ n <#> \a -> Tuple n a
 
   renderVal val' = HH.option
     [ HP.value $ show $ fromEnum val'
