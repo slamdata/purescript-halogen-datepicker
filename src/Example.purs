@@ -3,12 +3,13 @@ module Example where
 import Prelude
 import Debug.Trace as D
 import Data.Monoid (mempty)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromJust)
 import Data.Map (Map, lookup, insert)
 import Data.Time (Time)
-import Data.Date (Date)
-import Data.Either as Either
-import Data.Either.Nested as EitherN
+import Data.Date (Date, canonicalDate)
+import Data.Enum (class BoundedEnum, toEnum)
+import Data.Either (Either(..), either)
+import Data.Either.Nested (Either2)
 import Data.Functor.Coproduct (right, left)
 import Data.Functor.Coproduct.Nested as Coproduct
 import Halogen.Component.ChildPath as CP
@@ -18,7 +19,7 @@ import Halogen.Datapicker.Component.Time as Time
 import Halogen.Datapicker.Component.Date.Format as DateF
 import Halogen.Datapicker.Component.Date as Date
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
-
+import Partial.Unsafe (unsafePartial)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -38,7 +39,7 @@ type State =
   , dates :: Map DateIdx String
   }
 
-type ExampleSlot = EitherN.Either2 TimeIdx DateIdx
+type ExampleSlot = Either2 TimeIdx DateIdx
 
 type HTML m = H.ParentHTML ExampleQuery ChildQuery ExampleSlot m
 
@@ -55,28 +56,33 @@ main =
   render ∷ State -> HTML m
   render {times, dates} = HH.div_
     $  [HH.h1_ [ HH.text "Time" ]]
-    <> (renderTime times 0 "HH:mm" "13:45")
-    <> (renderTime times 1 "HH:mm:ss,SSS" "13:45:49,119")
-    <> (renderTime times 2 "mm:ss,SSS" "45:49,119")
-    <> (renderTime times 3 "mm:ss,SSS" "45:49,119")
-    <> (renderTime times 4 "mm:ss,SS" "45:49,11")
-    <> (renderTime times 5 "mm:ss,S" "45:49,1")
-    <> (renderTime times 6 "a hh:mm:ss,SSS" "PM 02:45:49,119")
-    <> (renderTime times (-1) "HH:mm:m:ss:SS,Sa" "---")
+    <> renderTime times 0 "HH:mm" (Left "13:45")
+    <> renderTime times 1 "HH:mm:ss,SSS" (Left "13:45:49,119")
+    <> renderTime times 2 "mm:ss,SSS" (Left "45:49,119")
+    <> renderTime times 3 "mm:ss,SSS" (Left "45:49,119")
+    <> renderTime times 4 "mm:ss,SS" (Left "45:49,11")
+    <> renderTime times 5 "mm:ss,S" (Left "45:49,1")
+    <> renderTime times 6 "a hh:mm:ss,SSS" (Left "PM 02:45:49,119")
+    <> renderTime times (-1) "HH:mm:m:ss:SS,Sa" (Left "---")
 
     <> [HH.h1_ [ HH.text "Date" ]]
-    <> renderDate dates 0 "YYYY:MM:DD" "2017:12:27"
-    <> renderDate dates 1 "YYYY:MM" "2017:12"
-    <> renderDate dates 2 "YYYY" "2017"
-    <> renderDate dates 3 "YYYY:MMM" "2017:May"
-    <> renderDate dates 4 "YYYY:MMMM" "2017:May"
-    <> renderDate dates 5 "Y:MM" "39017:12"
-    <> renderDate dates 6 "YY:MM" "17:12"
+    <> renderDate dates 0 "YYYY:MM:DD" (Left "2017:12:27")
+    <> renderDate dates 1 "YYYY:MM" (Left "2017:12")
+    <> renderDate dates 2 "YYYY" (Left "2017")
+    <> renderDate dates 3 "YYYY:MMM" (Left "2017:May")
+    <> renderDate dates 4 "YYYY:MMMM" (Left "2017:May")
+    <> renderDate dates 5 "Y:MM" (Left "39017:12")
+    <> renderDate dates 6 "YY:MM" (Left "17:12")
+    <> renderDate dates 7 "YY:MM" (Right $ canonicalDate (enum 2017) (enum 1) (enum 1))
 
-  renderTime ∷ Map TimeIdx String -> TimeIdx -> String -> String -> Array (HTML m)
-  renderTime times idx fmtStr timeStr = unEither $ do
+  enum :: ∀ a. BoundedEnum a => Int -> a
+  enum = unsafePartial fromJust <<< toEnum
+
+  renderTime ∷ Map TimeIdx String -> TimeIdx -> String -> Either String Time -> Array (HTML m)
+  renderTime times idx fmtStr time' = unEither $ do
     fmt <- TimeF.fromString fmtStr
-    time <- TimeF.unformat fmt timeStr
+    time <- either (TimeF.unformat fmt) Right time'
+    let timeStr = either show show time'
     pure
       [ HH.slot' CP.cp1 idx (Time.picker fmt) unit (HE.input (HandleTimeMessage idx))
       , HH.button [ HE.onClick $ HE.input_ $ SetTime idx time] [ HH.text $ "set: " <> timeStr ]
@@ -85,15 +91,16 @@ main =
           Just currentTime -> HH.div_ [HH.text $ "time:" <> currentTime]
       ]
     where
-    unEither :: Either.Either String (Array (HTML m)) -> Array (HTML m)
-    unEither (Either.Left err) = [HH.div_ [HH.text err]]
-    unEither (Either.Right a) = a
+    unEither :: Either String (Array (HTML m)) -> Array (HTML m)
+    unEither (Left err) = [HH.div_ [HH.text err]]
+    unEither (Right a) = a
 
 
-  renderDate ∷ Map DateIdx String -> DateIdx -> String -> String -> Array (HTML m)
-  renderDate dates idx fmtStr dateStr = unEither $ do
+  renderDate ∷ Map DateIdx String -> DateIdx -> String -> Either String Date -> Array (HTML m)
+  renderDate dates idx fmtStr date' = unEither $ do
     fmt <- DateF.fromString fmtStr
-    date <- DateF.unformat fmt dateStr
+    date <- either (DateF.unformat fmt) Right date'
+    let dateStr = either show show date'
     pure
       [ HH.slot' CP.cp2 idx (Date.picker fmt) unit (HE.input (HandleDateMessage idx))
       , HH.button [ HE.onClick $ HE.input_ $ SetDate idx date] [ HH.text $ "set: " <> dateStr ]
@@ -102,9 +109,9 @@ main =
           Just currentDate -> HH.div_ [HH.text $ "date:" <> currentDate]
       ]
     where
-    unEither :: Either.Either String (Array (HTML m)) -> Array (HTML m)
-    unEither (Either.Left err) = [HH.div_ [HH.text err]]
-    unEither (Either.Right a) = a
+    unEither :: Either String (Array (HTML m)) -> Array (HTML m)
+    unEither (Left err) = [HH.div_ [HH.text err]]
+    unEither (Right a) = a
 
 
   eval ∷ ExampleQuery ~> H.ParentDSL State ExampleQuery ChildQuery ExampleSlot Void m

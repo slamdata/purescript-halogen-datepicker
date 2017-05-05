@@ -3,6 +3,17 @@ module Halogen.Datapicker.Component.Date where
 import Prelude
 import Debug.Trace as D
 
+import Data.Enum (toEnum)
+import Halogen.Datapicker.Component.Internal.Enums
+  ( setYear4
+  , setYear2
+  , setYear
+  , setMonth
+  , setDay
+  , monthShort
+  , year4
+  , year2
+  )
 import Halogen.Datapicker.Component.Elements (textElement, numberElement, enumNumberElement, choiseElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Date
@@ -12,20 +23,12 @@ import Data.Date
   , exactDate, canonicalDate
   )
 import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Foldable (foldMap)
 import Data.Unfoldable (unfoldr)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Tuple (Tuple(..))
-import Data.Enum
-  ( class Enum
-  , pred
-  , succ
-  , class BoundedEnum
-  , Cardinality(..)
-  , cardinality
-  , toEnum
-  , fromEnum)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Halogen.Datapicker.Component.Date.Format as F
 import Data.String as Str
@@ -65,33 +68,17 @@ picker fmt = H.component
     where
     f cmd = HH.li_ [renderCommand date cmd]
 
--- NOTE
--- maybe we can splitt `___Element cmd {___} (____ t)`
--- in two patrs two pats:
--- 1) takes `Command` and returns coresponding function waiting for selected value (Command -> x -> HTML)
--- 2) takes `Command` and `Date` and returns value which must be selected (Command -> Date -> x)
--- and here both of them are combined.
--- we might need to remove replace `BoundedEnum a` with `Int` in `choiseElement`
-
 renderCommand :: Date -> F.Command -> HTML
-renderCommand t cmd@F.YearFull            = numberElement (UpdateCommand cmd) { title: "Year", min: 0, max: 9999} (fromEnum $ year t)
-renderCommand t cmd@F.YearTwoDigits       = numberElement (UpdateCommand cmd) { title: "Year", min: 0, max: 99} (year99 $ year t)
+renderCommand t cmd@F.YearFull            = enumNumberElement (UpdateCommand cmd) { title: "Year" } (year4 t)
+renderCommand t cmd@F.YearTwoDigits       = enumNumberElement (UpdateCommand cmd) { title: "Year" } (year2 t)
 renderCommand t cmd@F.YearAbsolute        = enumNumberElement (UpdateCommand cmd) { title: "Year" } (year t)
 renderCommand t cmd@F.MonthFull           = choiseElement (UpdateCommand cmd) { title: "Month" } (month t)
-renderCommand t cmd@F.MonthShort          = choiseElement (UpdateCommand cmd) { title: "Month" } (MonthShort $ month t)
+renderCommand t cmd@F.MonthShort          = choiseElement (UpdateCommand cmd) { title: "Month" } (monthShort t)
 renderCommand t cmd@F.MonthTwoDigits      = enumNumberElement (UpdateCommand cmd) { title: "Month" } (month t)
 renderCommand t cmd@F.DayOfMonthTwoDigits = enumNumberElement (UpdateCommand cmd) { title: "Day" } (day t)
 renderCommand t cmd@F.DayOfMonth          = enumNumberElement (UpdateCommand cmd) { title: "Day" } (day t)
 renderCommand _ (F.Placeholder str)       = textElement { text: str}
 
-
-year99 :: Year -> Int
-year99 = fromEnum >>> \y -> y - (y `unPrecise` 100)
-
--- > 123456789 `unPrecise` 1000
--- 123456000
-unPrecise :: Int -> Int -> Int
-unPrecise n by = n / by * by
 
 
 
@@ -110,10 +97,8 @@ evalDate (UpdateCommand command val next) = do
   pure next
 
 updateTime :: F.Command -> Int -> Date -> Maybe Date
-updateTime F.YearFull n t = (toEnum n) >>= (_ `setYear` t)
-updateTime F.YearTwoDigits n t = (toEnum $ changeYear n ) >>= (_ `setYear` t)
-  where
-  changeYear y99 = ((fromEnum $ year t) `unPrecise` 100) + y99
+updateTime F.YearFull n t = (toEnum n) >>= (_ `setYear4` t)
+updateTime F.YearTwoDigits n t = (toEnum n ) >>= (_ `setYear2` t)
 updateTime F.YearAbsolute n t = (toEnum n) >>= (_ `setYear` t)
 updateTime F.MonthFull n t = (toEnum n) >>= (_ `setMonth` t)
 updateTime F.MonthShort n t = (toEnum n) >>= (_ `setMonth` t)
@@ -122,14 +107,6 @@ updateTime F.DayOfMonthTwoDigits n t = (toEnum n) >>= (_ `setDay` t)
 updateTime F.DayOfMonth n t = (toEnum n) >>= (_ `setDay` t)
 updateTime (F.Placeholder _) _ t = pure t
 
-setYear :: Year -> Date -> Maybe Date
-setYear a d = exactDate a (month d) (day d)
-
-setMonth :: Month -> Date -> Maybe Date
-setMonth a d = exactDate (year d) a (day d)
-
-setDay :: Day -> Date -> Maybe Date
-setDay a d = exactDate (year d) (month d) a
 
 evalPicker ∷ ∀ m . (PickerQuery Date) ~> DSL m
 evalPicker (SetValue date next) = do
@@ -138,27 +115,3 @@ evalPicker (SetValue date next) = do
   pure next
 evalPicker (GetValue next) = do
   H.gets _.date <#> next
-
--- TODO move this instanced to Data.Formatters.DateTime
-
-newtype MonthShort = MonthShort Month
-derive instance monthShortNewtype :: Newtype MonthShort _
-derive instance monthShortGeneric :: Generic MonthShort _
-derive instance monthShortEq :: Eq MonthShort
-derive instance monthShortOrd :: Ord MonthShort
-
-instance monthShortBounded :: Bounded MonthShort where
-  bottom = MonthShort bottom
-  top = MonthShort top
-
-instance monthShortEnum :: Enum MonthShort where
-  pred (MonthShort m) = pred m <#> MonthShort
-  succ (MonthShort m) = succ m <#> MonthShort
-
-instance monthShortBoundedEnum :: BoundedEnum MonthShort where
-  cardinality = Cardinality $ unwrap (cardinality :: Cardinality Month)
-  toEnum n = toEnum n <#> MonthShort
-  fromEnum (MonthShort m) = fromEnum m
-
-instance monthShortShow :: Show MonthShort where
-  show (MonthShort m) = Str.take 3 $ show m
