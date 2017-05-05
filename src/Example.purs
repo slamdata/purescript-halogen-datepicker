@@ -66,10 +66,12 @@ main =
 
     <> [HH.h1_ [ HH.text "Date" ]]
     <> renderDate dates 0 "YYYY:MM:DD" "2017:12:27"
-    <> renderDate dates 3 "YYYY:MMM:DD" "2017:May:27"
-    <> renderDate dates 4 "YYYY:MMMM:DD" "2017:May:27"
     <> renderDate dates 1 "YYYY:MM" "2017:12"
     <> renderDate dates 2 "YYYY" "2017"
+    <> renderDate dates 3 "YYYY:MMM" "2017:May"
+    <> renderDate dates 4 "YYYY:MMMM" "2017:May"
+    <> renderDate dates 5 "Y:MM" "39017:12"
+    <> renderDate dates 6 "YY:MM" "17:12"
 
   renderTime ∷ Map TimeIdx String -> TimeIdx -> String -> String -> Array (HTML m)
   renderTime times idx fmtStr timeStr = unEither $ do

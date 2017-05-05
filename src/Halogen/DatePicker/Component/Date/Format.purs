@@ -32,8 +32,7 @@ data Command
   | DayOfMonthTwoDigits
   | DayOfMonth
   | Placeholder String
-  -- | DayOfWeek
-  -- this value is not fully supported in ps-formatters itself
+  -- NOTE `DayOfWeek` value is not fully supported in ps-formatters itself
   -- as it it only has point to use with `week number`.
   -- once it's supported then we could use it here too.
 

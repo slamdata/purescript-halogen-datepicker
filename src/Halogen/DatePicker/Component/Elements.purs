@@ -12,6 +12,11 @@ import Data.Int as Int
 import Data.Tuple (Tuple(..))
 import Data.Enum (class BoundedEnum, class Enum, toEnum, fromEnum, succ)
 
+--TODO parse `String` into `a` here and only invoke query if it's is valid
+-- TODO change signature so that we dont need to change record type if record type is chaged in `numberElement`
+enumNumberElement :: ∀ query a. Show a => BoundedEnum a => (∀ b. String -> b -> query b) -> {title :: String} -> a -> H.ComponentHTML query
+enumNumberElement q {title} val = numberElement q {title, min: (fromEnum (bottom :: a)), max: (fromEnum (top :: a)) } (fromEnum val)
+
 --TODO parse `String` into `Int` here and only invoke query if it's is valid
 numberElement :: ∀ query. (∀ b. String -> b -> query b) -> {title :: String, min :: Int, max :: Int} -> Int -> H.ComponentHTML query
 numberElement query {title, min, max} value = HH.input

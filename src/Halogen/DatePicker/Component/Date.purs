@@ -3,7 +3,7 @@ module Halogen.Datapicker.Component.Date where
 import Prelude
 import Debug.Trace as D
 
-import Halogen.Datapicker.Component.Elements (numberElement, choiseElement)
+import Halogen.Datapicker.Component.Elements (numberElement, enumNumberElement, choiseElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Date
   ( Date
@@ -76,12 +76,12 @@ picker fmt = H.component
 renderCommand :: Date -> F.Command -> HTML
 renderCommand t cmd@F.YearFull            = numberElement (UpdateCommand cmd) { title: "Year", min: 0, max: 9999} (fromEnum $ year t)
 renderCommand t cmd@F.YearTwoDigits       = numberElement (UpdateCommand cmd) { title: "Year", min: 0, max: 99} (year99 $ year t)
-renderCommand t cmd@F.YearAbsolute        = numberElement (UpdateCommand cmd) { title: "Year", min: fromEnum (bottom :: Year) , max: fromEnum (top :: Year)} (fromEnum $ year t)
+renderCommand t cmd@F.YearAbsolute        = enumNumberElement (UpdateCommand cmd) { title: "Year" } (year t)
 renderCommand t cmd@F.MonthFull           = choiseElement (UpdateCommand cmd) { title: "Month" } (month t)
 renderCommand t cmd@F.MonthShort          = choiseElement (UpdateCommand cmd) { title: "Month" } (MonthShort $ month t)
-renderCommand t cmd@F.MonthTwoDigits      = numberElement (UpdateCommand cmd) { title: "Month", min: 1, max: 12} (fromEnum $ month t)
-renderCommand t cmd@F.DayOfMonthTwoDigits = numberElement (UpdateCommand cmd) { title: "Day", min: 1, max: 31} (fromEnum $ day t)
-renderCommand t cmd@F.DayOfMonth          = numberElement (UpdateCommand cmd) { title: "Day", min: 1, max: 31} (fromEnum $ day t)
+renderCommand t cmd@F.MonthTwoDigits      = enumNumberElement (UpdateCommand cmd) { title: "Month" } (month t)
+renderCommand t cmd@F.DayOfMonthTwoDigits = enumNumberElement (UpdateCommand cmd) { title: "Day" } (day t)
+renderCommand t cmd@F.DayOfMonth          = enumNumberElement (UpdateCommand cmd) { title: "Day" } (day t)
 renderCommand _ (F.Placeholder str)       = textElement { text: str}
 
 
@@ -143,7 +143,7 @@ evalPicker (SetValue date next) = do
 evalPicker (GetValue next) = do
   H.gets _.date <#> next
 
--- TODO monve this instanced to Data.Formatters.DateTime
+-- TODO move this instanced to Data.Formatters.DateTime
 
 newtype MonthShort = MonthShort Month
 derive instance monthShortNewtype :: Newtype MonthShort _
