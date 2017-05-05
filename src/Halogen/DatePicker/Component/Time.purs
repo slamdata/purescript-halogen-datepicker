@@ -3,6 +3,7 @@ module Halogen.Datapicker.Component.Time where
 import Prelude
 import Debug.Trace as D
 
+import Halogen.Datapicker.Component.Elements (numberElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Time
   ( Time, Hour, Millisecond
@@ -59,16 +60,16 @@ picker fmt = H.component
 -- we might need to remove replace `BoundedEnum a` with `Int` in `choiseElement`
 
 renderCommand :: Time -> F.Command -> HTML
-renderCommand t cmd@F.Hours24               = numberElement cmd { title: "Hours", min: 0, max: 23} (fromEnum $ hour t)
-renderCommand t cmd@F.Hours12               = numberElement cmd { title: "Hours", min: 0, max: 11} (hour12 $ hour t)
+renderCommand t cmd@F.Hours24               = numberElement (UpdateCommand cmd) { title: "Hours", min: 0, max: 23} (fromEnum $ hour t)
+renderCommand t cmd@F.Hours12               = numberElement (UpdateCommand cmd) { title: "Hours", min: 0, max: 11} (hour12 $ hour t)
 renderCommand t cmd@F.Meridiem              = choiseElement cmd { title: "Meridiem", values: [Tuple AM "AM", Tuple PM "PM"]} (meridiem $ hour t)
-renderCommand t cmd@F.MinutesTwoDigits      = numberElement cmd { title: "Minutes", min: 0, max: 59} (fromEnum $ minute t)
-renderCommand t cmd@F.Minutes               = numberElement cmd { title: "Minutes", min: 0, max: 59} (fromEnum $ minute t)
-renderCommand t cmd@F.SecondsTwoDigits      = numberElement cmd { title: "Seconds", min: 0, max: 59} (fromEnum $ second t)
-renderCommand t cmd@F.Seconds               = numberElement cmd { title: "Seconds", min: 0, max: 59} (fromEnum $ second t)
-renderCommand t cmd@F.Milliseconds          = numberElement cmd { title: "Milliseconds", min: 0, max: 999} (fromEnum $ millisecond t)
-renderCommand t cmd@F.MillisecondsTwoDigits = numberElement cmd { title: "Milliseconds", min: 0, max: 99} (millisecond2 $ millisecond t)
-renderCommand t cmd@F.MillisecondsShort     = numberElement cmd { title: "Milliseconds", min: 0, max: 9} (millisecond1 $ millisecond t)
+renderCommand t cmd@F.MinutesTwoDigits      = numberElement (UpdateCommand cmd) { title: "Minutes", min: 0, max: 59} (fromEnum $ minute t)
+renderCommand t cmd@F.Minutes               = numberElement (UpdateCommand cmd) { title: "Minutes", min: 0, max: 59} (fromEnum $ minute t)
+renderCommand t cmd@F.SecondsTwoDigits      = numberElement (UpdateCommand cmd) { title: "Seconds", min: 0, max: 59} (fromEnum $ second t)
+renderCommand t cmd@F.Seconds               = numberElement (UpdateCommand cmd) { title: "Seconds", min: 0, max: 59} (fromEnum $ second t)
+renderCommand t cmd@F.Milliseconds          = numberElement (UpdateCommand cmd) { title: "Milliseconds", min: 0, max: 999} (fromEnum $ millisecond t)
+renderCommand t cmd@F.MillisecondsTwoDigits = numberElement (UpdateCommand cmd) { title: "Milliseconds", min: 0, max: 99} (millisecond2 $ millisecond t)
+renderCommand t cmd@F.MillisecondsShort     = numberElement (UpdateCommand cmd) { title: "Milliseconds", min: 0, max: 9} (millisecond1 $ millisecond t)
 renderCommand _ (F.Placeholder str)         = textElement { text: str}
 
 hour12 :: Hour -> Int
@@ -82,16 +83,6 @@ millisecond2 = fromEnum >>> (_ / 10)
 
 millisecond1 :: Millisecond -> Int
 millisecond1 = fromEnum >>> (_ / 100)
-
-numberElement :: F.Command -> {title :: String, min :: Int, max :: Int} -> Int -> HTML
-numberElement cmd {title, min, max} value = HH.input
-  [ HP.type_ HP.InputNumber
-  , HP.title title
-  , HP.value (show value)
-  , HP.min (Int.toNumber min)
-  , HP.max (Int.toNumber max)
-  , HE.onValueChange (HE.input (UpdateCommand cmd))
-  ]
 
 choiseElement :: forall a. BoundedEnum a => F.Command -> {title :: String, values :: Array (Tuple a String)} -> a -> HTML
 choiseElement cmd {title, values} val = HH.select

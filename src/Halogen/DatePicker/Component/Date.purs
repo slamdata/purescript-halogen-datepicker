@@ -3,6 +3,7 @@ module Halogen.Datapicker.Component.Date where
 import Prelude
 import Debug.Trace as D
 
+import Halogen.Datapicker.Component.Elements (numberElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Date
   ( Date
@@ -71,14 +72,14 @@ picker fmt = H.component
 -- we might need to remove replace `BoundedEnum a` with `Int` in `choiseElement`
 
 renderCommand :: Date -> F.Command -> HTML
-renderCommand t cmd@F.YearFull            = numberElement cmd { title: "Year", min: 0, max: 9999} (fromEnum $ year t)
-renderCommand t cmd@F.YearTwoDigits       = numberElement cmd { title: "Year", min: 0, max: 99} (year99 $ year t)
-renderCommand t cmd@F.YearAbsolute        = numberElement cmd { title: "Year", min: fromEnum (bottom :: Year) , max: fromEnum (top :: Year)} (fromEnum $ year t)
+renderCommand t cmd@F.YearFull            = numberElement (UpdateCommand cmd) { title: "Year", min: 0, max: 9999} (fromEnum $ year t)
+renderCommand t cmd@F.YearTwoDigits       = numberElement (UpdateCommand cmd) { title: "Year", min: 0, max: 99} (year99 $ year t)
+renderCommand t cmd@F.YearAbsolute        = numberElement (UpdateCommand cmd) { title: "Year", min: fromEnum (bottom :: Year) , max: fromEnum (top :: Year)} (fromEnum $ year t)
 renderCommand t cmd@F.MonthFull           = choiseElement cmd { title: "Month" } (month t)
 renderCommand t cmd@F.MonthShort          = choiseElement cmd { title: "Month" } (MonthShort $ month t)
-renderCommand t cmd@F.MonthTwoDigits      = numberElement cmd { title: "Month", min: 1, max: 12} (fromEnum $ month t)
-renderCommand t cmd@F.DayOfMonthTwoDigits = numberElement cmd { title: "Day", min: 1, max: 31} (fromEnum $ day t)
-renderCommand t cmd@F.DayOfMonth          = numberElement cmd { title: "Day", min: 1, max: 31} (fromEnum $ day t)
+renderCommand t cmd@F.MonthTwoDigits      = numberElement (UpdateCommand cmd) { title: "Month", min: 1, max: 12} (fromEnum $ month t)
+renderCommand t cmd@F.DayOfMonthTwoDigits = numberElement (UpdateCommand cmd) { title: "Day", min: 1, max: 31} (fromEnum $ day t)
+renderCommand t cmd@F.DayOfMonth          = numberElement (UpdateCommand cmd) { title: "Day", min: 1, max: 31} (fromEnum $ day t)
 renderCommand _ (F.Placeholder str)       = textElement { text: str}
 
 
@@ -90,16 +91,6 @@ year99 = fromEnum >>> \y -> y - (y `unPrecise` 100)
 unPrecise :: Int -> Int -> Int
 unPrecise n by = n / by * by
 
-
-numberElement :: F.Command -> {title :: String, min :: Int, max :: Int} -> Int -> HTML
-numberElement cmd {title, min, max} value = HH.input
-  [ HP.type_ HP.InputNumber
-  , HP.title title
-  , HP.value (show value)
-  , HP.min (Int.toNumber min)
-  , HP.max (Int.toNumber max)
-  , HE.onValueChange (HE.input (UpdateCommand cmd))
-  ]
 
 choiseElement :: forall a. Show a => BoundedEnum a => F.Command -> {title :: String } -> a -> HTML
 choiseElement cmd {title} val = HH.select
