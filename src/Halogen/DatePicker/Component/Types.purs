@@ -1,6 +1,6 @@
 module Halogen.Datapicker.Component.Types where
 
-import Prelude
+-- import Prelude
 -- import Halogen as H
 -- import Halogen.HTML as HH
 -- import Data.Functor.Coproduct (Coproduct)

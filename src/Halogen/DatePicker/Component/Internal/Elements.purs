@@ -7,10 +7,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
-import Data.Unfoldable (unfoldr)
 import Data.Int as Int
-import Data.Tuple (Tuple(..))
-import Data.Enum (class BoundedEnum, class Enum, toEnum, fromEnum, succ)
+import Data.Enum (class BoundedEnum, fromEnum, upFrom)
 
 --TODO parse `String` into `a` here and only invoke query if it's is valid
 -- TODO change signature so that we dont need to change record type if record type is chaged in `numberElement`
@@ -33,10 +31,8 @@ choiseElement :: forall query a. Show a => BoundedEnum a => (∀ b. String -> b 
 choiseElement query {title} val = HH.select
   [ HE.onValueChange (HE.input query)
   , HP.title title
-  ] (values <#> renderVal)
+  ] (upFrom bottom <#> renderVal)
   where
-  values = unfoldr genValues bottom
-  genValues n = succ n <#> \a -> Tuple n a
   renderVal val' = HH.option
     [ HP.value $ show $ fromEnum val'
     , HP.selected (val' == val)

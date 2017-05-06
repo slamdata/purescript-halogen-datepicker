@@ -4,24 +4,22 @@ import Data.Date
   ( Date
   , Year, Month, Day
   , year, month, day
-  , exactDate, canonicalDate
+  , exactDate
   )
 
 import Data.Time
-  ( Time, Hour, Millisecond
-  , second, minute, hour, millisecond
-  , setSecond, setMinute, setHour, setMillisecond
+  ( Time
+  , hour, millisecond
+  , setHour, setMillisecond
   )
 import Data.String as Str
-import Data.Maybe (Maybe(..), fromJust)
+import Data.Maybe (Maybe(..))
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Newtype (class Newtype, unwrap)
 import Prelude
 import Data.Enum
   ( class Enum
-  , pred
-  , succ
   , class BoundedEnum
   , Cardinality(..)
   , cardinality
