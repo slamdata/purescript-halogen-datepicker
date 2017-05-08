@@ -2,7 +2,9 @@ module Halogen.Datapicker.Component.Time.Format
   ( Format
   , Command(..)
   , fromString
+  , fromDateTimeFormatter
   , toDateTimeFormatter
+  , toCommand
   , unformat
   , format
   ) where
@@ -17,7 +19,7 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Formatter.DateTime as FDT
-import Halogen.Datapicker.Component.Internal.Constraint as Constraint
+import Halogen.Datapicker.Component.Internal.Constraint as C
 import Data.Time (Time)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
@@ -56,25 +58,25 @@ fromString s = FDT.parseFormatString s >>= fromDateTimeFormatter
 
 fromDateTimeFormatter :: FDT.Formatter -> Either String Format
 fromDateTimeFormatter fmt = do
-  let errs = Constraint.runConstraint formatConstraint fmt
+  let errs = C.runConstraint formatConstraint fmt
   when (errs /= []) $ Left $ joinWith "; " errs
-  case traverse toTimeCommand fmt of
+  case traverse toCommand fmt of
     Just fmt' -> pure $ Format fmt'
     Nothing -> Left "(unreachable) invalid FormatterCommand has leaked while checking constraints"
-  where
-  toTimeCommand :: FDT.FormatterCommand -> Maybe Command
-  toTimeCommand FDT.Hours24 = Just Hours24
-  toTimeCommand FDT.Hours12 = Just Hours12
-  toTimeCommand FDT.Meridiem = Just Meridiem
-  toTimeCommand FDT.MinutesTwoDigits = Just MinutesTwoDigits
-  toTimeCommand FDT.Minutes = Just Minutes
-  toTimeCommand FDT.SecondsTwoDigits = Just SecondsTwoDigits
-  toTimeCommand FDT.Seconds = Just Seconds
-  toTimeCommand FDT.Milliseconds = Just Milliseconds
-  toTimeCommand FDT.MillisecondsTwoDigits = Just MillisecondsTwoDigits
-  toTimeCommand FDT.MillisecondsShort = Just MillisecondsShort
-  toTimeCommand (FDT.Placeholder str)= Just $ Placeholder str
-  toTimeCommand _ = Nothing
+
+toCommand :: FDT.FormatterCommand -> Maybe Command
+toCommand FDT.Hours24 = Just Hours24
+toCommand FDT.Hours12 = Just Hours12
+toCommand FDT.Meridiem = Just Meridiem
+toCommand FDT.MinutesTwoDigits = Just MinutesTwoDigits
+toCommand FDT.Minutes = Just Minutes
+toCommand FDT.SecondsTwoDigits = Just SecondsTwoDigits
+toCommand FDT.Seconds = Just Seconds
+toCommand FDT.Milliseconds = Just Milliseconds
+toCommand FDT.MillisecondsTwoDigits = Just MillisecondsTwoDigits
+toCommand FDT.MillisecondsShort = Just MillisecondsShort
+toCommand (FDT.Placeholder str)= Just $ Placeholder str
+toCommand _ = Nothing
 
 toDateTimeFormatter ∷ Format -> FDT.Formatter
 toDateTimeFormatter (Format fmt) = foldMap (pure <<< toDTCommand) fmt
@@ -101,18 +103,18 @@ format fmt = FDT.format (toDateTimeFormatter fmt) <<< toDateTime
   toDateTime = DateTime bottom
 
 
-formatConstraint :: ∀ g. Foldable g => Constraint.Constraint (g FDT.FormatterCommand)
+formatConstraint :: ∀ g. Foldable g => C.Constraint (g FDT.FormatterCommand)
 formatConstraint
-  =   Constraint.notEmpty
-  <> (Constraint.allowedValues allowedCommands)
-  <> (Constraint.allowNoneOrOne [FDT.Milliseconds, FDT.MillisecondsTwoDigits, FDT.MillisecondsShort])
-  <> (Constraint.allowNoneOrOne [FDT.SecondsTwoDigits, FDT.Seconds])
-  <> (Constraint.allowNoneOrOne [FDT.MinutesTwoDigits, FDT.Minutes])
-  <> (Constraint.allowNoneOrOne [FDT.Hours24, FDT.Hours12])
-  <> (Constraint.allowNoneOrOne [FDT.Hours24, FDT.Meridiem])
-  <> (Constraint.allowNoneOrAll [FDT.Hours12, FDT.Meridiem])
+  =  C.notEmpty
+  <> C.allowedValues FDT.printFormatterCommand allowedCommands
+  <> C.allowNoneOrOne (C.reShow FDT.printFormatterCommand <$> [FDT.Milliseconds, FDT.MillisecondsTwoDigits, FDT.MillisecondsShort])
+  <> C.allowNoneOrOne (C.reShow FDT.printFormatterCommand <$> [FDT.SecondsTwoDigits, FDT.Seconds])
+  <> C.allowNoneOrOne (C.reShow FDT.printFormatterCommand <$> [FDT.MinutesTwoDigits, FDT.Minutes])
+  <> C.allowNoneOrOne (C.reShow FDT.printFormatterCommand <$> [FDT.Hours24, FDT.Hours12])
+  <> C.allowNoneOrOne (C.reShow FDT.printFormatterCommand <$> [FDT.Hours24, FDT.Meridiem])
+  <> C.allowNoneOrAll (C.reShow FDT.printFormatterCommand <$> [FDT.Hours12, FDT.Meridiem])
   where
-  allowedCommands =
+  allowedCommands = (C.reShow FDT.printFormatterCommand <$>
     [ FDT.Hours24
     , FDT.Hours12
     , FDT.Meridiem
@@ -123,12 +125,10 @@ formatConstraint
     , FDT.Milliseconds
     , FDT.MillisecondsTwoDigits
     , FDT.MillisecondsShort
-    -- TODO at this point the Constraint is working with Equality
-    -- so we cant have FDT.Placeholder of anything here
-    -- Constraint should be upadated to support that or ...
-    , FDT.Placeholder ","
-    , FDT.Placeholder " "
-    , FDT.Placeholder "."
-    , FDT.Placeholder "-"
-    , FDT.Placeholder ":"
+    ]) <>
+    [ C.EqPred
+        "'Placeholder'"
+        case _ of
+          FDT.Placeholder _ -> true
+          _ -> false
     ]

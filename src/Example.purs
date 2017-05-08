@@ -74,6 +74,7 @@ main =
     <> renderDate dates 5 "Y:MM" (Left "39017:12")
     <> renderDate dates 6 "YY:MM" (Left "17:12")
     <> renderDate dates 7 "YY:MM" (Right $ canonicalDate (enum 2017) (enum 1) (enum 1))
+    <> renderDate dates (-1) "YY:MM:MMM:YYYY mm:ss" (Left "---")
 
   enum :: ∀ a. BoundedEnum a => Int -> a
   enum = unsafePartial fromJust <<< toEnum

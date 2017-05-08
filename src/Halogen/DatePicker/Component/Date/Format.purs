@@ -2,7 +2,9 @@ module Halogen.Datapicker.Component.Date.Format
   ( Format
   , Command(..)
   , fromString
+  , fromDateTimeFormatter
   , toDateTimeFormatter
+  , toCommand
   , unformat
   , format
   ) where
@@ -17,7 +19,7 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Formatter.DateTime as FDT
-import Halogen.Datapicker.Component.Internal.Constraint as Constraint
+import Halogen.Datapicker.Component.Internal.Constraint as C
 import Data.Date (Date)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
@@ -57,24 +59,24 @@ fromString s = FDT.parseFormatString s >>= fromDateTimeFormatter
 
 fromDateTimeFormatter :: FDT.Formatter -> Either String Format
 fromDateTimeFormatter fmt = do
-  let errs = Constraint.runConstraint formatConstraint fmt
+  let errs = C.runConstraint formatConstraint fmt
   when (errs /= []) $ Left $ joinWith "; " errs
-  case traverse toDateCommand fmt of
+  case traverse toCommand fmt of
     Just fmt' -> pure $ Format fmt'
     Nothing -> Left "(unreachable) invalid FormatterCommand has leaked while checking constraints"
-  where
-  toDateCommand :: FDT.FormatterCommand -> Maybe Command
-  toDateCommand FDT.YearFull = Just YearFull
-  toDateCommand FDT.YearTwoDigits = Just YearTwoDigits
-  toDateCommand FDT.YearAbsolute = Just YearAbsolute
-  toDateCommand FDT.MonthFull = Just MonthFull
-  toDateCommand FDT.MonthShort = Just MonthShort
-  toDateCommand FDT.MonthTwoDigits = Just MonthTwoDigits
-  toDateCommand FDT.DayOfMonthTwoDigits = Just DayOfMonthTwoDigits
-  toDateCommand FDT.DayOfMonth = Just DayOfMonth
-  -- toDateCommand FDT.DayOfWeek = Just DayOfWeek
-  toDateCommand (FDT.Placeholder str)= Just $ Placeholder str
-  toDateCommand _ = Nothing
+
+toCommand :: FDT.FormatterCommand -> Maybe Command
+toCommand FDT.YearFull = Just YearFull
+toCommand FDT.YearTwoDigits = Just YearTwoDigits
+toCommand FDT.YearAbsolute = Just YearAbsolute
+toCommand FDT.MonthFull = Just MonthFull
+toCommand FDT.MonthShort = Just MonthShort
+toCommand FDT.MonthTwoDigits = Just MonthTwoDigits
+toCommand FDT.DayOfMonthTwoDigits = Just DayOfMonthTwoDigits
+toCommand FDT.DayOfMonth = Just DayOfMonth
+-- toCommand FDT.DayOfWeek = Just DayOfWeek
+toCommand (FDT.Placeholder str)= Just $ Placeholder str
+toCommand _ = Nothing
 
 toDateTimeFormatter ∷ Format -> FDT.Formatter
 toDateTimeFormatter (Format fmt) = foldMap (pure <<< toDTCommand) fmt
@@ -100,15 +102,15 @@ format fmt = FDT.format (toDateTimeFormatter fmt) <<< toDateTime
   toDateTime d = DateTime d bottom
 
 
-formatConstraint :: ∀ g. Foldable g => Constraint.Constraint (g FDT.FormatterCommand)
+formatConstraint :: ∀ g. Foldable g => C.Constraint (g FDT.FormatterCommand)
 formatConstraint
-  =   Constraint.notEmpty
-  <> (Constraint.allowedValues allowedCommands)
-  <> (Constraint.allowNoneOrOne [FDT.YearFull, FDT.YearTwoDigits, FDT.YearAbsolute])
-  <> (Constraint.allowNoneOrOne [FDT.MonthFull, FDT.MonthShort, FDT.MonthTwoDigits])
-  <> (Constraint.allowNoneOrOne [FDT.DayOfMonthTwoDigits, FDT.DayOfMonth])
+  =  C.notEmpty
+  <> C.allowedValues FDT.printFormatterCommand allowedCommands
+  <> C.allowNoneOrOne (C.reShow FDT.printFormatterCommand <$> [FDT.YearFull, FDT.YearTwoDigits, FDT.YearAbsolute])
+  <> C.allowNoneOrOne (C.reShow FDT.printFormatterCommand <$> [FDT.MonthFull, FDT.MonthShort, FDT.MonthTwoDigits])
+  <> C.allowNoneOrOne (C.reShow FDT.printFormatterCommand <$> [FDT.DayOfMonthTwoDigits, FDT.DayOfMonth])
   where
-  allowedCommands =
+  allowedCommands = (C.reShow FDT.printFormatterCommand <$>
     [ FDT.YearFull
     , FDT.YearTwoDigits
     , FDT.YearAbsolute
@@ -117,13 +119,10 @@ formatConstraint
     , FDT.MonthTwoDigits
     , FDT.DayOfMonthTwoDigits
     , FDT.DayOfMonth
-    -- , FDT.DayOfWeek
-    -- TODO at this point the Constraint is working with Equality
-    -- so we cant have FDT.Placeholder of anything here
-    -- Constraint should be upadated to support that or ...
-    , FDT.Placeholder ","
-    , FDT.Placeholder " "
-    , FDT.Placeholder "."
-    , FDT.Placeholder "-"
-    , FDT.Placeholder ":"
+    ]) <>
+    [ C.EqPred
+        "'Placeholder'"
+        case _ of
+          FDT.Placeholder _ -> true
+          _ -> false
     ]
