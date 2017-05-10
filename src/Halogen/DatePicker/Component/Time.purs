@@ -24,16 +24,18 @@ import Data.Newtype (unwrap)
 import Data.Foldable (foldMap)
 import Data.Maybe (Maybe(..))
 import Data.Enum (toEnum)
-import Data.Functor.Coproduct (Coproduct, coproduct, right)
+import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Halogen.Datapicker.Component.Time.Format as F
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Data.Int as Int
 
 data TimeQuery a = UpdateCommand F.Command String a
 
 type Query = Coproduct (PickerQuery Time) TimeQuery
 type Message = PickerMessage Time
+type Input = Time
 type State =
   { format :: F.Format
   , time :: Time
@@ -41,15 +43,16 @@ type State =
 
 type DSL = H.ComponentDSL State Query Message
 type HTML = H.ComponentHTML TimeQuery
-
 initialStateFromFormat ∷ F.Format -> State
 initialStateFromFormat format = {format: format, time: bottom}
 
-picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit Message m
+-- picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Input Message m
+picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit  Message m
 picker fmt = H.component
   { initialState: const $ initialStateFromFormat fmt
   , render: render <#> (map right)
   , eval: coproduct evalPicker evalTime
+  -- , receiver: \a -> Just $ H.action $ left <<< (SetValue a)
   , receiver: const Nothing
   }
   where
@@ -57,14 +60,6 @@ picker fmt = H.component
   render {time, format} = HH.ul_ $ foldMap (pure <<< f) (unwrap format)
     where
     f cmd = HH.li_ [renderCommand time cmd]
-
--- NOTE
--- maybe we can splitt `___Element cmd {___} (____ t)`
--- in two patrs two pats:
--- 1) takes `Command` and returns coresponding function waiting for selected value (Command -> x -> HTML)
--- 2) takes `Command` and `Time` and returns value which must be selected (Command -> Time -> x)
--- and here both of them are combined.
--- we might need to remove replace `BoundedEnum a` with `Int` in `choiseElement`
 
 renderCommand :: Time -> F.Command -> HTML
 renderCommand t cmd@F.Hours24               = enumNumberElement (UpdateCommand cmd) { title: "Hours"} (hour t)
@@ -110,7 +105,10 @@ updateTime (F.Placeholder _) _ t = pure t
 evalPicker ∷ ∀ m . (PickerQuery Time) ~> DSL m
 evalPicker (SetValue time next) = do
   H.modify _{ time = time }
-  H.raise (NotifyChange time)
+  -- TODO this pattern will cause loop when parent changes value on once childe
+  -- reaisis NotifyChange we should not raise this on SetValue or add a flag
+  --  indicating that it was changed from ui or from parent
+  -- H.raise (NotifyChange time)
   pure next
 evalPicker (GetValue next) = do
   H.gets _.time <#> next

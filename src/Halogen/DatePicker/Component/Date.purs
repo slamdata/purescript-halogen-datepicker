@@ -24,10 +24,11 @@ import Data.Date
 import Data.Newtype (unwrap)
 import Data.Foldable (foldMap)
 import Data.Maybe (Maybe(..), fromJust)
-import Data.Functor.Coproduct (Coproduct, coproduct, right)
+import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Halogen.Datapicker.Component.Date.Format as F
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Data.Int as Int
 import Partial.Unsafe (unsafePartialBecause)
 
@@ -35,6 +36,7 @@ data DateQuery a = UpdateCommand F.Command String a
 
 type Query = Coproduct (PickerQuery Date) DateQuery
 type Message = PickerMessage Date
+type Input = Date
 type State =
   { format :: F.Format
   , date :: Date
@@ -47,11 +49,13 @@ initialStateFromFormat ∷ F.Format -> State
 initialStateFromFormat format = {format: format, date: canonicalDate year bottom bottom}
   where year = unsafePartialBecause "unreachable as `0` year is in bounds" fromJust $ toEnum 0
 
-picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit Message m
+-- picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Input Message m
+picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit  Message m
 picker fmt = H.component
   { initialState: const $ initialStateFromFormat fmt
   , render: render <#> (map right)
   , eval: coproduct evalPicker evalDate
+  -- , receiver: \a -> Just $ H.action $ left <<< (SetValue a)
   , receiver: const Nothing
   }
   where
@@ -103,7 +107,10 @@ updateTime (F.Placeholder _) _ t = pure t
 evalPicker ∷ ∀ m . (PickerQuery Date) ~> DSL m
 evalPicker (SetValue date next) = do
   H.modify _{ date = date }
-  H.raise (NotifyChange date)
+  -- TODO this pattern will cause loop when parent changes value on once childe
+  -- reaisis NotifyChange we should not raise this on SetValue or add a flag
+  --  indicating that it was changed from ui or from parent
+  -- H.raise (NotifyChange date)
   pure next
 evalPicker (GetValue next) = do
   H.gets _.date <#> next
