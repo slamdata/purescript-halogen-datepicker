@@ -88,10 +88,7 @@ evalDuration (UpdateCommand cmd val next) = do
 evalPicker ∷ ∀ m . (PickerQuery IsoDuration) ~> DSL m
 evalPicker (SetValue duration next) = do
   H.modify _{ duration = duration }
-  -- TODO this pattern will cause loop when parent changes value on once childe
-  -- reaisis NotifyChange we should not raise this on SetValue or add a flag
-  --  indicating that it was changed from ui or from parent
-  -- H.raise (NotifyChange time)
+  H.raise (NotifyChange duration)
   pure next
 evalPicker (GetValue next) = do
   H.gets _.duration <#> next

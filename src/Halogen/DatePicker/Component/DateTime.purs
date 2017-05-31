@@ -1,27 +1,25 @@
 module Halogen.Datapicker.Component.DateTime where
 
 import Prelude
-
-import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
-import Data.DateTime (DateTime(..), date, time, modifyDate, modifyTime )
-import Data.Date (canonicalDate)
-import Data.Newtype (unwrap)
-import Data.Bifunctor (bimap)
-import Data.Foldable (foldMap)
-import Data.Maybe (Maybe(..), fromJust)
-import Data.Enum (toEnum)
-import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
-import Data.Functor.Coproduct.Nested (Coproduct2)
-import Data.Either.Nested (Either2)
-import Partial.Unsafe (unsafePartialBecause)
-import Halogen.Component.ChildPath as CP
 import Halogen as H
-import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
-
+import Halogen.Component.ChildPath as CP
+import Halogen.Datapicker.Component.Date as Date
 import Halogen.Datapicker.Component.DateTime.Format as F
 import Halogen.Datapicker.Component.Time as Time
-import Halogen.Datapicker.Component.Date as Date
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Data.Bifunctor (bimap)
+import Data.Date (canonicalDate)
+import Data.DateTime (DateTime(..), date, time, modifyDate, modifyTime)
+import Data.Either.Nested (Either2)
+import Data.Enum (toEnum)
+import Data.Foldable (foldMap)
+import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
+import Data.Functor.Coproduct.Nested (Coproduct2)
+import Data.Maybe (Maybe(..), fromJust)
+import Data.Newtype (unwrap)
+import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
+import Partial.Unsafe (unsafePartialBecause)
 -- import Halogen.Datapicker.Component.Time.Format as TimeF
 -- import Halogen.Datapicker.Component.Date.Format as DateF
 
@@ -102,10 +100,7 @@ evalPicker (SetValue dateTime next) = do
   H.modify _{ dateTime = dateTime }
   void $ H.query' cpTime unit $ H.action $ left <<< (SetValue (time dateTime))
   void $ H.query' cpDate unit $ H.action $ left <<< (SetValue (date dateTime))
-  -- TODO this pattern will cause loop when parent changes value on once childe
-  -- reaisis NotifyChange we should not raise this on SetValue or add a flag
-  --  indicating that it was changed from ui or from parent
-  -- H.raise (NotifyChange time)
+  H.raise (NotifyChange dateTime)
   pure next
 evalPicker (GetValue next) = do
   H.gets _.dateTime <#> next

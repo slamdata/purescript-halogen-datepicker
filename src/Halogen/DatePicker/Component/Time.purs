@@ -104,10 +104,7 @@ updateTime (F.Placeholder _) _ t = pure t
 evalPicker ∷ ∀ m . (PickerQuery Time) ~> DSL m
 evalPicker (SetValue time next) = do
   H.modify _{ time = time }
-  -- TODO this pattern will cause loop when parent changes value on once childe
-  -- reaisis NotifyChange we should not raise this on SetValue or add a flag
-  --  indicating that it was changed from ui or from parent
-  -- H.raise (NotifyChange time)
+  H.raise (NotifyChange time)
   pure next
 evalPicker (GetValue next) = do
   H.gets _.time <#> next
