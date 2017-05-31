@@ -1,9 +1,7 @@
 module Halogen.Datapicker.Component.DateTime where
 
 import Prelude
-import Debug.Trace as D
 
-import Halogen.Datapicker.Component.Internal.Elements (textElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.DateTime (DateTime(..), date, time, modifyDate, modifyTime )
 import Data.Date (canonicalDate)

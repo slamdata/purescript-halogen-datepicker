@@ -1,16 +1,18 @@
 module Example where
 
 import Prelude
-import Debug.Trace as D
+-- import Debug.Trace as D
 import Data.Monoid (mempty)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Map (Map, lookup, insert)
 import Data.Time (Time)
 import Data.DateTime (DateTime)
+import Data.Interval (IsoDuration)
+import Data.Interval as I
 import Data.Date (Date, canonicalDate)
 import Data.Enum (class BoundedEnum, toEnum)
 import Data.Either (Either(..), either)
-import Data.Either.Nested (Either3)
+import Data.Either.Nested (Either4)
 import Data.Functor.Coproduct (left)
 import Data.Functor.Coproduct.Nested as Coproduct
 import Halogen.Component.ChildPath as CP
@@ -21,6 +23,8 @@ import Halogen.Datapicker.Component.Date.Format as DateF
 import Halogen.Datapicker.Component.Date as Date
 import Halogen.Datapicker.Component.DateTime.Format as DateTimeF
 import Halogen.Datapicker.Component.DateTime as DateTime
+import Halogen.Datapicker.Component.Duration.Format as DurationF
+import Halogen.Datapicker.Component.Duration as Duration
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Partial.Unsafe (unsafePartial)
 import Halogen as H
@@ -30,22 +34,34 @@ import Halogen.HTML.Events as HE
 type TimeIdx = Int
 type DateIdx = Int
 type DateTimeIdx = Int
+type DurationIdx = Int
+
 data Query a
   = Set SetPayload a
   | HandleMessage MessagePayload a
 
-data SetPayload = SetTime Int Time | SetDate Int Date | SetDateTime Int DateTime
-data MessagePayload = MsgTime Int Time.Message | MsgDate Int Date.Message | MsgDateTime Int DateTime.Message
+data SetPayload
+  = SetTime Int Time
+  | SetDate Int Date
+  | SetDateTime Int DateTime
+  | SetDuration Int IsoDuration
 
-type ChildQuery = Coproduct.Coproduct3 Time.Query Date.Query DateTime.Query
+data MessagePayload
+  = MsgTime Int Time.Message
+  | MsgDate Int Date.Message
+  | MsgDateTime Int DateTime.Message
+  | MsgDuration Int Duration.Message
+
+type ChildQuery = Coproduct.Coproduct4 Time.Query Date.Query DateTime.Query Duration.Query
 
 type State =
   { times :: Map TimeIdx String
   , dates :: Map DateIdx String
-  , dateTimes :: Map DateIdx String
+  , dateTimes :: Map DateTimeIdx String
+  , durations :: Map DurationIdx String
   }
 
-type Slot = Either3 TimeIdx DateIdx DateTimeIdx
+type Slot = Either4 TimeIdx DateIdx DateTimeIdx DurationIdx
 
 cpTime :: CP.ChildPath Time.Query ChildQuery TimeIdx Slot
 cpTime = CP.cp1
@@ -53,8 +69,11 @@ cpTime = CP.cp1
 cpDate :: CP.ChildPath Date.Query ChildQuery DateIdx Slot
 cpDate = CP.cp2
 
-cpDateTime :: CP.ChildPath DateTime.Query ChildQuery DateIdx Slot
+cpDateTime :: CP.ChildPath DateTime.Query ChildQuery DateTimeIdx Slot
 cpDateTime = CP.cp3
+
+cpDuration :: CP.ChildPath Duration.Query ChildQuery DurationIdx Slot
+cpDuration = CP.cp4
 
 type HTML m = H.ParentHTML Query ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Void m
@@ -70,7 +89,7 @@ main =
     , receiver: const Nothing
     }
   where
-  initialState = { times: mempty, dates: mempty, dateTimes: mempty}
+  initialState = { times: mempty, dates: mempty, dateTimes: mempty, durations: mempty}
   render ∷ State -> HTML m
   render s = HH.div_
     $  [HH.h1_ [ HH.text "Time" ]]
@@ -99,6 +118,28 @@ main =
     <> renderDateTime s 1 "HH:mm:ss,SSS-YYYY:MMM" (Left "13:45:49,119-2017:May")
     <> renderDateTime s (-1) "HH:mm:m:ss:SS,SaYY:MM:MMM:YYYY mm:ss" (Left "---")
 
+    <> [HH.h1_ [ HH.text "Duration" ]]
+    <> renderDuration s 0
+        [ DurationF.Year
+        , DurationF.Month
+        , DurationF.Day
+        ]
+        testDuration
+    <> renderDuration s 1
+        [ DurationF.Year
+        , DurationF.Month
+        , DurationF.Day
+        , DurationF.Hour
+        , DurationF.Minute
+        , DurationF.Second
+        ]
+        testDuration
+
+  testDuration :: Either String IsoDuration
+  testDuration = case I.mkIsoDuration $ I.year 100.0 <> I.month 25.0 <> I.day 245.0 <> I.minute 100.0 <> I.second 124.0 of
+    Just d -> Right d
+    Nothing -> Left "---"
+
   enum :: ∀ a. BoundedEnum a => Int -> a
   enum = unsafePartial fromJust <<< toEnum
 
@@ -107,6 +148,9 @@ main =
 
   renderDate ∷ State -> Int -> String -> Either String Date -> Array (HTML m)
   renderDate s = renderExample dateConfig s.dates
+
+  renderDuration ∷ State -> Int -> Array DurationF.Command -> Either String IsoDuration -> Array (HTML m)
+  renderDuration s = renderExample durationConfig s.durations
 
   renderDateTime ∷ State -> Int -> String -> Either String DateTime -> Array (HTML m)
   renderDateTime s = renderExample dateTimeConfig s.dateTimes
@@ -117,17 +161,19 @@ main =
       SetTime     idx val -> H.query' timeConfig.cp     idx $ H.action $ left <<< (SetValue val)
       SetDate     idx val -> H.query' dateConfig.cp     idx $ H.action $ left <<< (SetValue val)
       SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.action $ left <<< (SetValue val)
+      SetDuration idx val -> H.query' durationConfig.cp idx $ H.action $ left <<< (SetValue val)
     pure next
   eval (HandleMessage payload next) = do
     case payload of
       MsgTime     idx (NotifyChange val) -> H.modify \s -> s {times     = insert idx (show val) s.times}
       MsgDate     idx (NotifyChange val) -> H.modify \s -> s {dates     = insert idx (show val) s.dates}
       MsgDateTime idx (NotifyChange val) -> H.modify \s -> s {dateTimes = insert idx (show val) s.dateTimes}
+      MsgDuration idx (NotifyChange val) -> H.modify \s -> s {durations = insert idx (show val) s.durations}
     pure next
 
 
-type ExampleConfig input fmt query out m =
-  { mkFormat :: String -> Either String fmt
+type ExampleConfig fmtInput input fmt query out m =
+  { mkFormat :: fmtInput -> Either String fmt
   , unformat :: fmt -> String -> Either String input
   -- , picker :: fmt -> H.Component HH.HTML query input out m
   , picker :: fmt -> H.Component HH.HTML query Unit out m
@@ -136,11 +182,11 @@ type ExampleConfig input fmt query out m =
   , cp :: CP.ChildPath query ChildQuery Int Slot
   }
 
-renderExample :: ∀ input fmt query out m
-  . ExampleConfig input fmt query out m
+renderExample :: ∀ fmtInput input fmt query out m
+  . ExampleConfig fmtInput input fmt query out m
   -> Map Int String
   -> Int
-  -> String
+  -> fmtInput
   -> Either String input
   -> Array (HTML m)
 renderExample c items idx fmt' value'= unEither $ do
@@ -158,7 +204,7 @@ renderExample c items idx fmt' value'= unEither $ do
   unEither :: Either String (Array (HTML m)) -> Array (HTML m)
   unEither = either (HH.text >>> pure >>> HH.div_ >>> pure) id
 
-timeConfig :: ∀ m. ExampleConfig Time TimeF.Format Time.Query Time.Message m
+timeConfig :: ∀ m. ExampleConfig String Time TimeF.Format Time.Query Time.Message m
 timeConfig =
   { mkFormat: TimeF.fromString
   , unformat: TimeF.unformat
@@ -168,7 +214,7 @@ timeConfig =
   , cp: cpTime
   }
 
-dateConfig :: ∀ m. ExampleConfig Date DateF.Format Date.Query Date.Message m
+dateConfig :: ∀ m. ExampleConfig String Date DateF.Format Date.Query Date.Message m
 dateConfig =
   { mkFormat: DateF.fromString
   , unformat: DateF.unformat
@@ -178,7 +224,7 @@ dateConfig =
   , cp: cpDate
   }
 
-dateTimeConfig :: ∀ m. ExampleConfig DateTime DateTimeF.Format DateTime.Query DateTime.Message m
+dateTimeConfig :: ∀ m. ExampleConfig String DateTime DateTimeF.Format DateTime.Query DateTime.Message m
 dateTimeConfig =
   { mkFormat: DateTimeF.fromString
   , unformat: DateTimeF.unformat
@@ -186,4 +232,14 @@ dateTimeConfig =
   , handler: \idx msg -> HandleMessage (MsgDateTime idx msg)
   , setter: \idx val -> Set (SetDateTime idx val)
   , cp: cpDateTime
+  }
+
+durationConfig :: ∀ m. ExampleConfig (Array DurationF.Command) IsoDuration DurationF.Format Duration.Query Duration.Message m
+durationConfig =
+  { mkFormat: DurationF.mkFormat
+  , unformat: const DurationF.unformat
+  , picker: Duration.picker
+  , handler: \idx msg -> HandleMessage (MsgDuration idx msg)
+  , setter: \idx val -> Set (SetDuration idx val)
+  , cp: cpDuration
   }

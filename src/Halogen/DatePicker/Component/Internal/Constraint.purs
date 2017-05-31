@@ -3,6 +3,7 @@ module Halogen.Datapicker.Component.Internal.Constraint where
 import Prelude
 import Data.Validation.Semigroup (V, invalid, unV)
 import Data.Foldable (class Foldable, any, null, length, for_)
+import Data.List as List
 import Control.Monad.State (State, get, put, execState)
 
 
@@ -19,6 +20,17 @@ allowedValues showVal as as' = for_ as' \a ->
 
 notEmpty :: ∀ f a. Foldable f => Constraint (f a)
 notEmpty as = if null as then invalid ["Input must contain values"] else pure unit
+
+data Sorting = Increasing | Decreasing
+
+sorted :: ∀ f a. Ord a => Foldable f => Sorting -> Constraint (f a)
+sorted sorting as = if isSorted then pure unit else invalid ["Input Must be sorted"]
+  where
+  isSorted = case sorting of
+    Increasing -> List.reverse asList == List.sort asList
+    Decreasing -> asList == List.sort asList
+  asList = List.fromFoldable as
+
 
 allowNoneOrOne :: ∀ g a. Foldable g => Array (EqPred a) -> Constraint (g a)
 allowNoneOrOne as = f <<< usageCount as

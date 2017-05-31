@@ -14,7 +14,7 @@ import Halogen.Datapicker.Component.Internal.Enums
   , year4
   , year2
   )
-import Halogen.Datapicker.Component.Internal.Elements (textElement, enumNumberElement, choiseElement)
+import Halogen.Datapicker.Component.Internal.Elements (textElement, enumElement, choiceElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Date
   ( Date
@@ -24,11 +24,10 @@ import Data.Date
 import Data.Newtype (unwrap)
 import Data.Foldable (foldMap)
 import Data.Maybe (Maybe(..), fromJust)
-import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
+import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Halogen.Datapicker.Component.Date.Format as F
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 import Data.Int as Int
 import Partial.Unsafe (unsafePartialBecause)
 
@@ -65,17 +64,15 @@ picker fmt = H.component
     f cmd = HH.li_ [renderCommand date cmd]
 
 renderCommand :: Date -> F.Command -> HTML
-renderCommand t cmd@F.YearFull            = enumNumberElement (UpdateCommand cmd) { title: "Year" } (year4 t)
-renderCommand t cmd@F.YearTwoDigits       = enumNumberElement (UpdateCommand cmd) { title: "Year" } (year2 t)
-renderCommand t cmd@F.YearAbsolute        = enumNumberElement (UpdateCommand cmd) { title: "Year" } (year t)
-renderCommand t cmd@F.MonthFull           = choiseElement (UpdateCommand cmd) { title: "Month" } (month t)
-renderCommand t cmd@F.MonthShort          = choiseElement (UpdateCommand cmd) { title: "Month" } (monthShort t)
-renderCommand t cmd@F.MonthTwoDigits      = enumNumberElement (UpdateCommand cmd) { title: "Month" } (month t)
-renderCommand t cmd@F.DayOfMonthTwoDigits = enumNumberElement (UpdateCommand cmd) { title: "Day" } (day t)
-renderCommand t cmd@F.DayOfMonth          = enumNumberElement (UpdateCommand cmd) { title: "Day" } (day t)
+renderCommand t cmd@F.YearFull            = enumElement (UpdateCommand cmd) { title: "Year" } (year4 t)
+renderCommand t cmd@F.YearTwoDigits       = enumElement (UpdateCommand cmd) { title: "Year" } (year2 t)
+renderCommand t cmd@F.YearAbsolute        = enumElement (UpdateCommand cmd) { title: "Year" } (year t)
+renderCommand t cmd@F.MonthFull           = choiceElement (UpdateCommand cmd) { title: "Month" } (month t)
+renderCommand t cmd@F.MonthShort          = choiceElement (UpdateCommand cmd) { title: "Month" } (monthShort t)
+renderCommand t cmd@F.MonthTwoDigits      = enumElement (UpdateCommand cmd) { title: "Month" } (month t)
+renderCommand t cmd@F.DayOfMonthTwoDigits = enumElement (UpdateCommand cmd) { title: "Day" } (day t)
+renderCommand t cmd@F.DayOfMonth          = enumElement (UpdateCommand cmd) { title: "Day" } (day t)
 renderCommand _ (F.Placeholder str)       = textElement { text: str}
-
-
 
 
 -- TODO switch to Validation/Either instead of Maybe to

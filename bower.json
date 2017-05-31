@@ -1,12 +1,14 @@
 {
-  "name": "todo",
+  "name": "purescript-halogen-datapicker",
   "private": true,
   "dependencies": {
     "purescript-formatters": "git://github.com/safareli/purescript-formatters.git#interval",
     "purescript-datetime": "git://github.com/safareli/purescript-datetime.git#interval",
     "purescript-halogen": "^2.0.1",
     "purescript-generics-rep": "^5.0.0",
-    "purescript-validation": "git://github.com/safareli/purescript-validation.git#monoid"
+    "purescript-validation": "git://github.com/safareli/purescript-validation.git#monoid",
+    "purescript-numbers": "^5.0.0",
+    "purescript-these": "^3.0.0"
   },
   "resolutions": {
     "purescript-formatters": "interval",

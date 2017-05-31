@@ -13,7 +13,7 @@ import Halogen.Datapicker.Component.Internal.Enums
   , setMillisecond1
   )
 
-import Halogen.Datapicker.Component.Internal.Elements (textElement, enumNumberElement, choiseElement)
+import Halogen.Datapicker.Component.Internal.Elements (textElement, enumElement, choiceElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 import Data.Time
   ( Time
@@ -28,7 +28,6 @@ import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Halogen.Datapicker.Component.Time.Format as F
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 import Data.Int as Int
 
 data TimeQuery a = UpdateCommand F.Command String a
@@ -62,16 +61,16 @@ picker fmt = H.component
     f cmd = HH.li_ [renderCommand time cmd]
 
 renderCommand :: Time -> F.Command -> HTML
-renderCommand t cmd@F.Hours24               = enumNumberElement (UpdateCommand cmd) { title: "Hours"} (hour t)
-renderCommand t cmd@F.Hours12               = enumNumberElement (UpdateCommand cmd) { title: "Hours"} (hour12 t)
-renderCommand t cmd@F.Meridiem              = choiseElement (UpdateCommand cmd) { title: "Meridiem" } (meridiem t)
-renderCommand t cmd@F.MinutesTwoDigits      = enumNumberElement (UpdateCommand cmd) { title: "Minutes"} (minute t)
-renderCommand t cmd@F.Minutes               = enumNumberElement (UpdateCommand cmd) { title: "Minutes"} (minute t)
-renderCommand t cmd@F.SecondsTwoDigits      = enumNumberElement (UpdateCommand cmd) { title: "Seconds"} (second t)
-renderCommand t cmd@F.Seconds               = enumNumberElement (UpdateCommand cmd) { title: "Seconds"} (second t)
-renderCommand t cmd@F.Milliseconds          = enumNumberElement (UpdateCommand cmd) { title: "Milliseconds"} (millisecond t)
-renderCommand t cmd@F.MillisecondsTwoDigits = enumNumberElement (UpdateCommand cmd) { title: "Milliseconds"} (millisecond2 t)
-renderCommand t cmd@F.MillisecondsShort     = enumNumberElement (UpdateCommand cmd) { title: "Milliseconds"} (millisecond1 t)
+renderCommand t cmd@F.Hours24               = enumElement (UpdateCommand cmd) { title: "Hours"} (hour t)
+renderCommand t cmd@F.Hours12               = enumElement (UpdateCommand cmd) { title: "Hours"} (hour12 t)
+renderCommand t cmd@F.Meridiem              = choiceElement (UpdateCommand cmd) { title: "Meridiem" } (meridiem t)
+renderCommand t cmd@F.MinutesTwoDigits      = enumElement (UpdateCommand cmd) { title: "Minutes"} (minute t)
+renderCommand t cmd@F.Minutes               = enumElement (UpdateCommand cmd) { title: "Minutes"} (minute t)
+renderCommand t cmd@F.SecondsTwoDigits      = enumElement (UpdateCommand cmd) { title: "Seconds"} (second t)
+renderCommand t cmd@F.Seconds               = enumElement (UpdateCommand cmd) { title: "Seconds"} (second t)
+renderCommand t cmd@F.Milliseconds          = enumElement (UpdateCommand cmd) { title: "Milliseconds"} (millisecond t)
+renderCommand t cmd@F.MillisecondsTwoDigits = enumElement (UpdateCommand cmd) { title: "Milliseconds"} (millisecond2 t)
+renderCommand t cmd@F.MillisecondsShort     = enumElement (UpdateCommand cmd) { title: "Milliseconds"} (millisecond1 t)
 renderCommand _ (F.Placeholder str)         = textElement { text: str}
 
 
