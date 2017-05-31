@@ -1,40 +1,43 @@
 module Example where
 
 import Prelude
--- import Debug.Trace as D
-import Data.Monoid (mempty)
-import Data.Maybe (Maybe(..), fromJust)
-import Data.Map (Map, lookup, insert)
-import Data.Time (Time)
-import Data.DateTime (DateTime)
-import Data.Interval (IsoDuration)
-import Data.Interval as I
-import Data.Date (Date, canonicalDate)
-import Data.Enum (class BoundedEnum, toEnum)
-import Data.Either (Either(..), either)
-import Data.Either.Nested (Either4)
-import Data.Functor.Coproduct (left)
+import Data.Either.Nested as Either
 import Data.Functor.Coproduct.Nested as Coproduct
-import Halogen.Component.ChildPath as CP
-
-import Halogen.Datapicker.Component.Time.Format as TimeF
-import Halogen.Datapicker.Component.Time as Time
-import Halogen.Datapicker.Component.Date.Format as DateF
-import Halogen.Datapicker.Component.Date as Date
-import Halogen.Datapicker.Component.DateTime.Format as DateTimeF
-import Halogen.Datapicker.Component.DateTime as DateTime
-import Halogen.Datapicker.Component.Duration.Format as DurationF
-import Halogen.Datapicker.Component.Duration as Duration
-import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
-import Partial.Unsafe (unsafePartial)
+import Data.Interval as I
 import Halogen as H
+import Halogen.Component.ChildPath as CP
+import Halogen.Datapicker.Component.Date as Date
+import Halogen.Datapicker.Component.Date.Format as DateF
+import Halogen.Datapicker.Component.DateTime as DateTime
+import Halogen.Datapicker.Component.DateTime.Format as DateTimeF
+import Halogen.Datapicker.Component.Duration as Duration
+import Halogen.Datapicker.Component.Duration.Format as DurationF
+import Halogen.Datapicker.Component.Interval as Interval
+import Halogen.Datapicker.Component.Interval.Format as IntervalF
+import Halogen.Datapicker.Component.Time as Time
+import Halogen.Datapicker.Component.Time.Format as TimeF
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
+import Data.Bitraversable (bitraverse)
+import Data.Date (Date, canonicalDate)
+import Data.DateTime (DateTime(..))
+import Data.Either (Either(..), either)
+import Data.Enum (class BoundedEnum, toEnum)
+import Data.Formatter.Interval (unformatInterval)
+import Data.Functor.Coproduct (left)
+import Data.Interval (Interval(..), IsoDuration)
+import Data.Map (Map, lookup, insert)
+import Data.Maybe (Maybe(..), fromJust)
+import Data.Monoid (mempty)
+import Data.Time (Time, setHour, setMinute)
+import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
+import Partial.Unsafe (unsafePartial)
 
 type TimeIdx = Int
 type DateIdx = Int
 type DateTimeIdx = Int
 type DurationIdx = Int
+type IntervalIdx = Int
 
 data Query a
   = Set SetPayload a
@@ -45,23 +48,26 @@ data SetPayload
   | SetDate Int Date
   | SetDateTime Int DateTime
   | SetDuration Int IsoDuration
+  | SetInterval Int (Interval IsoDuration DateTime)
 
 data MessagePayload
   = MsgTime Int Time.Message
   | MsgDate Int Date.Message
   | MsgDateTime Int DateTime.Message
   | MsgDuration Int Duration.Message
+  | MsgInterval Int Interval.Message
 
-type ChildQuery = Coproduct.Coproduct4 Time.Query Date.Query DateTime.Query Duration.Query
+type ChildQuery = Coproduct.Coproduct5 Time.Query Date.Query DateTime.Query Duration.Query Interval.Query
 
 type State =
   { times :: Map TimeIdx String
   , dates :: Map DateIdx String
   , dateTimes :: Map DateTimeIdx String
   , durations :: Map DurationIdx String
+  , intervals :: Map IntervalIdx String
   }
 
-type Slot = Either4 TimeIdx DateIdx DateTimeIdx DurationIdx
+type Slot = Either.Either5 TimeIdx DateIdx DateTimeIdx DurationIdx IntervalIdx
 
 cpTime :: CP.ChildPath Time.Query ChildQuery TimeIdx Slot
 cpTime = CP.cp1
@@ -74,6 +80,9 @@ cpDateTime = CP.cp3
 
 cpDuration :: CP.ChildPath Duration.Query ChildQuery DurationIdx Slot
 cpDuration = CP.cp4
+
+cpInterval :: CP.ChildPath Interval.Query ChildQuery IntervalIdx Slot
+cpInterval = CP.cp5
 
 type HTML m = H.ParentHTML Query ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Void m
@@ -89,7 +98,13 @@ main =
     , receiver: const Nothing
     }
   where
-  initialState = { times: mempty, dates: mempty, dateTimes: mempty, durations: mempty}
+  initialState =
+    { times: mempty
+    , dates: mempty
+    , dateTimes: mempty
+    , durations: mempty
+    , intervals: mempty
+    }
   render ∷ State -> HTML m
   render s = HH.div_
     $  [HH.h1_ [ HH.text "Time" ]]
@@ -110,7 +125,7 @@ main =
     <> renderDate s 4 "YYYY:MMMM" (Left "2017:May")
     <> renderDate s 5 "Y:MM" (Left "39017:12")
     <> renderDate s 6 "YY:MM" (Left "17:12")
-    <> renderDate s 7 "YY:MM" (Right $ canonicalDate (enum 2017) (enum 1) (enum 1))
+    <> renderDate s 7 "YY:MM" (Right $ testDate)
     <> renderDate s (-1) "YY:MM:MMM:YYYY mm:ss" (Left "---")
 
     <> [HH.h1_ [ HH.text "DateTime" ]]
@@ -124,7 +139,7 @@ main =
         , DurationF.Month
         , DurationF.Day
         ]
-        testDuration
+        (Right testDuration)
     <> renderDuration s 1
         [ DurationF.Year
         , DurationF.Month
@@ -133,12 +148,49 @@ main =
         , DurationF.Minute
         , DurationF.Second
         ]
-        testDuration
+        (Right testDuration)
+    <> [HH.h1_ [ HH.text "Interval" ]]
+    <> renderInterval s 0
+        (JustDuration
+          [ DurationF.Year
+          , DurationF.Month
+          , DurationF.Day
+          ]
+        )
+        (Right $ JustDuration testDuration)
+    <> renderInterval s 1
+        (StartDuration
+          "YYYY:MM:DD"
+          [ DurationF.Year
+          , DurationF.Month
+          , DurationF.Day
+          ]
+        )
+        (Right $ StartDuration testDateTime testDuration)
+    <> renderInterval s 2
+        (DurationEnd
+          [ DurationF.Year
+          , DurationF.Month
+          , DurationF.Day
+          , DurationF.Hour
+          , DurationF.Minute
+          , DurationF.Second
+          ]
+          "YYYY:MM:DD"
+        )
+        (Right $ DurationEnd testDuration testDateTime)
+    <> renderInterval s 3
+        (StartEnd "YYYY:MM:DD" "YYYY:MM:DD")
+        (Right $ StartEnd testDateTime testDateTime)
 
-  testDuration :: Either String IsoDuration
-  testDuration = case I.mkIsoDuration $ I.year 100.0 <> I.month 25.0 <> I.day 245.0 <> I.minute 100.0 <> I.second 124.0 of
-    Just d -> Right d
-    Nothing -> Left "---"
+  testDate :: Date
+  testDate = canonicalDate (enum 2017) (enum 1) (enum 1)
+
+  testDateTime :: DateTime
+  testDateTime = DateTime testDate (bottom # setHour (enum 2) # setMinute (enum 2))
+
+  testDuration :: IsoDuration
+  testDuration = unsafePartial fromJust $ I.mkIsoDuration $ I.year 100.0 <> I.month 25.0 <> I.day 245.0 <> I.minute 100.0 <> I.second 124.0
 
   enum :: ∀ a. BoundedEnum a => Int -> a
   enum = unsafePartial fromJust <<< toEnum
@@ -152,6 +204,9 @@ main =
   renderDuration ∷ State -> Int -> Array DurationF.Command -> Either String IsoDuration -> Array (HTML m)
   renderDuration s = renderExample durationConfig s.durations
 
+  renderInterval ∷ State -> Int -> Interval (Array DurationF.Command) String -> Either String (Interval IsoDuration DateTime) -> Array (HTML m)
+  renderInterval s = renderExample intervalConfig s.intervals
+
   renderDateTime ∷ State -> Int -> String -> Either String DateTime -> Array (HTML m)
   renderDateTime s = renderExample dateTimeConfig s.dateTimes
 
@@ -162,6 +217,7 @@ main =
       SetDate     idx val -> H.query' dateConfig.cp     idx $ H.action $ left <<< (SetValue val)
       SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.action $ left <<< (SetValue val)
       SetDuration idx val -> H.query' durationConfig.cp idx $ H.action $ left <<< (SetValue val)
+      SetInterval idx val -> H.query' intervalConfig.cp idx $ H.action $ left <<< (SetValue val)
     pure next
   eval (HandleMessage payload next) = do
     case payload of
@@ -169,6 +225,7 @@ main =
       MsgDate     idx (NotifyChange val) -> H.modify \s -> s {dates     = insert idx (show val) s.dates}
       MsgDateTime idx (NotifyChange val) -> H.modify \s -> s {dateTimes = insert idx (show val) s.dateTimes}
       MsgDuration idx (NotifyChange val) -> H.modify \s -> s {durations = insert idx (show val) s.durations}
+      MsgInterval idx (NotifyChange val) -> H.modify \s -> s {intervals = insert idx (show val) s.intervals}
     pure next
 
 
@@ -242,4 +299,19 @@ durationConfig =
   , handler: \idx msg -> HandleMessage (MsgDuration idx msg)
   , setter: \idx val -> Set (SetDuration idx val)
   , cp: cpDuration
+  }
+
+intervalConfig :: ∀ m. ExampleConfig
+  (Interval (Array DurationF.Command) String)
+  (Interval IsoDuration DateTime)
+  IntervalF.Format
+  Interval.Query
+  Interval.Message m
+intervalConfig =
+  { mkFormat: bitraverse DurationF.mkFormat DateTimeF.fromString
+  , unformat: const unformatInterval
+  , picker: Interval.picker
+  , handler: \idx msg -> HandleMessage (MsgInterval idx msg)
+  , setter: \idx val -> Set (SetInterval idx val)
+  , cp: cpInterval
   }
