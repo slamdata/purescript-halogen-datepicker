@@ -34,7 +34,6 @@ data TimeQuery a = UpdateCommand F.Command String a
 
 type Query = Coproduct (PickerQuery Time) TimeQuery
 type Message = PickerMessage Time
-type Input = Time
 type State =
   { format :: F.Format
   , time :: Time
@@ -45,13 +44,11 @@ type HTML = H.ComponentHTML TimeQuery
 initialStateFromFormat ∷ F.Format -> State
 initialStateFromFormat format = {format: format, time: bottom}
 
--- picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Input Message m
 picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit  Message m
 picker fmt = H.component
   { initialState: const $ initialStateFromFormat fmt
   , render: render <#> (map right)
   , eval: coproduct evalPicker evalTime
-  -- , receiver: \a -> Just $ H.action $ left <<< (SetValue a)
   , receiver: const Nothing
   }
   where

@@ -23,7 +23,6 @@ import Partial.Unsafe (unsafePartial)
 
 data DurationQuery a = UpdateCommand F.Command String a
 
-type Input = IsoDuration
 type Query = Coproduct (PickerQuery IsoDuration) DurationQuery
 type Message = PickerMessage IsoDuration
 
@@ -42,13 +41,11 @@ initialStateFromFormat format = {format: format, duration: duration}
   where duration = unsafePartial fromJust $ mkIsoDuration $ millisecond 0.0
 
 
--- picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Input Message m
 picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit  Message m
 picker fmt = H.component
   { initialState: const $ initialStateFromFormat fmt
   , render: render <#> (map right)
   , eval: coproduct evalPicker evalDuration
-  -- , receiver: \a -> Just $ H.action $ left <<< (SetValue a)
   , receiver: const Nothing
   }
   where
@@ -73,7 +70,7 @@ getComponent :: F.Command -> IsoDuration -> Number
 getComponent cmd d = maybe 0.0 id $ F.toGetter cmd (unIsoDuration d)
 
 applyChange :: F.Command -> Number -> Duration -> Duration
-applyChange cmd val dur = F.toSetter cmd val dur -- TODO implement
+applyChange cmd val dur = F.toSetter cmd val dur
 
 
 evalDuration ∷ ∀ m . DurationQuery ~> DSL m

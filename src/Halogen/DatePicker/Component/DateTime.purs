@@ -27,7 +27,6 @@ data DateTimeQuery a
   = HandleDateMessage Date.Message a
   | HandleTimeMessage Time.Message a
 
-type Input = DateTime
 type Query = Coproduct (PickerQuery DateTime) DateTimeQuery
 type Message = PickerMessage DateTime
 
@@ -54,13 +53,11 @@ initialStateFromFormat format = {format: format, dateTime: DateTime (canonicalDa
   where year = unsafePartialBecause "unreachable as `0` year is in bounds" fromJust $ toEnum 0
 
 
--- picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Input Message m
-picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit  Message m
+picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit Message m
 picker fmt = H.parentComponent
   { initialState: const $ initialStateFromFormat fmt
   , render: render >>> bimap (map right) right
   , eval: coproduct evalPicker evalDateTime
-  -- , receiver: \a -> Just $ H.action $ left <<< (SetValue a)
   , receiver: const Nothing
   }
   where
@@ -71,10 +68,7 @@ picker fmt = H.parentComponent
 
 renderCommand :: ∀ m. DateTime -> F.Command -> HTML m
 renderCommand t cmd@(F.Time fmt) = HH.slot' cpTime unit (Time.picker fmt) unit (HE.input HandleTimeMessage)
--- renderCommand t cmd@(F.Time fmt) = HH.slot' cpTime unit (Time.picker fmt) (time t) (HE.input HandleTimeMessage)
 renderCommand t cmd@(F.Date fmt) = HH.slot' cpDate unit (Date.picker fmt) unit (HE.input HandleDateMessage)
--- renderCommand t cmd@(F.Date fmt) = HH.slot' cpDate unit (Date.picker fmt) (date t) (HE.input HandleDateMessage)
--- renderCommand _ (F.Placeholder str)  = textElement { text: str}
 
 
 evalDateTime ∷ ∀ m . DateTimeQuery ~> DSL m

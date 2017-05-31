@@ -30,8 +30,6 @@ import Data.Enum
 
 
 
--- TODO maybe move some of this to Data.{Formatters.DateTime,Time,Date}
-
 meridiem :: Time -> Meridiem
 meridiem =  hour >>> fromEnum >>> \h -> if h >= 12 then PM else AM
 

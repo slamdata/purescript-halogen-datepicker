@@ -35,7 +35,6 @@ data DateQuery a = UpdateCommand F.Command String a
 
 type Query = Coproduct (PickerQuery Date) DateQuery
 type Message = PickerMessage Date
-type Input = Date
 type State =
   { format :: F.Format
   , date :: Date
@@ -48,13 +47,11 @@ initialStateFromFormat ∷ F.Format -> State
 initialStateFromFormat format = {format: format, date: canonicalDate year bottom bottom}
   where year = unsafePartialBecause "unreachable as `0` year is in bounds" fromJust $ toEnum 0
 
--- picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Input Message m
 picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit  Message m
 picker fmt = H.component
   { initialState: const $ initialStateFromFormat fmt
   , render: render <#> (map right)
   , eval: coproduct evalPicker evalDate
-  -- , receiver: \a -> Just $ H.action $ left <<< (SetValue a)
   , receiver: const Nothing
   }
   where
