@@ -75,12 +75,15 @@ picker fmt = H.parentComponent
   render {interval, format} = HH.ul_ $ case format of
     StartEnd a b ->
       [ HH.li_ [renderDateTime a false]
+      , HH.li_ [HH.text "/"]
       , HH.li_ [renderDateTime b true]]
     DurationEnd d a ->
       [ HH.li_ [renderDuration d]
+      , HH.li_ [HH.text "/"]
       , HH.li_ [renderDateTime a false]]
     StartDuration a d ->
       [ HH.li_ [renderDateTime a false]
+      , HH.li_ [HH.text "/"]
       , HH.li_ [renderDuration d]]
     JustDuration d ->
       [ HH.li_ [renderDuration d]]
