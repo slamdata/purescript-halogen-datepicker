@@ -8,12 +8,18 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Control.Alternative (class Alternative, empty)
 import Data.Enum (class BoundedEnum, fromEnum, upFrom)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..))
 import Data.These (These(..), theseRight, theseLeft)
 
 --TODO parse `String` into `a` here and only invoke query if it's is valid
 -- TODO change signature so that we dont need to change record type if record type is chaged in `numberElement`
-enumElement :: ∀ query a. Show a => BoundedEnum a => (∀ b. String -> b -> query b) -> {title :: String} -> a -> H.ComponentHTML query
+enumElement :: ∀ query a
+  . Show a
+  => BoundedEnum a
+  => (∀ b. String -> b -> query b)
+  -> {title :: String}
+  -> a
+  -> H.ComponentHTML query
 enumElement q {title} val =
   numberElement
     q
@@ -22,8 +28,8 @@ enumElement q {title} val =
         (Int.toNumber $ fromEnum (bottom :: a))
         (Int.toNumber $ fromEnum (top :: a))
     }
-    (fromEnum val)
-    show
+    (show $ fromEnum val)
+
 
 type Range a = These a a
 
@@ -43,25 +49,32 @@ rangeMax :: Range ~> Maybe
 rangeMax = theseRight
 
 
-or :: ∀ a. a -> Maybe a -> a
-or a mb = maybe a id mb
-
 toAlt :: ∀ f. Alternative f => Maybe ~> f
 toAlt (Just a) = pure a
 toAlt Nothing = empty
 
-numberElement :: ∀ a query. (∀ b. String -> b -> query b) -> {title :: String, range :: Range Number} -> a -> (a -> String) -> H.ComponentHTML query
-numberElement query {title, range} value show' = HH.input $
+numberElement :: ∀ query
+  . (∀ b. String -> b -> query b)
+  -> {title :: String, range :: Range Number}
+  -> String
+  -> H.ComponentHTML query
+numberElement query {title, range} value = HH.input $
   [ HP.type_ HP.InputNumber
   , HP.title title
-  , HP.value $ show' value
-  , HE.onValueChange $ HE.input query
+  , HP.value $ value
+  , HE.onValueInput $ HE.input query
   ]
   <> (rangeMin range <#> HP.min # toAlt)
   <> (rangeMax range <#> HP.max # toAlt)
 
 -- TODO parse `String` into `a` here and only invoke query if it's is valid
-choiceElement :: ∀ query a. Show a => BoundedEnum a => (∀ b. String -> b -> query b) -> {title :: String} -> a -> H.ComponentHTML query
+choiceElement :: ∀ query a
+  . Show a
+  => BoundedEnum a
+  => (∀ b. String -> b -> query b)
+  -> {title :: String}
+  -> a
+  -> H.ComponentHTML query
 choiceElement query {title} val = HH.select
   [ HE.onValueChange (HE.input query)
   , HP.title title
@@ -72,7 +85,6 @@ choiceElement query {title} val = HH.select
     , HP.selected (val' == val)
     ]
     [ HH.text $ show val' ]
-
 
 textElement :: ∀ query. {text :: String} -> H.ComponentHTML query
 textElement {text} = HH.span_ [HH.text text]

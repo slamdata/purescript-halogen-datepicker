@@ -53,8 +53,7 @@ renderCommand d cmd =
   numberElement
     (UpdateCommand cmd)
     { title: show cmd, range: minRange 0.0 }
-    (getComponent cmd d)
-    showNum
+    (showNum $ getComponent cmd d)
   where
   showNum 0.0 = "0"
   showNum n = let str = show n
