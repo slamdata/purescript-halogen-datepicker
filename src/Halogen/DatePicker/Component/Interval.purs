@@ -11,16 +11,13 @@ import Halogen.Datapicker.Component.Interval.Format as F
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Data.Bifunctor (bimap, lmap)
-import Data.Date (canonicalDate)
-import Data.DateTime (DateTime(..))
+import Data.DateTime (DateTime)
 import Data.Either.Nested (Either2)
-import Data.Enum (toEnum)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
-import Data.Interval (Interval(..), IsoDuration, mkIsoDuration, millisecond)
-import Data.Maybe (Maybe(..), fromJust)
+import Data.Interval (Interval(..), IsoDuration)
+import Data.Maybe (Maybe(..))
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
-import Partial.Unsafe (unsafePartial, unsafePartialBecause)
 
 type FullInterval = Interval IsoDuration DateTime
 
@@ -48,50 +45,38 @@ type HTML m = H.ParentHTML IntervalQuery ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
 
-initialStateFromFormat ∷ F.Format -> State
-initialStateFromFormat format =
-  { format: format
-  , interval: case format of
-      StartEnd      _ _ -> StartEnd dateTime dateTime
-      DurationEnd   _ _ -> DurationEnd duration dateTime
-      StartDuration _ _ -> StartDuration dateTime duration
-      JustDuration  _ -> JustDuration duration
-  }
-  where
-    dateTime = DateTime (canonicalDate year bottom bottom) bottom
-    year = unsafePartialBecause "unreachable as `0` year is in bounds" fromJust $ toEnum 0
-    duration = unsafePartial fromJust $ mkIsoDuration $ millisecond 0.0
-
-
-picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit  Message m
-picker fmt = H.parentComponent
-  { initialState: const $ initialStateFromFormat fmt
+picker ∷ ∀ m. F.Format -> FullInterval -> H.Component HH.HTML Query Unit Message m
+picker format interval = H.parentComponent
+  { initialState: const $ {format, interval}
   , render: render >>> bimap (map right) right
   , eval: coproduct evalPicker evalInterval
   , receiver: const Nothing
   }
-  where
-  render ∷ State -> HTML m
-  render {interval, format} = HH.ul_ $ case format of
-    StartEnd a b ->
-      [ HH.li_ [renderDateTime a false]
-      , HH.li_ [HH.text "/"]
-      , HH.li_ [renderDateTime b true]]
-    DurationEnd d a ->
-      [ HH.li_ [renderDuration d]
-      , HH.li_ [HH.text "/"]
-      , HH.li_ [renderDateTime a false]]
-    StartDuration a d ->
-      [ HH.li_ [renderDateTime a false]
-      , HH.li_ [HH.text "/"]
-      , HH.li_ [renderDuration d]]
-    JustDuration d ->
-      [ HH.li_ [renderDuration d]]
 
-renderDuration :: ∀ m. DurationF.Format -> HTML m
-renderDuration fmt = HH.slot' cpDuration unit (Duration.picker fmt) unit (HE.input $ HandleDurationMessage)
-renderDateTime :: ∀ m. DateTimeF.Format -> Boolean -> HTML m
-renderDateTime fmt idx = HH.slot' cpDateTime idx (DateTime.picker fmt) unit (HE.input $ HandleDateTimeMessage idx)
+render ∷ ∀ m. State -> HTML m
+render {interval, format} = HH.ul_ $ case format, interval of
+  StartEnd fmtStart fmtEnd, StartEnd start end ->
+    [ HH.li_ [renderDateTime fmtStart start false]
+    , HH.li_ [HH.text "/"]
+    , HH.li_ [renderDateTime fmtEnd end true]]
+  DurationEnd fmtDuration fmtEnd, DurationEnd duration end ->
+    [ HH.li_ [renderDuration fmtDuration duration]
+    , HH.li_ [HH.text "/"]
+    , HH.li_ [renderDateTime fmtEnd end false]]
+  StartDuration fmtStart fmtDuration, StartDuration start duration ->
+    [ HH.li_ [renderDateTime fmtStart start false]
+    , HH.li_ [HH.text "/"]
+    , HH.li_ [renderDuration fmtDuration duration]]
+  JustDuration fmtDuration, JustDuration duration ->
+    [ HH.li_ [renderDuration fmtDuration duration]]
+  _ , _ -> [HH.text "can't render invalid value"]
+
+renderDuration :: ∀ m. DurationF.Format -> IsoDuration -> HTML m
+renderDuration fmt date = HH.slot' cpDuration unit (Duration.picker fmt date) unit (HE.input $ HandleDurationMessage)
+
+renderDateTime :: ∀ m. DateTimeF.Format -> DateTime -> Boolean -> HTML m
+renderDateTime fmt duration idx = HH.slot' cpDateTime idx (DateTime.picker fmt duration) unit (HE.input $ HandleDateTimeMessage idx)
+
 
 
 evalInterval ∷ ∀ m . IntervalQuery ~> DSL m
@@ -133,7 +118,6 @@ evalPicker (SetValue intervalNew next) = do
     DurationEnd d a -> setDuration d *> setDateTime false a
     StartDuration a d -> setDateTime false a *> setDuration d
     JustDuration d -> setDuration d
-  H.raise (NotifyChange intervalNew)
   pure next
   where
   setDuration :: IsoDuration -> DSL m Unit

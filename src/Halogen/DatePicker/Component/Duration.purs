@@ -6,15 +6,14 @@ import Halogen as H
 import Halogen.Datapicker.Component.Duration.Format as F
 import Halogen.HTML as HH
 import Data.Foldable (foldMap)
-import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
-import Data.Interval (IsoDuration, Duration, mkIsoDuration, millisecond, unIsoDuration)
-import Data.Maybe (Maybe(..), maybe, fromJust)
+import Data.Functor.Coproduct (Coproduct, coproduct, right)
+import Data.Interval (Duration, IsoDuration, mkIsoDuration, unIsoDuration)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.Number (fromString)
 import Data.String (Pattern(..), stripSuffix)
 import Halogen.Datapicker.Component.Internal.Elements (numberElement, minRange)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
-import Partial.Unsafe (unsafePartial)
 -- import Halogen.Datapicker.Component.Time as Time
 -- import Halogen.Datapicker.Component.Date as Date
 -- import Halogen.Datapicker.Component.Time.Format as TimeF
@@ -36,23 +35,18 @@ type DSL = H.ComponentDSL State Query Message
 type HTML = H.ComponentHTML DurationQuery
 
 
-initialStateFromFormat ∷ F.Format -> State
-initialStateFromFormat format = {format: format, duration: duration}
-  where duration = unsafePartial fromJust $ mkIsoDuration $ millisecond 0.0
-
-
-picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit  Message m
-picker fmt = H.component
-  { initialState: const $ initialStateFromFormat fmt
+picker ∷ ∀ m. F.Format -> IsoDuration -> H.Component HH.HTML Query Unit Message m
+picker format duration = H.component
+  { initialState: const {format, duration}
   , render: render <#> (map right)
   , eval: coproduct evalPicker evalDuration
   , receiver: const Nothing
   }
+
+render ∷ State -> HTML
+render {duration, format} = HH.ul_ $ foldMap (pure <<< f) (unwrap format)
   where
-  render ∷ State -> HTML
-  render {duration, format} = HH.ul_ $ foldMap (pure <<< f) (unwrap format)
-    where
-    f cmd = HH.li_ [renderCommand duration cmd]
+  f cmd = HH.li_ [renderCommand duration cmd]
 
 renderCommand :: IsoDuration -> F.Command -> HTML
 renderCommand d cmd =
@@ -85,7 +79,6 @@ evalDuration (UpdateCommand cmd val next) = do
 evalPicker ∷ ∀ m . (PickerQuery IsoDuration) ~> DSL m
 evalPicker (SetValue duration next) = do
   H.modify _{ duration = duration }
-  H.raise (NotifyChange duration)
   pure next
 evalPicker (GetValue next) = do
   H.gets _.duration <#> next

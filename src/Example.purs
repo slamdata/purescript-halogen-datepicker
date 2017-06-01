@@ -232,8 +232,7 @@ main =
 type ExampleConfig fmtInput input fmt query out m =
   { mkFormat :: fmtInput -> Either String fmt
   , unformat :: fmt -> String -> Either String input
-  -- , picker :: fmt -> H.Component HH.HTML query input out m
-  , picker :: fmt -> H.Component HH.HTML query Unit out m
+  , picker :: fmt -> input -> H.Component HH.HTML query Unit out m
   , handler :: ∀z. Int -> out -> z -> Query z
   , setter :: ∀z. Int -> input -> z -> Query z
   , cp :: CP.ChildPath query ChildQuery Int Slot
@@ -249,7 +248,7 @@ renderExample :: ∀ fmtInput input fmt query out m
 renderExample c items idx fmt' value'= unEither $ do
   fmt <- c.mkFormat fmt'
   value <- either (c.unformat fmt) Right value'
-  let cmp = (c.picker fmt)
+  let cmp = c.picker fmt value
   pure
     [ HH.slot' c.cp idx cmp unit (HE.input (c.handler idx))
     , HH.button [ HE.onClick $ HE.input_ $ c.setter idx value] [ HH.text "reset"]

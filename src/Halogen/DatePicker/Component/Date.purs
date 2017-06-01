@@ -16,20 +16,15 @@ import Halogen.Datapicker.Component.Internal.Enums
   )
 import Halogen.Datapicker.Component.Internal.Elements (textElement, enumElement, choiceElement)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
-import Data.Date
-  ( Date
-  , year, month, day
-  , canonicalDate
-  )
+import Data.Date (Date, day, month, year)
 import Data.Newtype (unwrap)
 import Data.Foldable (foldMap)
-import Data.Maybe (Maybe(..), fromJust)
+import Data.Maybe (Maybe(..))
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Halogen.Datapicker.Component.Date.Format as F
 import Halogen as H
 import Halogen.HTML as HH
 import Data.Int as Int
-import Partial.Unsafe (unsafePartialBecause)
 
 data DateQuery a = UpdateCommand F.Command String a
 
@@ -43,22 +38,18 @@ type State =
 type DSL = H.ComponentDSL State Query Message
 type HTML = H.ComponentHTML DateQuery
 
-initialStateFromFormat ∷ F.Format -> State
-initialStateFromFormat format = {format: format, date: canonicalDate year bottom bottom}
-  where year = unsafePartialBecause "unreachable as `0` year is in bounds" fromJust $ toEnum 0
-
-picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit  Message m
-picker fmt = H.component
-  { initialState: const $ initialStateFromFormat fmt
+picker ∷ ∀ m. F.Format -> Date -> H.Component HH.HTML Query Unit Message m
+picker format date = H.component
+  { initialState: const {format, date}
   , render: render <#> (map right)
   , eval: coproduct evalPicker evalDate
   , receiver: const Nothing
   }
+
+render ∷ State -> HTML
+render {date, format} = HH.ul_ $ foldMap (pure <<< f) (unwrap format)
   where
-  render ∷ State -> HTML
-  render {date, format} = HH.ul_ $ foldMap (pure <<< f) (unwrap format)
-    where
-    f cmd = HH.li_ [renderCommand date cmd]
+  f cmd = HH.li_ [renderCommand date cmd]
 
 renderCommand :: Date -> F.Command -> HTML
 renderCommand t cmd@F.YearFull            = enumElement (UpdateCommand cmd) { title: "Year" } (year4 t)
@@ -101,7 +92,6 @@ updateTime (F.Placeholder _) _ t = pure t
 evalPicker ∷ ∀ m . (PickerQuery Date) ~> DSL m
 evalPicker (SetValue date next) = do
   H.modify _{ date = date }
-  H.raise (NotifyChange date)
   pure next
 evalPicker (GetValue next) = do
   H.gets _.date <#> next

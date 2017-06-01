@@ -24,7 +24,7 @@ import Data.Newtype (unwrap)
 import Data.Foldable (foldMap)
 import Data.Maybe (Maybe(..))
 import Data.Enum (toEnum)
-import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
+import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Halogen.Datapicker.Component.Time.Format as F
 import Halogen as H
 import Halogen.HTML as HH
@@ -41,21 +41,19 @@ type State =
 
 type DSL = H.ComponentDSL State Query Message
 type HTML = H.ComponentHTML TimeQuery
-initialStateFromFormat ∷ F.Format -> State
-initialStateFromFormat format = {format: format, time: bottom}
 
-picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit  Message m
-picker fmt = H.component
-  { initialState: const $ initialStateFromFormat fmt
+picker ∷ ∀ m. F.Format -> Time -> H.Component HH.HTML Query Unit Message m
+picker format time = H.component
+  { initialState: const $ {format, time}
   , render: render <#> (map right)
   , eval: coproduct evalPicker evalTime
   , receiver: const Nothing
   }
+
+render ∷ State -> HTML
+render {time, format} = HH.ul_ $ foldMap (pure <<< f) (unwrap format)
   where
-  render ∷ State -> HTML
-  render {time, format} = HH.ul_ $ foldMap (pure <<< f) (unwrap format)
-    where
-    f cmd = HH.li_ [renderCommand time cmd]
+  f cmd = HH.li_ [renderCommand time cmd]
 
 renderCommand :: Time -> F.Command -> HTML
 renderCommand t cmd@F.Hours24               = enumElement (UpdateCommand cmd) { title: "Hours"} (hour t)
@@ -101,7 +99,6 @@ updateTime (F.Placeholder _) _ t = pure t
 evalPicker ∷ ∀ m . (PickerQuery Time) ~> DSL m
 evalPicker (SetValue time next) = do
   H.modify _{ time = time }
-  H.raise (NotifyChange time)
   pure next
 evalPicker (GetValue next) = do
   H.gets _.time <#> next

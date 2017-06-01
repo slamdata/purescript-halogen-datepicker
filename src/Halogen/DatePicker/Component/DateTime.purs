@@ -9,17 +9,14 @@ import Halogen.Datapicker.Component.Time as Time
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Data.Bifunctor (bimap)
-import Data.Date (canonicalDate)
-import Data.DateTime (DateTime(..), date, time, modifyDate, modifyTime)
+import Data.DateTime (DateTime, date, modifyDate, modifyTime, time)
 import Data.Either.Nested (Either2)
-import Data.Enum (toEnum)
 import Data.Foldable (foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
-import Data.Maybe (Maybe(..), fromJust)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
-import Partial.Unsafe (unsafePartialBecause)
 -- import Halogen.Datapicker.Component.Time.Format as TimeF
 -- import Halogen.Datapicker.Component.Date.Format as DateF
 
@@ -43,32 +40,26 @@ cpTime ∷ CP.ChildPath Time.Query ChildQuery Unit Slot
 cpTime = CP.cp2
 
 
-
 type HTML m = H.ParentHTML DateTimeQuery ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
 
-initialStateFromFormat ∷ F.Format -> State
-initialStateFromFormat format = {format: format, dateTime: DateTime (canonicalDate year bottom bottom) bottom}
-  where year = unsafePartialBecause "unreachable as `0` year is in bounds" fromJust $ toEnum 0
-
-
-picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit Message m
-picker fmt = H.parentComponent
-  { initialState: const $ initialStateFromFormat fmt
+picker ∷ ∀ m. F.Format -> DateTime -> H.Component HH.HTML Query Unit Message m
+picker format dateTime = H.parentComponent
+  { initialState: const $ {format, dateTime}
   , render: render >>> bimap (map right) right
   , eval: coproduct evalPicker evalDateTime
   , receiver: const Nothing
   }
+
+render ∷ ∀ m. State -> HTML m
+render {dateTime, format} = HH.ul_ $ foldMap (pure <<< f) (unwrap format)
   where
-  render ∷ State -> HTML m
-  render {dateTime, format} = HH.ul_ $ foldMap (pure <<< f) (unwrap format)
-    where
-    f cmd = HH.li_ [renderCommand dateTime cmd]
+  f cmd = HH.li_ [renderCommand dateTime cmd]
 
 renderCommand :: ∀ m. DateTime -> F.Command -> HTML m
-renderCommand t cmd@(F.Time fmt) = HH.slot' cpTime unit (Time.picker fmt) unit (HE.input HandleTimeMessage)
-renderCommand t cmd@(F.Date fmt) = HH.slot' cpDate unit (Date.picker fmt) unit (HE.input HandleDateMessage)
+renderCommand t cmd@(F.Time fmt) = HH.slot' cpTime unit (Time.picker fmt (time t)) unit (HE.input HandleTimeMessage)
+renderCommand t cmd@(F.Date fmt) = HH.slot' cpDate unit (Date.picker fmt (date t)) unit (HE.input HandleDateMessage)
 
 
 evalDateTime ∷ ∀ m . DateTimeQuery ~> DSL m
@@ -94,7 +85,6 @@ evalPicker (SetValue dateTime next) = do
   H.modify _{ dateTime = dateTime }
   void $ H.query' cpTime unit $ H.action $ left <<< (SetValue (time dateTime))
   void $ H.query' cpDate unit $ H.action $ left <<< (SetValue (date dateTime))
-  H.raise (NotifyChange dateTime)
   pure next
 evalPicker (GetValue next) = do
   H.gets _.dateTime <#> next
