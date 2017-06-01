@@ -28,7 +28,7 @@ import Data.Int as Int
 
 data DateQuery a = UpdateCommand F.Command String a
 
-type Query = Coproduct (PickerQuery Date) DateQuery
+type Query = Coproduct (PickerQuery Unit Date) DateQuery
 type Message = PickerMessage Date
 type State =
   { format :: F.Format
@@ -89,9 +89,8 @@ updateTime F.DayOfMonth n t = (toEnum n) >>= (_ `setDay` t)
 updateTime (F.Placeholder _) _ t = pure t
 
 
-evalPicker ∷ ∀ m . (PickerQuery Date) ~> DSL m
+evalPicker ∷ ∀ m . (PickerQuery Unit Date) ~> DSL m
 evalPicker (SetValue date next) = do
   H.modify _{ date = date }
-  pure next
-evalPicker (GetValue next) = do
-  H.gets _.date <#> next
+  pure $ next unit
+evalPicker (GetValue next) = H.gets _.date <#> next

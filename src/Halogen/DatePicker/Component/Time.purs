@@ -32,7 +32,7 @@ import Data.Int as Int
 
 data TimeQuery a = UpdateCommand F.Command String a
 
-type Query = Coproduct (PickerQuery Time) TimeQuery
+type Query = Coproduct (PickerQuery Unit Time) TimeQuery
 type Message = PickerMessage Time
 type State =
   { format :: F.Format
@@ -96,9 +96,8 @@ updateTime F.MillisecondsTwoDigits n t = toEnum n >>= (_ `setMillisecond2` t)
 updateTime F.MillisecondsShort n t = toEnum n >>= (_ `setMillisecond1` t)
 updateTime (F.Placeholder _) _ t = pure t
 
-evalPicker ∷ ∀ m . (PickerQuery Time) ~> DSL m
+evalPicker ∷ ∀ m . (PickerQuery Unit Time) ~> DSL m
 evalPicker (SetValue time next) = do
   H.modify _{ time = time }
-  pure next
-evalPicker (GetValue next) = do
-  H.gets _.time <#> next
+  pure $ next unit
+evalPicker (GetValue next) = H.gets _.time <#> next

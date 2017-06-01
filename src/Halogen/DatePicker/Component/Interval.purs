@@ -10,26 +10,28 @@ import Halogen.Datapicker.Component.Duration.Format as DurationF
 import Halogen.Datapicker.Component.Interval.Format as F
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Data.Bifunctor (bimap, lmap)
+import Data.Bifunctor (class Bifunctor, bimap, lmap)
 import Data.DateTime (DateTime)
 import Data.Either.Nested (Either2)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Interval (Interval(..), IsoDuration)
-import Data.Maybe (Maybe(..))
-import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
+import Data.Maybe (Maybe(..), fromJust)
+import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), mustBeMounted)
+import Partial.Unsafe (unsafePartialBecause)
 
-type FullInterval = Interval IsoDuration DateTime
+type Input = Interval IsoDuration DateTime
+data IntervalError = IntervalIsNotInShapeOfFormat
 
 data IntervalQuery a
   = HandleDurationMessage Duration.Message a
   | HandleDateTimeMessage Boolean DateTime.Message a
 
-type Query = Coproduct (PickerQuery FullInterval) IntervalQuery
-type Message = PickerMessage (FullInterval)
+type Query = Coproduct (PickerQuery (Maybe IntervalError) Input) IntervalQuery
+type Message = PickerMessage (Input)
 type State =
   { format :: F.Format
-  , interval :: FullInterval
+  , interval :: Input
   }
 
 type ChildQuery = Coproduct2 Duration.Query DateTime.Query
@@ -45,7 +47,7 @@ type HTML m = H.ParentHTML IntervalQuery ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
 
-picker ∷ ∀ m. F.Format -> FullInterval -> H.Component HH.HTML Query Unit Message m
+picker ∷ ∀ m. F.Format -> Input -> H.Component HH.HTML Query Unit Message m
 picker format interval = H.parentComponent
   { initialState: const $ {format, interval}
   , render: render >>> bimap (map right) right
@@ -104,25 +106,26 @@ evalInterval (HandleDurationMessage msg next) = do
   pure next
 
 
--- toShape = bimap (const unit) (const unit)
+toShape :: forall f a b. Bifunctor f => f a b -> f Unit Unit
+toShape = bimap (const unit) (const unit)
 
-evalPicker ∷ ∀ m . (PickerQuery FullInterval) ~> DSL m
-evalPicker (SetValue intervalNew next) = do
-  {interval} <- H.get
-  -- TODO reis error if new interval has no shape of old one (or format)?
-  -- guard (toShape interval /= toShape intervalNew)
+evalPicker ∷ ∀ m . (PickerQuery (Maybe IntervalError) Input) ~> DSL m
+evalPicker (SetValue interval next) = do
+  {format} <- H.get
+  if (toShape format /= toShape interval)
+    then pure $ next $ Just IntervalIsNotInShapeOfFormat
+    else do
+      H.modify _{ interval = interval }
+      case interval of
+        StartEnd a b -> setDateTime false a *> setDateTime true b
+        DurationEnd d a -> setDuration d *> setDateTime false a
+        StartDuration a d -> setDateTime false a *> setDuration d
+        JustDuration d -> setDuration d
+      pure $ next Nothing
+evalPicker (GetValue next) = H.gets _.interval <#> next
 
-  H.modify _{ interval = intervalNew }
-  case intervalNew of
-    StartEnd a b -> setDateTime false a *> setDateTime true b
-    DurationEnd d a -> setDuration d *> setDateTime false a
-    StartDuration a d -> setDateTime false a *> setDuration d
-    JustDuration d -> setDuration d
-  pure next
-  where
-  setDuration :: IsoDuration -> DSL m Unit
-  setDuration val = void $ H.query' cpDuration unit $ H.action $ left <<< (SetValue val)
-  setDateTime :: Boolean -> DateTime -> DSL m Unit
-  setDateTime idx val = void $ H.query' cpDateTime idx $ H.action $ left <<< (SetValue val)
-evalPicker (GetValue next) = do
-  H.gets _.interval <#> next
+setDuration :: ∀ m. IsoDuration -> DSL m Unit
+setDuration val = map mustBeMounted $ H.query' cpDuration unit $ H.request $ left <<< (SetValue val)
+
+setDateTime :: ∀ m. Boolean -> DateTime -> DSL m Unit
+setDateTime idx val = map mustBeMounted $ H.query' cpDateTime idx $ H.request $ left <<< (SetValue val)

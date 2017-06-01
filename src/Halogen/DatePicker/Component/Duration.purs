@@ -22,7 +22,7 @@ import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 
 data DurationQuery a = UpdateCommand F.Command String a
 
-type Query = Coproduct (PickerQuery IsoDuration) DurationQuery
+type Query = Coproduct (PickerQuery Unit IsoDuration) DurationQuery
 type Message = PickerMessage IsoDuration
 
 type State =
@@ -76,9 +76,8 @@ evalDuration (UpdateCommand cmd val next) = do
     Nothing -> D.traceAnyA {duration, cmd, val, msg: "apply of the change produced invlaid ISO duration"}
   pure next
 
-evalPicker ∷ ∀ m . (PickerQuery IsoDuration) ~> DSL m
+evalPicker ∷ ∀ m . (PickerQuery Unit IsoDuration) ~> DSL m
 evalPicker (SetValue duration next) = do
   H.modify _{ duration = duration }
-  pure next
-evalPicker (GetValue next) = do
-  H.gets _.duration <#> next
+  pure $ next unit
+evalPicker (GetValue next) = H.gets _.duration <#> next

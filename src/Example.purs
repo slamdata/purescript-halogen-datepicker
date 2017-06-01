@@ -1,6 +1,7 @@
 module Example where
 
 import Prelude
+import Debug.Trace as D
 import Data.Either.Nested as Either
 import Data.Functor.Coproduct.Nested as Coproduct
 import Data.Interval as I
@@ -30,8 +31,8 @@ import Data.Map (Map, lookup, insert)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Monoid (mempty)
 import Data.Time (Time, setHour, setMinute)
-import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
-import Partial.Unsafe (unsafePartial)
+import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), mustBeMounted)
+import Partial.Unsafe (unsafePartial, unsafePartialBecause)
 
 type TimeIdx = Int
 type DateIdx = Int
@@ -212,12 +213,14 @@ main =
 
   eval ∷ Query ~> DSL m
   eval (Set payload next) = do
-    void $ case payload of
-      SetTime     idx val -> H.query' timeConfig.cp     idx $ H.action $ left <<< (SetValue val)
-      SetDate     idx val -> H.query' dateConfig.cp     idx $ H.action $ left <<< (SetValue val)
-      SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.action $ left <<< (SetValue val)
-      SetDuration idx val -> H.query' durationConfig.cp idx $ H.action $ left <<< (SetValue val)
-      SetInterval idx val -> H.query' intervalConfig.cp idx $ H.action $ left <<< (SetValue val)
+    map mustBeMounted $ case payload of
+      SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< (SetValue val)
+      SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< (SetValue val)
+      SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.request $ left <<< (SetValue val)
+      SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< (SetValue val)
+      SetInterval idx val -> do
+        res <- H.query' intervalConfig.cp idx $ H.request $ left <<< (SetValue val)
+        pure $ void $ res <#> (\error ->  D.traceAny {message:"can't update interval", error})
     pure next
   eval (HandleMessage payload next) = do
     case payload of
@@ -227,6 +230,7 @@ main =
       MsgDuration idx (NotifyChange val) -> H.modify \s -> s {durations = insert idx (show val) s.durations}
       MsgInterval idx (NotifyChange val) -> H.modify \s -> s {intervals = insert idx (show val) s.intervals}
     pure next
+
 
 
 type ExampleConfig fmtInput input fmt query out m =
