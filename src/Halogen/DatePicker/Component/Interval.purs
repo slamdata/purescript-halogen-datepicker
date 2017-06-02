@@ -10,6 +10,7 @@ import Halogen.Datapicker.Component.Duration.Format as DurationF
 import Halogen.Datapicker.Component.Interval.Format as F
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Data.Bifunctor (class Bifunctor, bimap, lmap)
 import Data.DateTime (DateTime)
 import Data.Either.Nested (Either2)
@@ -17,6 +18,7 @@ import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Interval (Interval(..), IsoDuration)
 import Data.Maybe (Maybe(..), fromJust)
+import Halogen.Datapicker.Component.Internal.Elements (textElement)
 import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), mustBeMounted)
 import Partial.Unsafe (unsafePartialBecause)
 
@@ -56,21 +58,21 @@ picker format interval = H.parentComponent
   }
 
 render ∷ ∀ m. State -> HTML m
-render {interval, format} = HH.ul_ $ case format, interval of
+render {interval, format} = HH.div [HP.classes [HH.ClassName "Picker"]] $ case format, interval of
   StartEnd fmtStart fmtEnd, StartEnd start end ->
-    [ HH.li_ [renderDateTime fmtStart start false]
-    , HH.li_ [HH.text "/"]
-    , HH.li_ [renderDateTime fmtEnd end true]]
+    [ HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDateTime fmtStart start false
+    , HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ textElement { text: "/" }
+    , HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDateTime fmtEnd end true]
   DurationEnd fmtDuration fmtEnd, DurationEnd duration end ->
-    [ HH.li_ [renderDuration fmtDuration duration]
-    , HH.li_ [HH.text "/"]
-    , HH.li_ [renderDateTime fmtEnd end false]]
+    [ HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDuration fmtDuration duration
+    , HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ textElement { text: "/" }
+    , HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDateTime fmtEnd end false]
   StartDuration fmtStart fmtDuration, StartDuration start duration ->
-    [ HH.li_ [renderDateTime fmtStart start false]
-    , HH.li_ [HH.text "/"]
-    , HH.li_ [renderDuration fmtDuration duration]]
+    [ HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDateTime fmtStart start false
+    , HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ textElement { text: "/" }
+    , HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDuration fmtDuration duration]
   JustDuration fmtDuration, JustDuration duration ->
-    [ HH.li_ [renderDuration fmtDuration duration]]
+    [ HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDuration fmtDuration duration]
   _ , _ -> [HH.text "can't render invalid value"]
 
 renderDuration :: ∀ m. DurationF.Format -> IsoDuration -> HTML m

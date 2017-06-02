@@ -1,30 +1,22 @@
 module Halogen.Datapicker.Component.Date where
 
 import Prelude
-import Debug.Trace as D
-
-import Data.Enum (toEnum)
-import Halogen.Datapicker.Component.Internal.Enums
-  ( setYear4
-  , setYear2
-  , setYear
-  , setMonth
-  , setDay
-  , monthShort
-  , year4
-  , year2
-  )
-import Halogen.Datapicker.Component.Internal.Elements (textElement, enumElement, choiceElement)
-import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
-import Data.Date (Date, day, month, year)
-import Data.Newtype (unwrap)
-import Data.Foldable (foldMap)
-import Data.Maybe (Maybe(..))
-import Data.Functor.Coproduct (Coproduct, coproduct, right)
-import Halogen.Datapicker.Component.Date.Format as F
-import Halogen as H
-import Halogen.HTML as HH
 import Data.Int as Int
+import Debug.Trace as D
+import Halogen as H
+import Halogen.Datapicker.Component.Date.Format as F
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Data.Date (Date, day, month, year)
+import Data.Enum (toEnum)
+import Data.Foldable (foldMap)
+import Data.Functor.Coproduct (Coproduct, coproduct, right)
+import Data.Maybe (Maybe(..))
+import Data.Newtype (unwrap)
+import Data.String (Pattern(..), Replacement(..), replaceAll)
+import Halogen.Datapicker.Component.Internal.Elements (textElement, enumElement, choiceElement)
+import Halogen.Datapicker.Component.Internal.Enums (setYear4, setYear2, setYear, setMonth, setDay, monthShort, year4, year2)
+import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 
 data DateQuery a = UpdateCommand F.Command String a
 
@@ -47,9 +39,10 @@ picker format date = H.component
   }
 
 render ∷ State -> HTML
-render {date, format} = HH.ul_ $ foldMap (pure <<< f) (unwrap format)
+render {date, format} = HH.ul [HP.classes [HH.ClassName "Picker"]] $
+  foldMap (pure <<< f) (unwrap format)
   where
-  f cmd = HH.li_ [renderCommand date cmd]
+  f cmd = HH.li [HP.classes [HH.ClassName "Picker-component"]] [renderCommand date cmd]
 
 renderCommand :: Date -> F.Command -> HTML
 renderCommand t cmd@F.YearFull            = enumElement (UpdateCommand cmd) { title: "Year" } (year4 t)
@@ -61,6 +54,7 @@ renderCommand t cmd@F.MonthTwoDigits      = enumElement (UpdateCommand cmd) { ti
 renderCommand t cmd@F.DayOfMonthTwoDigits = enumElement (UpdateCommand cmd) { title: "Day" } (day t)
 renderCommand t cmd@F.DayOfMonth          = enumElement (UpdateCommand cmd) { title: "Day" } (day t)
 renderCommand _ (F.Placeholder str)       = textElement { text: str}
+-- renderCommand _ (F.Placeholder str)       = textElement { text: replaceAll (Pattern " ") (Replacement "&nbsp") str}
 
 
 -- TODO switch to Validation/Either instead of Maybe to

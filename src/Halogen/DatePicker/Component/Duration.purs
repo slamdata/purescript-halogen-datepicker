@@ -5,6 +5,7 @@ import Debug.Trace as D
 import Halogen as H
 import Halogen.Datapicker.Component.Duration.Format as F
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Data.Foldable (foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Data.Interval (Duration, IsoDuration, mkIsoDuration, unIsoDuration)
@@ -14,10 +15,6 @@ import Data.Number (fromString)
 import Data.String (Pattern(..), stripSuffix)
 import Halogen.Datapicker.Component.Internal.Elements (numberElement, minRange)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
--- import Halogen.Datapicker.Component.Time as Time
--- import Halogen.Datapicker.Component.Date as Date
--- import Halogen.Datapicker.Component.Time.Format as TimeF
--- import Halogen.Datapicker.Component.Date.Format as DateF
 
 
 data DurationQuery a = UpdateCommand F.Command String a
@@ -44,9 +41,10 @@ picker format duration = H.component
   }
 
 render ∷ State -> HTML
-render {duration, format} = HH.ul_ $ foldMap (pure <<< f) (unwrap format)
+render {duration, format} = HH.ul [HP.classes [HH.ClassName "Picker"]] $
+  foldMap (pure <<< f) (unwrap format)
   where
-  f cmd = HH.li_ [renderCommand duration cmd]
+  f cmd = HH.li [HP.classes [HH.ClassName "Picker-component"]] [renderCommand duration cmd]
 
 renderCommand :: IsoDuration -> F.Command -> HTML
 renderCommand d cmd =

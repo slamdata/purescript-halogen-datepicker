@@ -1,34 +1,21 @@
 module Halogen.Datapicker.Component.Time where
 
 import Prelude
-import Debug.Trace as D
-import Halogen.Datapicker.Component.Internal.Enums
-  ( hour12
-  , meridiem
-  , millisecond2
-  , millisecond1
-  , setHour12
-  , setMeridiem
-  , setMillisecond2
-  , setMillisecond1
-  )
-
-import Halogen.Datapicker.Component.Internal.Elements (textElement, enumElement, choiceElement)
-import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
-import Data.Time
-  ( Time
-  , second, minute, hour, millisecond
-  , setSecond, setMinute, setHour, setMillisecond
-  )
-import Data.Newtype (unwrap)
-import Data.Foldable (foldMap)
-import Data.Maybe (Maybe(..))
-import Data.Enum (toEnum)
-import Data.Functor.Coproduct (Coproduct, coproduct, right)
-import Halogen.Datapicker.Component.Time.Format as F
-import Halogen as H
-import Halogen.HTML as HH
 import Data.Int as Int
+import Debug.Trace as D
+import Halogen as H
+import Halogen.Datapicker.Component.Time.Format as F
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Data.Enum (toEnum)
+import Data.Foldable (foldMap)
+import Data.Functor.Coproduct (Coproduct, coproduct, right)
+import Data.Maybe (Maybe(..))
+import Data.Newtype (unwrap)
+import Data.Time (Time, hour, millisecond, minute, second, setHour, setMillisecond, setMinute, setSecond)
+import Halogen.Datapicker.Component.Internal.Elements (textElement, enumElement, choiceElement)
+import Halogen.Datapicker.Component.Internal.Enums (hour12, meridiem, millisecond2, millisecond1, setHour12, setMeridiem, setMillisecond2, setMillisecond1)
+import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 
 data TimeQuery a = UpdateCommand F.Command String a
 
@@ -51,9 +38,10 @@ picker format time = H.component
   }
 
 render ∷ State -> HTML
-render {time, format} = HH.ul_ $ foldMap (pure <<< f) (unwrap format)
+render {time, format} = HH.ul [HP.classes [HH.ClassName "Picker"]] $
+  foldMap (pure <<< f) (unwrap format)
   where
-  f cmd = HH.li_ [renderCommand time cmd]
+  f cmd = HH.li [HP.classes [HH.ClassName "Picker-component"]] [renderCommand time cmd]
 
 renderCommand :: Time -> F.Command -> HTML
 renderCommand t cmd@F.Hours24               = enumElement (UpdateCommand cmd) { title: "Hours"} (hour t)

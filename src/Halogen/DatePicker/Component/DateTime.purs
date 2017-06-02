@@ -8,6 +8,7 @@ import Halogen.Datapicker.Component.DateTime.Format as F
 import Halogen.Datapicker.Component.Time as Time
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Data.Bifunctor (bimap)
 import Data.DateTime (DateTime, date, modifyDate, modifyTime, time)
 import Data.Either.Nested (Either2)
@@ -54,9 +55,8 @@ picker format dateTime = H.parentComponent
   }
 
 render ∷ ∀ m. State -> HTML m
-render {dateTime, format} = HH.ul_ $ foldMap (pure <<< f) (unwrap format)
-  where
-  f cmd = HH.li_ [renderCommand dateTime cmd]
+render {dateTime, format} = HH.div [HP.classes [HH.ClassName "Picker"]] $
+  foldMap (pure <<< renderCommand dateTime) (unwrap format)
 
 renderCommand :: ∀ m. DateTime -> F.Command -> HTML m
 renderCommand t cmd@(F.Time fmt) = HH.slot' cpTime unit (Time.picker fmt (time t)) unit (HE.input HandleTimeMessage)

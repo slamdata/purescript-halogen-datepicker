@@ -1,14 +1,18 @@
 module Halogen.Datapicker.Component.Internal.Elements where
 
 import Prelude
+import CSS as CSS
 import Data.Int as Int
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Control.Alternative (class Alternative, empty)
 import Data.Enum (class BoundedEnum, fromEnum, upFrom)
+import Data.Int (toNumber)
 import Data.Maybe (Maybe(..))
+import Data.String (length)
 import Data.These (These(..), theseRight, theseLeft)
 
 --TODO parse `String` into `a` here and only invoke query if it's is valid
@@ -66,6 +70,13 @@ numberElement query {title, range} value = HH.input $
   ]
   <> (rangeMin range <#> HP.min # toAlt)
   <> (rangeMax range <#> HP.max # toAlt)
+  <> styles
+  where
+  -- if there is no min or max prop then element will not have proper sizing so we set
+  -- `(2 + {number of characters in value})ch` as it's width so it's not taking too much space
+  styles = case range of
+    Both _ _ -> []
+    _ -> [HCSS.style $ CSS.width (CSS.Size (CSS.value (toNumber $ length value + 2) <> CSS.fromString "ch"))]
 
 -- TODO parse `String` into `a` here and only invoke query if it's is valid
 choiceElement :: ∀ query a
@@ -86,5 +97,5 @@ choiceElement query {title} val = HH.select
     ]
     [ HH.text $ show val' ]
 
-textElement :: ∀ query. {text :: String} -> H.ComponentHTML query
-textElement {text} = HH.span_ [HH.text text]
+textElement :: ∀ p i. {text :: String} -> H.HTML p i
+textElement {text} = HH.span [HP.classes [HH.ClassName "Picker-placeholder"]] [HH.text text]

@@ -8,14 +8,23 @@
         max-width: 570px;
         margin: auto;
       }
-      ul {
+      .Picker {
         list-style: none;
         padding: 0;
-        margin: 20px 0 5px;
+        margin: 20px 0 0.5ch;
       }
-      li {
-        margin-right: 5px;
+      .Picker .Picker {
+        margin: 0;
         display: inline-block;
+      }
+      .Picker-component {
+        display: inline-block;
+      }
+      .Picker-component + .Picker-component {
+        margin-left: 0.5ch;
+      }
+      .Picker-placeholder {
+        white-space: pre;
       }
       input, button {
         font-family: sans-serif;
