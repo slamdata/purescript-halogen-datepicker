@@ -32,7 +32,7 @@ import Data.Maybe (Maybe(..), fromJust)
 import Data.Monoid (mempty)
 import Data.Time (Time, setHour, setMinute)
 import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), mustBeMounted)
-import Partial.Unsafe (unsafePartial, unsafePartialBecause)
+import Partial.Unsafe (unsafePartial)
 
 type TimeIdx = Int
 type DateIdx = Int

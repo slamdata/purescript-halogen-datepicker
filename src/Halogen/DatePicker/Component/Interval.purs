@@ -17,10 +17,9 @@ import Data.Either.Nested (Either2)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Interval (Interval(..), IsoDuration)
-import Data.Maybe (Maybe(..), fromJust)
+import Data.Maybe (Maybe(..))
 import Halogen.Datapicker.Component.Internal.Elements (textElement)
 import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), mustBeMounted)
-import Partial.Unsafe (unsafePartialBecause)
 
 type Input = Interval IsoDuration DateTime
 data IntervalError = IntervalIsNotInShapeOfFormat

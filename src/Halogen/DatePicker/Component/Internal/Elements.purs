@@ -31,6 +31,7 @@ enumElement q {title} val =
     , range: minmaxRange
         (Int.toNumber $ fromEnum (bottom :: a))
         (Int.toNumber $ fromEnum (top :: a))
+    , invalid: false
     }
     (show $ fromEnum val)
 
@@ -59,11 +60,12 @@ toAlt Nothing = empty
 
 numberElement :: ∀ query
   . (∀ b. String -> b -> query b)
-  -> {title :: String, range :: Range Number}
+  -> {title :: String, range :: Range Number, invalid :: Boolean}
   -> String
   -> H.ComponentHTML query
-numberElement query {title, range} value = HH.input $
+numberElement query {title, range, invalid} value = HH.input $
   [ HP.type_ HP.InputNumber
+  , HP.classes ([HH.ClassName "Picker-input"] <> if invalid then [HH.ClassName "Picker-input--invalid"] else [])
   , HP.title title
   , HP.value $ value
   , HE.onValueInput $ HE.input query
@@ -73,10 +75,11 @@ numberElement query {title, range} value = HH.input $
   <> styles
   where
   -- if there is no min or max prop then element will not have proper sizing so we set
-  -- `(2 + {number of characters in value})ch` as it's width so it's not taking too much space
+  -- `(3 + {number of characters in value})ch` as it's width so it's not taking too much space
+  -- (2 for increment/decrement buttons and 1 for extra free space)
   styles = case range of
     Both _ _ -> []
-    _ -> [HCSS.style $ CSS.width (CSS.Size (CSS.value (toNumber $ length value + 2) <> CSS.fromString "ch"))]
+    _ -> [HCSS.style $ CSS.width (CSS.Size (CSS.value (toNumber $ length value + 3) <> CSS.fromString "ch"))]
 
 -- TODO parse `String` into `a` here and only invoke query if it's is valid
 choiceElement :: ∀ query a

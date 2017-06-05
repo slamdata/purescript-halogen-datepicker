@@ -13,6 +13,9 @@
         padding: 0;
         margin: 20px 0 0.5ch;
       }
+      .Picker--invalid {
+        color: red;
+      }
       .Picker .Picker {
         margin: 0;
         display: inline-block;
@@ -20,8 +23,15 @@
       .Picker-component {
         display: inline-block;
       }
-      .Picker-component + .Picker-component {
+      .Picker-component + .Picker-component,
+      .Picker .Picker + .Picker {
         margin-left: 0.5ch;
+      }
+      .Picker-input {
+        color: inherit;
+      }
+      .Picker-input--invalid {
+        color: red
       }
       .Picker-placeholder {
         white-space: pre;
