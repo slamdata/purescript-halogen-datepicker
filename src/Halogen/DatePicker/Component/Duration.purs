@@ -93,7 +93,7 @@ renderCommand cmd num =
     { title: show cmd
     , range: minRange 0.0
     }
-    (maybe (Tuple (Just 0.0) "0") id num)
+    (maybe zeroNumberInputValue id num)
 
 getComponent :: F.Command -> IsoDuration -> Number
 getComponent cmd d = maybe 0.0 id $ F.toGetter cmd (unIsoDuration d)
