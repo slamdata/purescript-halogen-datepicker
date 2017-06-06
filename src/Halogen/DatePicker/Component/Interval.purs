@@ -13,6 +13,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Data.Bifunctor (class Bifunctor, bimap, lmap)
 import Data.DateTime (DateTime)
+import Data.Either (Either(..))
 import Data.Either.Nested (Either2)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
@@ -101,8 +102,8 @@ evalInterval (HandleDurationMessage msg next) = do
   {interval} <- H.get
   let
     newInterval = case msg of
-      NotifyChange (Just newDuration) -> lmap (const newDuration) interval
-      NotifyChange Nothing -> interval -- TODO wrap Interval in Maybe here too
+      NotifyChange (Just (Right newDuration)) -> lmap (const newDuration) interval
+      NotifyChange _ -> interval -- TODO wrap Interval in Maybe here too
   H.modify _{ interval = newInterval }
   H.raise (NotifyChange newInterval)
   pure next
@@ -127,7 +128,7 @@ evalPicker (SetValue interval next) = do
 evalPicker (GetValue next) = H.gets _.interval <#> next
 
 setDuration :: ∀ m. IsoDuration -> DSL m Unit
-setDuration val = map mustBeMounted $ H.query' cpDuration unit $ H.request $ left <<< (SetValue (Just val))
+setDuration val = map mustBeMounted $ H.query' cpDuration unit $ H.request $ left <<< (SetValue (Just $ Right val))
 
 setDateTime :: ∀ m. Boolean -> DateTime -> DSL m Unit
 setDateTime idx val = map mustBeMounted $ H.query' cpDateTime idx $ H.request $ left <<< (SetValue val)

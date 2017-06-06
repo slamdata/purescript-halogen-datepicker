@@ -1,10 +1,10 @@
 module Example where
 
 import Prelude
-import Debug.Trace as D
 import Data.Either.Nested as Either
 import Data.Functor.Coproduct.Nested as Coproduct
 import Data.Interval as I
+import Debug.Trace as D
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.Datapicker.Component.Date as Date
@@ -217,7 +217,8 @@ main =
       SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< (SetValue val)
       SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< (SetValue val)
       SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.request $ left <<< (SetValue val)
-      SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< (SetValue (Just val))
+      SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< (SetValue (Nothing))
+      -- SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< (SetValue (Just $ Right val))
       SetInterval idx val -> do
         res <- H.query' intervalConfig.cp idx $ H.request $ left <<< (SetValue val)
         pure $ void $ res <#> (\error ->  D.traceAny {message:"can't update interval", error})

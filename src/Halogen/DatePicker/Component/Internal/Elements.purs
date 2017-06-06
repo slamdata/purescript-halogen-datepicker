@@ -79,7 +79,8 @@ showNum 0.0 = "0"
 showNum n = let str = show n
   in maybe str id (stripSuffix (Pattern ".0") str)
 
-
+-- TODO manually  validate if number is in the range as for example
+-- if `min = 0` user still can enter negative values
 numberElement :: ∀ query
   . (∀ b. NumberInputValue -> b -> query b)
   -> {title :: String, range :: Range Number}

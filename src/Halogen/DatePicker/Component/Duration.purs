@@ -7,30 +7,41 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Control.MonadPlus (guard)
 import Data.Array (fold)
+import Data.Either (Either(..))
 import Data.Foldable (foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
 import Data.Interval (Duration, IsoDuration, mkIsoDuration, unIsoDuration)
 import Data.List (List)
-import Data.Map (Map, empty, fromFoldable, insert, isEmpty, lookup, toUnfoldable)
-import Data.Maybe (Maybe(..), isNothing, maybe)
+import Data.Map (Map, empty, fromFoldable, insert, lookup, toUnfoldable)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (mempty)
 import Data.Monoid.Endo (Endo(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 import Halogen.Datapicker.Component.Internal.Elements (NumberInputValue, emptyNumberInputValue, minRange, mkNumberInputValue, num, numberElement, zeroNumberInputValue)
-import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
+import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..), PickerValue, isInvalid, value)
 
 
 data DurationQuery a = UpdateCommand F.Command NumberInputValue a
 
-type Query = Coproduct (PickerQuery Unit (Maybe IsoDuration)) DurationQuery
-type Message = PickerMessage (Maybe IsoDuration)
+type QueryIn = PickerQuery Unit (PickerValue DurationError IsoDuration)
+type Query = Coproduct QueryIn DurationQuery
+type Message = PickerMessage (PickerValue DurationError IsoDuration)
+
+data DurationError = InvalidIsoDuration
+derive instance durationErrorGeneric :: Generic DurationError _
+derive instance durationErrorEq :: Eq DurationError
+derive instance durationErrorOrd :: Ord DurationError
+instance durationErrorShow :: Show DurationError where
+  show = genericShow
 
 type Values = Map F.Command NumberInputValue
 type State =
   { format :: F.Format
-  , duration :: Maybe IsoDuration
+  , duration :: PickerValue DurationError IsoDuration
   , vals :: Values
   }
 
@@ -56,7 +67,7 @@ durationToVals vals format isoDuration = cleanVals
 
 picker ∷ ∀ m. F.Format -> IsoDuration -> H.Component HH.HTML Query Unit Message m
 picker format duration = H.component
-  { initialState: const $ {format, duration: Just duration, vals: durationToVals empty format (Just duration)}
+  { initialState: const $ {format, duration: Just (Right duration), vals: durationToVals empty format (Just duration)}
   , render: render <#> (map right)
   , eval: coproduct evalPicker evalDuration
   , receiver: const Nothing
@@ -67,7 +78,7 @@ render s =
   HH.ul
     [ HP.classes $
       [ HH.ClassName "Picker" ]
-      <> (guard (isNothing s.duration) $> HH.ClassName "Picker--invalid")
+      <> (guard (isInvalid s.duration) $> HH.ClassName "Picker--invalid")
     ]
     (foldMap (pure <<< f) (unwrap s.format))
   where
@@ -108,17 +119,22 @@ evalDuration (UpdateCommand cmd val next) = do
   s <- H.get
   let
     vals' = insert cmd val s.vals
-    nextDuration = case s.duration of
+    durationValue = value s.duration
+    nextDurationValue = case durationValue of
       Nothing -> buildDuration vals'
       Just duration' -> (num val) >>= \n -> overIsoDuration (applyChange cmd n) duration'
-    vals'' = durationToVals vals' s.format nextDuration
+    vals'' = durationToVals vals' s.format nextDurationValue
+    nextDuration = case s.duration, nextDurationValue of
+      _, Just x -> Just (Right x)
+      Just _, Nothing -> Just (Left InvalidIsoDuration)
+      Nothing, Nothing -> Nothing
   H.modify _{duration = nextDuration, vals = vals''}
   when (nextDuration /= s.duration) $ H.raise (NotifyChange nextDuration)
   pure next
 
 
-evalPicker ∷ ∀ m . (PickerQuery Unit (Maybe IsoDuration)) ~> DSL m
+evalPicker ∷ ∀ m . QueryIn ~> DSL m
 evalPicker (SetValue duration next) = do
-  H.modify \s -> s{duration = duration, vals = durationToVals empty s.format duration}
+  H.modify \s -> s{duration = duration, vals = durationToVals empty s.format (value duration)}
   pure $ next unit
 evalPicker (GetValue next) = H.gets _.duration <#> next
