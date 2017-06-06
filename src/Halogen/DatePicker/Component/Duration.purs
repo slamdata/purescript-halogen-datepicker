@@ -1,51 +1,62 @@
 module Halogen.Datapicker.Component.Duration where
 
 import Prelude
-import Debug.Trace as D
 import Halogen as H
 import Halogen.Datapicker.Component.Duration.Format as F
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Control.MonadPlus (guard)
-import Data.Either (Either(Right, Left), either)
-import Data.Foldable (foldMap, foldl)
+import Data.Array (fold)
+import Data.Foldable (foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Data.Interval (Duration, IsoDuration, mkIsoDuration, unIsoDuration)
 import Data.List (List)
-import Data.Map (Map, empty, insert, isEmpty, lookup, member, toUnfoldable)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Map (Map, empty, fromFoldable, insert, isEmpty, lookup, toUnfoldable)
+import Data.Maybe (Maybe(..), isNothing, maybe)
 import Data.Monoid (mempty)
 import Data.Monoid.Endo (Endo(..))
 import Data.Newtype (unwrap)
-import Data.Number (fromString)
-import Data.String (Pattern(..), stripSuffix)
+import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-import Halogen.Datapicker.Component.Internal.Elements (numberElement, minRange)
+import Halogen.Datapicker.Component.Internal.Elements (NumberInputValue, emptyNumberInputValue, minRange, mkNumberInputValue, num, numberElement, zeroNumberInputValue)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 
 
-data DurationQuery a = UpdateCommand F.Command String a
+data DurationQuery a = UpdateCommand F.Command NumberInputValue a
 
-type Query = Coproduct (PickerQuery Unit IsoDuration) DurationQuery
-type Message = PickerMessage IsoDuration
+type Query = Coproduct (PickerQuery Unit (Maybe IsoDuration)) DurationQuery
+type Message = PickerMessage (Maybe IsoDuration)
 
-type TempChange = Either Number String
-type TempChanges = Map F.Command TempChange
+type Values = Map F.Command NumberInputValue
 type State =
   { format :: F.Format
-  , duration :: IsoDuration
-  , temp :: TempChanges
+  , duration :: Maybe IsoDuration
+  , vals :: Values
   }
 
 
 type DSL = H.ComponentDSL State Query Message
 type HTML = H.ComponentHTML DurationQuery
 
-
+durationToVals :: Values -> F.Format -> Maybe IsoDuration -> Values
+durationToVals vals format isoDuration = cleanVals
+  where
+  cleanVals :: Values
+  cleanVals =  fromFoldable $ unwrap format <#> mapper (map unIsoDuration isoDuration)
+  mapper :: Maybe Duration -> F.Command -> Tuple F.Command NumberInputValue
+  mapper Nothing cmd = Tuple cmd $ maybe
+    emptyNumberInputValue
+    id
+    (lookup cmd vals)
+  mapper (Just duration) cmd = Tuple cmd $ case lookup cmd vals, F.toGetter cmd duration of
+    Just old, Just new -> if num old == Just new then old else mkNumberInputValue new
+    Just old, Nothing -> old
+    Nothing, Just new -> mkNumberInputValue new
+    Nothing, Nothing -> zeroNumberInputValue
 
 picker ∷ ∀ m. F.Format -> IsoDuration -> H.Component HH.HTML Query Unit Message m
 picker format duration = H.component
-  { initialState: const {format, duration, temp: empty}
+  { initialState: const $ {format, duration: Just duration, vals: durationToVals empty format (Just duration)}
   , render: render <#> (map right)
   , eval: coproduct evalPicker evalDuration
   , receiver: const Nothing
@@ -56,38 +67,22 @@ render s =
   HH.ul
     [ HP.classes $
       [ HH.ClassName "Picker" ]
-      <> (guard invalids.form $> HH.ClassName "Picker--invalid")
+      <> (guard (isNothing s.duration) $> HH.ClassName "Picker--invalid")
     ]
     (foldMap (pure <<< f) (unwrap s.format))
   where
-  invalids :: {form :: Boolean, commands :: Map F.Command Unit}
-  invalids = case applyTemp s.temp s.duration of
-    Left commands -> {form : isEmpty commands, commands}
-    Right       _ -> {form : false, commands: empty}
   f cmd = HH.li
     [ HP.classes [ HH.ClassName "Picker-component" ] ]
-    [ renderCommand
-      numStr
-      (member cmd invalids.commands)
-      cmd ]
-    where
-    invalidNumber = lookup cmd s.temp >>= either Just (const Nothing)
-    numStr = showNum $ maybe (getComponent cmd s.duration) id invalidNumber
+    [renderCommand cmd (lookup cmd s.vals)]
 
-renderCommand :: String -> Boolean -> F.Command -> HTML
-renderCommand num isInvalid cmd =
+renderCommand :: F.Command -> Maybe NumberInputValue -> HTML
+renderCommand cmd num =
   numberElement
     (UpdateCommand cmd)
     { title: show cmd
     , range: minRange 0.0
-    , invalid: isInvalid
     }
-    num
-
-showNum :: Number -> String
-showNum 0.0 = "0"
-showNum n = let str = show n
-  in maybe str id (stripSuffix (Pattern ".0") str)
+    (maybe (Tuple (Just 0.0) "0") id num)
 
 getComponent :: F.Command -> IsoDuration -> Number
 getComponent cmd d = maybe 0.0 id $ F.toGetter cmd (unIsoDuration d)
@@ -95,39 +90,35 @@ getComponent cmd d = maybe 0.0 id $ F.toGetter cmd (unIsoDuration d)
 applyChange :: F.Command -> Number -> Duration -> Duration
 applyChange cmd val dur = F.toSetter cmd val dur
 
-type PartitionStep = Tuple (Map F.Command Unit) (Endo Duration)
+overIsoDuration :: (Duration -> Duration) -> IsoDuration -> Maybe IsoDuration
+overIsoDuration f d = mkIsoDuration $ f $ unIsoDuration d
 
-applyTemp
-  ∷ TempChanges
-  → IsoDuration
-  → Either (Map F.Command Unit) IsoDuration
-applyTemp temp duration = case parts of
-  Tuple invalids (Endo durFunc) -> if isEmpty invalids
-    then maybe (Left invalids) Right (mkIsoDuration $ durFunc $ unIsoDuration duration)
-    else Left invalids
+buildDuration :: Map F.Command NumberInputValue -> Maybe IsoDuration
+buildDuration vals =
+  mbEndo >>= (\(Endo f) -> mkIsoDuration $ f mempty)
   where
-  parts :: PartitionStep
-  parts = foldl partition mempty (toUnfoldable temp :: List (Tuple F.Command TempChange))
-  partition ::  PartitionStep -> Tuple F.Command TempChange -> PartitionStep
-  partition (Tuple invalids durEndo) (Tuple cmd change) = case change of
-    Left num -> Tuple invalids (Endo (applyChange cmd num) <> durEndo)
-    Right  _ -> Tuple (insert cmd unit invalids) durEndo
+  mbEndo :: Maybe (Endo Duration)
+  mbEndo = map fold $ traverse
+    (\(Tuple cmd (Tuple num _)) -> (Endo <<< applyChange cmd) <$> num)
+    (toUnfoldable vals :: List (Tuple F.Command NumberInputValue))
 
 
 evalDuration ∷ ∀ m . DurationQuery ~> DSL m
-evalDuration (UpdateCommand cmd valStr next) = do
-  ({ duration, temp }) <- H.get
-  let valEither = maybe (Right valStr) Left (fromString valStr)
-  let temp' = insert cmd valEither temp
-  case applyTemp temp' duration of
-    Left _ -> H.modify _{temp = temp'}
-    Right nextDuration -> do
-      H.modify _{duration = nextDuration, temp = empty :: TempChanges}
-      when (nextDuration /= duration) $ H.raise (NotifyChange nextDuration)
+evalDuration (UpdateCommand cmd val next) = do
+  s <- H.get
+  let
+    vals' = insert cmd val s.vals
+    nextDuration = case s.duration of
+      Nothing -> buildDuration vals'
+      Just duration' -> (num val) >>= \n -> overIsoDuration (applyChange cmd n) duration'
+    vals'' = durationToVals vals' s.format nextDuration
+  H.modify _{duration = nextDuration, vals = vals''}
+  when (nextDuration /= s.duration) $ H.raise (NotifyChange nextDuration)
   pure next
 
-evalPicker ∷ ∀ m . (PickerQuery Unit IsoDuration) ~> DSL m
+
+evalPicker ∷ ∀ m . (PickerQuery Unit (Maybe IsoDuration)) ~> DSL m
 evalPicker (SetValue duration next) = do
-  H.modify _{ duration = duration }
+  H.modify \s -> s{duration = duration, vals = durationToVals empty s.format duration}
   pure $ next unit
 evalPicker (GetValue next) = H.gets _.duration <#> next

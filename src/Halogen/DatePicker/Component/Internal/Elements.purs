@@ -9,11 +9,14 @@ import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Control.Alternative (class Alternative, empty)
+import Control.MonadPlus (guard)
 import Data.Enum (class BoundedEnum, fromEnum, upFrom)
 import Data.Int (toNumber)
-import Data.Maybe (Maybe(..))
-import Data.String (length)
+import Data.Maybe (Maybe(..), maybe)
+import Data.Number (fromString)
+import Data.String (Pattern(..), length, stripSuffix)
 import Data.These (These(..), theseRight, theseLeft)
+import Data.Tuple (Tuple(..), fst, snd)
 
 --TODO parse `String` into `a` here and only invoke query if it's is valid
 -- TODO change signature so that we dont need to change record type if record type is chaged in `numberElement`
@@ -26,14 +29,13 @@ enumElement :: ∀ query a
   -> H.ComponentHTML query
 enumElement q {title} val =
   numberElement
-    q
+    (snd >>> q)
     { title
     , range: minmaxRange
         (Int.toNumber $ fromEnum (bottom :: a))
         (Int.toNumber $ fromEnum (top :: a))
-    , invalid: false
     }
-    (show $ fromEnum val)
+    (mkNumberInputValue $ toNumber $ fromEnum val)
 
 
 type Range a = These a a
@@ -58,17 +60,37 @@ toAlt :: ∀ f. Alternative f => Maybe ~> f
 toAlt (Just a) = pure a
 toAlt Nothing = empty
 
+type NumberInputValue = Tuple (Maybe Number) String
+
+num :: NumberInputValue -> Maybe Number
+num = fst
+
+mkNumberInputValue :: Number -> NumberInputValue
+mkNumberInputValue n = Tuple (Just n) (showNum n)
+
+emptyNumberInputValue :: NumberInputValue
+emptyNumberInputValue = Tuple Nothing ""
+
+zeroNumberInputValue :: NumberInputValue
+zeroNumberInputValue = Tuple (Just 0.0) "0"
+
+showNum :: Number -> String
+showNum 0.0 = "0"
+showNum n = let str = show n
+  in maybe str id (stripSuffix (Pattern ".0") str)
+
+
 numberElement :: ∀ query
-  . (∀ b. String -> b -> query b)
-  -> {title :: String, range :: Range Number, invalid :: Boolean}
-  -> String
+  . (∀ b. NumberInputValue -> b -> query b)
+  -> {title :: String, range :: Range Number}
+  -> NumberInputValue
   -> H.ComponentHTML query
-numberElement query {title, range, invalid} value = HH.input $
+numberElement query {title, range} (Tuple _ value) = HH.input $
   [ HP.type_ HP.InputNumber
-  , HP.classes ([HH.ClassName "Picker-input"] <> if invalid then [HH.ClassName "Picker-input--invalid"] else [])
+  , HP.classes ([HH.ClassName "Picker-input"] <> (guard (value == "") $> HH.ClassName "Picker-input--invalid"))
   , HP.title title
-  , HP.value $ value
-  , HE.onValueInput $ HE.input query
+  , HP.value value
+  , HE.onValueInput $ HE.input \str -> query (Tuple (fromString str) str)
   ]
   <> (rangeMin range <#> HP.min # toAlt)
   <> (rangeMax range <#> HP.max # toAlt)
@@ -79,7 +101,8 @@ numberElement query {title, range, invalid} value = HH.input $
   -- (2 for increment/decrement buttons and 1 for extra free space)
   styles = case range of
     Both _ _ -> []
-    _ -> [HCSS.style $ CSS.width (CSS.Size (CSS.value (toNumber $ length value + 3) <> CSS.fromString "ch"))]
+    _ | value /= "" -> [HCSS.style $ CSS.width (CSS.Size (CSS.value (toNumber $ length value + 3) <> CSS.fromString "ch"))]
+    _ -> []
 
 -- TODO parse `String` into `a` here and only invoke query if it's is valid
 choiceElement :: ∀ query a

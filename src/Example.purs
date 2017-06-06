@@ -217,7 +217,7 @@ main =
       SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< (SetValue val)
       SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< (SetValue val)
       SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.request $ left <<< (SetValue val)
-      SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< (SetValue val)
+      SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< (SetValue (Just val))
       SetInterval idx val -> do
         res <- H.query' intervalConfig.cp idx $ H.request $ left <<< (SetValue val)
         pure $ void $ res <#> (\error ->  D.traceAny {message:"can't update interval", error})

@@ -75,10 +75,10 @@ render {interval, format} = HH.div [HP.classes [HH.ClassName "Picker"]] $ case f
   _ , _ -> [HH.text "can't render invalid value"]
 
 renderDuration :: ∀ m. DurationF.Format -> IsoDuration -> HTML m
-renderDuration fmt date = HH.slot' cpDuration unit (Duration.picker fmt date) unit (HE.input $ HandleDurationMessage)
+renderDuration fmt duration = HH.slot' cpDuration unit (Duration.picker fmt duration) unit (HE.input $ HandleDurationMessage)
 
 renderDateTime :: ∀ m. DateTimeF.Format -> DateTime -> Boolean -> HTML m
-renderDateTime fmt duration idx = HH.slot' cpDateTime idx (DateTime.picker fmt duration) unit (HE.input $ HandleDateTimeMessage idx)
+renderDateTime fmt datetime idx = HH.slot' cpDateTime idx (DateTime.picker fmt datetime) unit (HE.input $ HandleDateTimeMessage idx)
 
 
 
@@ -101,7 +101,8 @@ evalInterval (HandleDurationMessage msg next) = do
   {interval} <- H.get
   let
     newInterval = case msg of
-      NotifyChange newDuration -> lmap (const newDuration) interval
+      NotifyChange (Just newDuration) -> lmap (const newDuration) interval
+      NotifyChange Nothing -> interval -- TODO wrap Interval in Maybe here too
   H.modify _{ interval = newInterval }
   H.raise (NotifyChange newInterval)
   pure next
@@ -126,7 +127,7 @@ evalPicker (SetValue interval next) = do
 evalPicker (GetValue next) = H.gets _.interval <#> next
 
 setDuration :: ∀ m. IsoDuration -> DSL m Unit
-setDuration val = map mustBeMounted $ H.query' cpDuration unit $ H.request $ left <<< (SetValue val)
+setDuration val = map mustBeMounted $ H.query' cpDuration unit $ H.request $ left <<< (SetValue (Just val))
 
 setDateTime :: ∀ m. Boolean -> DateTime -> DSL m Unit
 setDateTime idx val = map mustBeMounted $ H.query' cpDateTime idx $ H.request $ left <<< (SetValue val)
