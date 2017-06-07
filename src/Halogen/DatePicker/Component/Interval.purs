@@ -59,24 +59,26 @@ picker format interval = H.parentComponent
 
 render ∷ ∀ m. State -> HTML m
 render {interval, format} = HH.div [HP.classes [HH.ClassName "Picker"]] $ case format, interval of
-  StartEnd fmtStart fmtEnd, StartEnd start end ->
-    [ HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDateTime fmtStart start false
-    , HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ textElement { text: "/" }
-    , HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDateTime fmtEnd end true]
-  DurationEnd fmtDuration fmtEnd, DurationEnd duration end ->
-    [ HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDuration fmtDuration duration
-    , HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ textElement { text: "/" }
-    , HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDateTime fmtEnd end false]
-  StartDuration fmtStart fmtDuration, StartDuration start duration ->
-    [ HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDateTime fmtStart start false
-    , HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ textElement { text: "/" }
-    , HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDuration fmtDuration duration]
-  JustDuration fmtDuration, JustDuration duration ->
-    [ HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderDuration fmtDuration duration]
+  StartEnd fmtStart fmtEnd, StartEnd start end -> map elem
+    [ renderDateTime fmtStart start false
+    , textElement { text: "/" }
+    , renderDateTime fmtEnd end true]
+  DurationEnd fmtDuration fmtEnd, DurationEnd _ end -> map elem
+    [ renderDuration fmtDuration
+    , textElement { text: "/" }
+    , renderDateTime fmtEnd end false]
+  StartDuration fmtStart fmtDuration, StartDuration start _ -> map elem
+    [ renderDateTime fmtStart start false
+    , textElement { text: "/" }
+    , renderDuration fmtDuration]
+  JustDuration fmtDuration, JustDuration _ -> map elem
+    [ renderDuration fmtDuration]
   _ , _ -> [HH.text "can't render invalid value"]
+  where
+  elem a = HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ a
 
-renderDuration :: ∀ m. DurationF.Format -> IsoDuration -> HTML m
-renderDuration fmt duration = HH.slot' cpDuration unit (Duration.picker fmt duration) unit (HE.input $ HandleDurationMessage)
+renderDuration :: ∀ m. DurationF.Format -> HTML m
+renderDuration fmt = HH.slot' cpDuration unit (Duration.picker fmt) unit (HE.input $ HandleDurationMessage)
 
 renderDateTime :: ∀ m. DateTimeF.Format -> DateTime -> Boolean -> HTML m
 renderDateTime fmt datetime idx = HH.slot' cpDateTime idx (DateTime.picker fmt datetime) unit (HE.input $ HandleDateTimeMessage idx)

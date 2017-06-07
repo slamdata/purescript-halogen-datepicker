@@ -32,9 +32,9 @@ type Query = Coproduct QueryIn DurationQuery
 type Message = PickerMessage Input
 
 data DurationError = InvalidIsoDuration
-derive instance durationErrorGeneric :: Generic DurationError _
 derive instance durationErrorEq :: Eq DurationError
 derive instance durationErrorOrd :: Ord DurationError
+derive instance durationErrorGeneric :: Generic DurationError _
 instance durationErrorShow :: Show DurationError where
   show = genericShow
 
@@ -65,9 +65,9 @@ durationToVals vals format isoDuration = cleanVals
     Nothing, Just new -> mkNumberInputValue new
     Nothing, Nothing -> zeroNumberInputValue
 
-picker ∷ ∀ m. F.Format -> IsoDuration -> H.Component HH.HTML Query Unit Message m
-picker format duration = H.component
-  { initialState: const $ {format, duration: Just (Right duration), vals: durationToVals empty format (Just duration)}
+picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit Message m
+picker format = H.component
+  { initialState: const $ {format, duration: Nothing, vals: durationToVals empty format Nothing}
   , render: render <#> (map right)
   , eval: coproduct evalPicker evalDuration
   , receiver: const Nothing
