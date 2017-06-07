@@ -30,7 +30,7 @@ data IntervalQuery a
   | HandleDateTimeMessage Boolean DateTime.Message a
 
 type Query = Coproduct (PickerQuery (Maybe IntervalError) Input) IntervalQuery
-type Message = PickerMessage (Input)
+type Message = PickerMessage Input
 type State =
   { format :: F.Format
   , interval :: Input

@@ -26,10 +26,10 @@ import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..), P
 
 
 data DurationQuery a = UpdateCommand F.Command NumberInputValue a
-
-type QueryIn = PickerQuery Unit (PickerValue DurationError IsoDuration)
+type Input = PickerValue DurationError IsoDuration
+type QueryIn = PickerQuery Unit Input
 type Query = Coproduct QueryIn DurationQuery
-type Message = PickerMessage (PickerValue DurationError IsoDuration)
+type Message = PickerMessage Input
 
 data DurationError = InvalidIsoDuration
 derive instance durationErrorGeneric :: Generic DurationError _
@@ -41,7 +41,7 @@ instance durationErrorShow :: Show DurationError where
 type Values = Map F.Command NumberInputValue
 type State =
   { format :: F.Format
-  , duration :: PickerValue DurationError IsoDuration
+  , duration :: Input
   , vals :: Values
   }
 
