@@ -1,7 +1,6 @@
 module Halogen.Datapicker.Component.Internal.Elements where
 
 import Prelude
-import Debug.Trace as D
 import CSS as CSS
 import Data.Int as Int
 import Halogen as H
@@ -12,14 +11,14 @@ import Halogen.HTML.Properties as HP
 import Control.Alternative (class Alternative, empty)
 import Control.Monad.Except (runExcept)
 import Control.MonadPlus (guard)
-import DOM.Event.Types (Event, readEventTarget)
+import DOM.Event.Types (Event)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.Enum (class BoundedEnum, fromEnum, upFrom)
 import Data.Foreign (readBoolean, readString, toForeign)
 import Data.Foreign.Index (readProp)
 import Data.Int (toNumber)
-import Data.Maybe (Maybe(..), isNothing, maybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Number (fromString)
 import Data.String (Pattern(..), length, stripSuffix)
 import Data.These (These(..), theseRight, theseLeft)
@@ -81,6 +80,12 @@ emptyNumberInputValue = Tuple Nothing (Just "")
 zeroNumberInputValue :: NumberInputValue
 zeroNumberInputValue = Tuple (Just 0.0) (Just "0")
 
+isInvalid  :: NumberInputValue -> Boolean
+isInvalid (Tuple Nothing (Just "")) = false
+isInvalid (Tuple Nothing (Just _)) = true
+isInvalid (Tuple _ Nothing) = true
+isInvalid _ = false
+
 showNum :: Number -> String
 showNum 0.0 = "0"
 showNum n = let str = show n
@@ -91,9 +96,9 @@ numberElement :: ∀ query
   -> {title :: String, range :: Range Number}
   -> NumberInputValue
   -> H.ComponentHTML query
-numberElement query {title, range} (Tuple _ value) = HH.input $
+numberElement query {title, range} numVal@(Tuple _ value) = HH.input $
   [ HP.type_ HP.InputNumber
-  , HP.classes ([HH.ClassName "Picker-input"] <> (guard (isNothing value) $> HH.ClassName "Picker-input--invalid"))
+  , HP.classes ([HH.ClassName "Picker-input"] <> (guard (isInvalid numVal) $> HH.ClassName "Picker-input--invalid"))
   , HP.title title
   , HP.value valueStr
   , HE.onInput $ HE.input $
