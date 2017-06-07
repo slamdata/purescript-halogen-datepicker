@@ -32,7 +32,7 @@ import Data.Maybe (Maybe(..), fromJust)
 import Data.Monoid (mempty)
 import Data.Time (Time, setHour, setMinute)
 import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), mustBeMounted)
-import Partial.Unsafe (unsafePartial)
+import Partial.Unsafe (unsafePartialBecause)
 
 type TimeIdx = Int
 type DateIdx = Int
@@ -191,10 +191,10 @@ main =
   testDateTime = DateTime testDate (bottom # setHour (enum 2) # setMinute (enum 2))
 
   testDuration :: IsoDuration
-  testDuration = unsafePartial fromJust $ I.mkIsoDuration $ I.year 100.0 <> I.month 25.0 <> I.day 245.0 <> I.minute 100.0 <> I.second 124.0
+  testDuration = unsafePartialBecause "this duration must be valid" fromJust $ I.mkIsoDuration $ I.year 100.0 <> I.month 25.0 <> I.day 245.0 <> I.minute 100.0 <> I.second 124.0
 
   enum :: ∀ a. BoundedEnum a => Int -> a
-  enum = unsafePartial fromJust <<< toEnum
+  enum = unsafePartialBecause "ints passed to this func must be in range" fromJust <<< toEnum
 
   renderTime ∷ State -> Int -> String -> Either String Time -> Array (HTML m)
   renderTime s = renderExample timeConfig s.times

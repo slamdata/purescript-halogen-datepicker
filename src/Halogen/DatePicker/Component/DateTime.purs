@@ -15,10 +15,11 @@ import Data.Either.Nested (Either2)
 import Data.Foldable (foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
-import Data.Maybe (Maybe(..), fromJust)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
+import Data.Traversable (for_)
 import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), mustBeMounted)
-import Partial.Unsafe (unsafePartialBecause)
+
 -- import Halogen.Datapicker.Component.Time.Format as TimeF
 -- import Halogen.Datapicker.Component.Date.Format as DateF
 
@@ -84,8 +85,10 @@ evalDateTime (HandleTimeMessage msg next) = do
 evalPicker ∷ ∀ m . (PickerQuery Unit DateTime) ~> DSL m
 evalPicker (SetValue dateTime next) = do
   H.modify _{ dateTime = dateTime }
-  map mustBeMounted $ H.query' cpTime unit $ H.request $ left <<< (SetValue (time dateTime))
-  map mustBeMounted $ H.query' cpDate unit $ H.request $ left <<< (SetValue (date dateTime))
+  {format} <- H.get
+  for_ (unwrap format) $ case _ of
+    F.Time _ -> map mustBeMounted $ H.query' cpTime unit $ H.request $ left <<< (SetValue (time dateTime))
+    F.Date _ -> map mustBeMounted $ H.query' cpDate unit $ H.request $ left <<< (SetValue (date dateTime))
   pure $ next unit
 
 evalPicker (GetValue next) = H.gets _.dateTime <#> next

@@ -13,7 +13,7 @@ data PickerMessage val
   = NotifyChange val
 
 mustBeMounted :: Maybe Unit -> Unit
-mustBeMounted = unsafePartialBecause "children must be mounted" fromJust
+mustBeMounted a = unsafePartialBecause "children must be mounted" (fromJust a)
 
 type PickerValue e a = Maybe (Either e a)
 
