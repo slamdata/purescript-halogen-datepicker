@@ -3,7 +3,7 @@ module Halogen.Datapicker.Component.Duration where
 import Prelude
 import Halogen as H
 import Halogen.Datapicker.Component.Duration.Format as F
-import Halogen.Datapicker.Component.Internal.Number as N
+import Halogen.Datapicker.Component.Internal.Num as N
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP

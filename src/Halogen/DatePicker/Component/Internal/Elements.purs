@@ -11,7 +11,7 @@ import Data.Enum (class BoundedEnum, fromEnum, upFrom)
 import Data.Int (toNumber)
 import Data.Maybe (maybe)
 import Data.Tuple (snd)
-import Halogen.Datapicker.Component.Internal.Number (mkNumberInputValue, numberElement)
+import Halogen.Datapicker.Component.Internal.Num (mkNumberInputValue, numberElement)
 
 --TODO parse `String` into `a` here and only invoke query if it's is valid
 -- TODO change signature so that we dont need to change record type if record type is chaged in `numberElement`

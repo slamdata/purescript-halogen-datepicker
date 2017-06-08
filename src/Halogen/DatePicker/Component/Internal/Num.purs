@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.Internal.Number
+module Halogen.Datapicker.Component.Internal.Num
   ( picker
   , NumberQuery
   , Query
