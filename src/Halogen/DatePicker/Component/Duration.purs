@@ -21,7 +21,7 @@ import Data.Monoid (mempty)
 import Data.Monoid.Endo (Endo(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (for, sequence)
-import Halogen.Datapicker.Component.Internal.Elements (minRange)
+import Halogen.Datapicker.Component.Internal.Range (minRange)
 import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), PickerValue, isInvalid, mustBeMounted, value)
 
 
