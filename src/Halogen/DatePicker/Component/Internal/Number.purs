@@ -29,7 +29,7 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.Number (fromString)
 import Data.String (Pattern(..), length, stripSuffix)
 import Data.These (These(..))
-import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple (Tuple(..), fst)
 import Halogen.Datapicker.Component.Internal.Range (Range, isInRange, rangeMax, rangeMin)
 import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..))
 

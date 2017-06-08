@@ -13,7 +13,6 @@ import Data.Foldable (foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
-import Data.String (Pattern(..), Replacement(..), replaceAll)
 import Halogen.Datapicker.Component.Internal.Elements (textElement, enumElement, choiceElement)
 import Halogen.Datapicker.Component.Internal.Enums (setYear4, setYear2, setYear, setMonth, setDay, monthShort, year4, year2)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
@@ -54,7 +53,6 @@ renderCommand t cmd@F.MonthTwoDigits      = enumElement (UpdateCommand cmd) { ti
 renderCommand t cmd@F.DayOfMonthTwoDigits = enumElement (UpdateCommand cmd) { title: "Day" } (day t)
 renderCommand t cmd@F.DayOfMonth          = enumElement (UpdateCommand cmd) { title: "Day" } (day t)
 renderCommand _ (F.Placeholder str)       = textElement { text: str}
--- renderCommand _ (F.Placeholder str)       = textElement { text: replaceAll (Pattern " ") (Replacement "&nbsp") str}
 
 
 -- TODO switch to Validation/Either instead of Maybe to
