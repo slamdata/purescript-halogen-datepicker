@@ -214,10 +214,12 @@ main =
   eval ∷ Query ~> DSL m
   eval (Set payload next) = do
     map mustBeMounted $ case payload of
-      SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< (SetValue val)
+      SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< (SetValue Nothing)
+      -- SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< (SetValue (Just $ Right val))
       SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< (SetValue val)
       SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.request $ left <<< (SetValue val)
-      SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< (SetValue (Just $ Right val))
+      SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< (SetValue Nothing)
+      -- SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< (SetValue (Just $ Right val))
       SetInterval idx val -> do
         res <- H.query' intervalConfig.cp idx $ H.request $ left <<< (SetValue val)
         pure $ void $ res <#> (\error ->  D.traceAny {message:"can't update interval", error})
@@ -268,7 +270,7 @@ timeConfig :: ∀ m. ExampleConfig String Time TimeF.Format Time.Query Time.Mess
 timeConfig =
   { mkFormat: TimeF.fromString
   , unformat: TimeF.unformat
-  , picker: Time.picker
+  , picker: \fmt _ -> Time.picker fmt
   , handler: \idx msg -> HandleMessage (MsgTime idx msg)
   , setter: \idx val -> Set (SetTime idx val)
   , cp: cpTime

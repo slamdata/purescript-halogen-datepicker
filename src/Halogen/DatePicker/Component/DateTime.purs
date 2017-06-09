@@ -11,14 +11,15 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Data.Bifunctor (bimap)
 import Data.DateTime (DateTime, date, modifyDate, modifyTime, time)
+import Data.Either (Either(..))
 import Data.Either.Nested (Either2)
 import Data.Foldable (foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.Traversable (for_)
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), mustBeMounted)
+import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), mustBeMounted, value)
 
 -- import Halogen.Datapicker.Component.Time.Format as TimeF
 -- import Halogen.Datapicker.Component.Date.Format as DateF
@@ -60,7 +61,7 @@ render {dateTime, format} = HH.div [HP.classes [HH.ClassName "Picker"]] $
   foldMap (pure <<< renderCommand dateTime) (unwrap format)
 
 renderCommand :: ∀ m. DateTime -> F.Command -> HTML m
-renderCommand t cmd@(F.Time fmt) = HH.slot' cpTime unit (Time.picker fmt (time t)) unit (HE.input HandleTimeMessage)
+renderCommand t cmd@(F.Time fmt) = HH.slot' cpTime unit (Time.picker fmt) unit (HE.input HandleTimeMessage)
 renderCommand t cmd@(F.Date fmt) = HH.slot' cpDate unit (Date.picker fmt (date t)) unit (HE.input HandleDateMessage)
 
 
@@ -77,7 +78,8 @@ evalDateTime (HandleTimeMessage msg next) = do
   {dateTime} <- H.get
   let
     newDateTime = case msg of
-      NotifyChange newTime -> modifyTime (const newTime) dateTime
+      -- TODO fix this
+      NotifyChange newTime -> maybe dateTime (\d-> modifyTime (const d) dateTime) (value newTime)
   H.modify _{ dateTime = newDateTime }
   H.raise (NotifyChange newDateTime)
   pure next
@@ -87,7 +89,8 @@ evalPicker (SetValue dateTime next) = do
   H.modify _{ dateTime = dateTime }
   {format} <- H.get
   for_ (unwrap format) $ case _ of
-    F.Time _ -> map mustBeMounted $ H.query' cpTime unit $ H.request $ left <<< (SetValue (time dateTime))
+    -- TODO fix this
+    F.Time _ -> map mustBeMounted $ H.query' cpTime unit $ H.request $ left <<< (SetValue (Just $ Right $ time dateTime))
     F.Date _ -> map mustBeMounted $ H.query' cpDate unit $ H.request $ left <<< (SetValue (date dateTime))
   pure $ next unit
 

@@ -10,7 +10,7 @@ import Halogen.HTML.Properties as HP
 import Control.MonadPlus (guard)
 import Data.Array (fold)
 import Data.Bifunctor (bimap)
-import Data.Either (Either(..), either)
+import Data.Either (either)
 import Data.Foldable (foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Generic.Rep (class Generic)
@@ -22,7 +22,7 @@ import Data.Monoid.Endo (Endo(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (for, sequence)
 import Halogen.Datapicker.Component.Internal.Range (minRange)
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), PickerValue, isInvalid, mustBeMounted, value)
+import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), PickerValue, isInvalid, mustBeMounted, stepPickerValue')
 
 
 data DurationQuery a = UpdateCommand F.Command (Maybe Number) a
@@ -46,8 +46,8 @@ type State =
 type Slot = F.Command
 
 
-type HTML m = H.ParentHTML DurationQuery N.Query Slot m
-type DSL m = H.ParentDSL State Query N.Query Slot Message m
+type HTML m = H.ParentHTML DurationQuery (N.Query Number) Slot m
+type DSL m = H.ParentDSL State Query (N.Query Number) Slot Message m
 
 
 picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit Message m
@@ -70,7 +70,7 @@ render s =
   f cmd = HH.li [ HP.classes [ HH.ClassName "Picker-component" ] ]
     [ HH.slot
       cmd
-      (N.picker { title: show cmd, range: minRange 0.0 })
+      (N.picker N.numberHasNumberInputVal { title: show cmd, range: minRange 0.0 })
       unit
       (HE.input $ \(NotifyChange n) -> UpdateCommand cmd n)]
 
@@ -83,19 +83,22 @@ overIsoDuration f d = mkIsoDuration $ f $ unIsoDuration d
 evalDuration ∷ ∀ m . DurationQuery ~> DSL m
 evalDuration (UpdateCommand cmd val next) = do
   s <- H.get
-  let durationValue = value s.duration
-  nextDurationValue <- case durationValue of
-    Nothing -> buildDuration
-    Just dur -> pure $ val >>= \n -> overIsoDuration (F.toSetter cmd n) dur
-  let
-    nextDuration = case s.duration, nextDurationValue of
-      _, Just x -> Just (Right x)
-      Just _, Nothing -> Just (Left InvalidIsoDuration)
-      Nothing, Nothing -> Nothing
-  H.modify _{duration = nextDuration}
+  nextDuration <- stepPickerValue'
+    InvalidIsoDuration
+    case _ of
+      Nothing -> buildDuration
+      Just dur -> pure $ val >>= \n -> overIsoDuration (F.toSetter cmd n) dur
+    s.duration
+  H.modify (_{ duration = nextDuration })
   when (nextDuration /= s.duration) $ H.raise (NotifyChange nextDuration)
   pure next
 
+-- TODO bug
+-- if when duration is Nothing user uses fractional value incorectly
+-- it will be parsed as valid number and input will not fail
+-- but there combination gives invalid duration and it will stay as nothing
+-- resulting in having valid values in input but indication of invlaidity
+-- we need to change state to invalid if we have value for all commands
 buildDuration :: ∀ m. DSL m (Maybe IsoDuration)
 buildDuration = do
   {format} <- H.get

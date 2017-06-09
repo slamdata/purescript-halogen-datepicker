@@ -1,36 +1,30 @@
 module Halogen.Datapicker.Component.Internal.Elements where
 
 import Prelude
-import Halogen.Datapicker.Component.Internal.Range (minmaxRange)
-import Data.Int as Int
 import Halogen as H
+import Halogen.Datapicker.Component.Internal.Num as N
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Data.Enum (class BoundedEnum, fromEnum, upFrom)
-import Data.Int (toNumber)
-import Data.Maybe (maybe)
-import Data.Tuple (snd)
-import Halogen.Datapicker.Component.Internal.Num (mkNumberInputValue, numberElement)
+import Data.Maybe (Maybe)
+import Halogen.Datapicker.Component.Internal.Range (Range)
+import Halogen.Datapicker.Component.Types (PickerMessage(..))
+import Halogen.Query (Action)
 
---TODO parse `String` into `a` here and only invoke query if it's is valid
 -- TODO change signature so that we dont need to change record type if record type is chaged in `numberElement`
-enumElement :: ∀ query a
-  . Show a
-  => BoundedEnum a
-  => (∀ b. String -> b -> query b)
-  -> {title :: String}
-  -> a
-  -> H.ComponentHTML query
-enumElement q {title} val =
-  numberElement
-    (snd >>> maybe "" id >>> q) -- TODO make sure this is what we want here or update enumElements
-    { title
-    , range: minmaxRange
-        (Int.toNumber $ fromEnum (bottom :: a))
-        (Int.toNumber $ fromEnum (top :: a))
-    }
-    (mkNumberInputValue $ toNumber $ fromEnum val)
+enumElement :: ∀ query x slot m
+  . slot
+  -> (x -> Action query)
+  -> {title :: String, range :: Range Int}
+  -> (Maybe Int -> x)
+  -> H.ParentHTML query (N.Query Int) slot m
+enumElement slot q conf mkVal =
+  HH.slot
+    slot
+    (N.picker N.intHasNumberInputVal conf)
+    unit
+    (HE.input $ \(NotifyChange n) -> q $ mkVal n)
 
 
 

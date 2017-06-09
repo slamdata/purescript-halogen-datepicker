@@ -1,15 +1,21 @@
 module Halogen.Datapicker.Component.Internal.Num
   ( picker
-  , NumberQuery
+  , NumQuery
   , Query
   , QueryIn
   , Input
-  , mkNumberInputValue
-  , numberElement )
+  , mkInputValue
+  , numberElement
+  , HasNumberInputVal
+  , numberHasNumberInputVal
+  , intHasNumberInputVal
+  , boundedEnumHasNumberInputVal )
   where
 
 import Prelude
 import CSS as CSS
+import Data.Int as Int
+import Data.Number as N
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
@@ -21,61 +27,63 @@ import Control.MonadPlus (guard)
 import DOM.Event.Event (Event)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
+import Data.Enum (class BoundedEnum, fromEnum, toEnum)
 import Data.Foreign (readBoolean, readString, toForeign)
 import Data.Foreign.Index (readProp)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
-import Data.Int (toNumber)
 import Data.Maybe (Maybe(..), maybe)
-import Data.Number (fromString)
 import Data.String (Pattern(..), length, stripSuffix)
-import Data.These (These(..))
 import Data.Tuple (Tuple(..), fst)
-import Halogen.Datapicker.Component.Internal.Range (Range, isInRange, rangeMax, rangeMin)
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..))
+import Halogen.Datapicker.Component.Internal.Range (Range(..), isInRange, rangeMax, rangeMin)
+import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), toAlt)
 
 
-type State =
-  { number:: InputValue Number
-  , range:: Range Number
+type State val =
+  { number:: InputValue val
+  , range:: Range val
   , title:: String
   }
 
 -- TODO maybe replace Maybe with PickerValue
-type Input = Maybe Number
-data NumberQuery a = Update (InputValue Number) a
-type QueryIn = PickerQuery Unit Input
-type Query = Coproduct QueryIn NumberQuery
-type Message = PickerMessage Input
+type Input val = Maybe val
+data NumQuery val a = Update (InputValue val) a
+type QueryIn val = PickerQuery Unit (Input val)
+type Query val = Coproduct (QueryIn val) (NumQuery val)
+type Message val = PickerMessage (Input val)
 
-type DSL = H.ComponentDSL State Query Message
-type HTML = H.ComponentHTML NumberQuery
+type DSL val = H.ComponentDSL (State val) (Query val) (Message val)
+type HTML val = H.ComponentHTML (NumQuery val)
 
-picker ∷ ∀ m. {title :: String, range :: Range Number} -> H.Component HH.HTML Query Unit Message m
-picker {title, range} = H.component
+picker ∷ ∀ val m
+  . Ord val
+  => HasNumberInputVal val
+  -> {title :: String, range :: Range val}
+  -> H.Component HH.HTML (Query val) Unit (Message val) m
+picker hasNumberInputVal {title, range} = H.component
   { initialState: const {title, range, number: emptyNumberInputValue}
-  , render: render <#> (map right)
-  , eval: coproduct evalPicker evalNumber
+  , render: (render hasNumberInputVal) <#> (map right)
+  , eval: coproduct (evalPicker hasNumberInputVal) evalNumber
   , receiver: const Nothing
   }
 
-render ∷ State -> HTML
-render s = numberElement Update { title:s.title, range: s.range} s.number
+render ∷ ∀ val. Ord val => HasNumberInputVal val -> State val -> HTML val
+render hasNumberInputVal s = numberElement hasNumberInputVal Update { title:s.title, range: s.range} s.number
 
-evalNumber ∷ ∀ m . NumberQuery ~> DSL m
+evalNumber ∷ ∀ val m . Eq val => NumQuery val ~> DSL val m
 evalNumber (Update number next) = do
   s <- H.get
   H.modify _{number = number}
   when (number /= s.number) $ H.raise (NotifyChange $ fst number)
   pure next
 
-toMbString :: Maybe Number -> Maybe String
-toMbString number = (Just $ maybe "" showNum number)
+toMbString :: ∀ a. HasNumberInputVal a -> Maybe a -> Maybe String
+toMbString hasNumberInputVal number = (Just $ maybe "" hasNumberInputVal.toValue number)
 
-evalPicker ∷ ∀ m . QueryIn ~> DSL m
-evalPicker (SetValue number next) = do
-  H.modify _{number = Tuple number (toMbString number)}
+evalPicker ∷ ∀ val m . HasNumberInputVal val -> QueryIn val ~> DSL val m
+evalPicker hasNumberInputVal (SetValue number next) = do
+  H.modify _{number = Tuple number (toMbString hasNumberInputVal number)}
   pure $ next unit
-evalPicker (GetValue next) = H.gets _.number <#> (fst >>> next)
+evalPicker _ (GetValue next) = H.gets _.number <#> (fst >>> next)
 
 
 type InputValue a = Tuple (Maybe a) (Maybe String)
@@ -83,8 +91,8 @@ type InputValue a = Tuple (Maybe a) (Maybe String)
 toString :: ∀ a. InputValue a -> String
 toString (Tuple _ mbStr) = maybe "" id mbStr
 
-mkNumberInputValue :: Number -> InputValue Number
-mkNumberInputValue n = Tuple (Just n) (Just $ showNum n)
+mkInputValue :: ∀ a. HasNumberInputVal a -> a -> InputValue a
+mkInputValue hasNumberInputVal n = Tuple (Just n) (Just $ hasNumberInputVal.toValue n)
 
 emptyNumberInputValue :: ∀ a. InputValue a
 emptyNumberInputValue = Tuple Nothing (Just "")
@@ -104,24 +112,35 @@ showNum 0.0 = "0"
 showNum n = let str = show n
   in maybe str id (stripSuffix (Pattern ".0") str)
 
-numberElement :: ∀ query
-  . (∀ b. InputValue Number -> b -> query b)
-  -> {title :: String, range :: Range Number}
-  -> InputValue Number
+numberElement :: ∀ val query
+  . Ord val
+  => HasNumberInputVal val
+  -> (∀ b. InputValue val -> b -> query b)
+  -> {title :: String, range :: Range val}
+  -> InputValue val
   -> H.ComponentHTML query
-numberElement query {title, range} value = HH.input $
+numberElement hasNumberInputVal query {title, range} value = HH.input $
   [ HP.type_ HP.InputNumber
   , HP.classes classes
   , HP.title title
   , HP.value valueStr
   , HE.onInput $ HE.input $
     inputValueFromEvent
-    >>> lmap (_ >>= fromString)
-    >>> isNumberInputInRange range
+    -- TODO bug
+    -- we might want number and string value to comute?
+    --  i.e.  if user types `-0` we will parse it as `0`
+    --  or   if user types `001` we will parse it as `1`
+    --  or   if user types `0.1111111111111111111111` we will parse it as `0.1111111111111111`
+    --  or   if user types `1e1` we will parse it as `10`
+    -- we can't use `pattern` attr as it's not supported for number input
+    -- but we can either use some regex to validate if input is valid
+    -- or check if  fromString and toString give same result
+    >>> lmap (_ >>= hasNumberInputVal.fromString)
+    >>> isInputInRange range
     >>> query
   ]
-  <> (rangeMin range <#> HP.min # toAlt)
-  <> (rangeMax range <#> HP.max # toAlt)
+  <> (rangeMin range <#> hasNumberInputVal.toNumber >>> HP.min # toAlt)
+  <> (rangeMax range <#> hasNumberInputVal.toNumber >>> HP.max # toAlt)
   <> styles
   where
   valueStr = toString value
@@ -131,23 +150,22 @@ numberElement query {title, range} value = HH.input $
   -- `3 + {number of characters in value})ch`, so that it's not taking too much space
   -- (the 3 is sum of: 2 for increment/decrement buttons and 1 for extra free space).
   styles = case range of
-    Both _ _ -> []
+    MinMax _ _ -> []
     _ | isInvalid value || isEmpty value -> []
-    _ -> [HCSS.style $ CSS.width (CSS.Size (CSS.value (toNumber $ length valueStr + 3) <> CSS.fromString "ch"))]
+    _ -> [HCSS.style $ CSS.width (CSS.Size (CSS.value (Int.toNumber $ length valueStr + 3) <> CSS.fromString "ch"))]
 
 
 -- We need to validate if value is in range manually as for example,
 -- if `min = 0`, user still can enter `-1` in chrome.
-isNumberInputInRange :: Range Number -> InputValue Number -> InputValue Number
-isNumberInputInRange range val = lmap (_ >>= boolToAltPredicate (isInRange range)) val
+isInputInRange :: ∀ a. Ord a => Range a -> InputValue a -> InputValue a
+isInputInRange range val = lmap (_ >>= boolToAltPredicate (isInRange range)) val
 
 boolToAltPredicate :: ∀ a f. Alternative f => (a -> Boolean) -> a -> f a
-boolToAltPredicate f a = if f a then pure a else empty
+boolToAltPredicate f a =  if f a then pure a else empty
 
 inputValueFromEvent :: Event -> InputValue String
-inputValueFromEvent event = Tuple str str
-  where
-  str = validValueFromEvent event
+inputValueFromEvent event = let val = validValueFromEvent event
+  in Tuple val val
 
 validValueFromEvent :: Event -> Maybe String
 validValueFromEvent event = unF $ do
@@ -161,6 +179,31 @@ validValueFromEvent event = unF $ do
     Left _ -> Nothing
     Right x -> x
 
-toAlt :: ∀ f. Alternative f => Maybe ~> f
-toAlt (Just a) = pure a
-toAlt Nothing = empty
+
+
+type HasNumberInputVal a  =
+  { fromString :: String -> Maybe a
+  , toValue :: a -> String
+  , toNumber :: a -> Number
+  }
+
+numberHasNumberInputVal :: HasNumberInputVal Number
+numberHasNumberInputVal =
+  { fromString: N.fromString
+  , toValue: showNum
+  , toNumber: id
+  }
+
+intHasNumberInputVal :: HasNumberInputVal Int
+intHasNumberInputVal =
+  { fromString: numberHasNumberInputVal.fromString >=> Int.fromNumber
+  , toValue: show
+  , toNumber: Int.toNumber
+  }
+
+boundedEnumHasNumberInputVal :: ∀ a. BoundedEnum a => HasNumberInputVal a
+boundedEnumHasNumberInputVal =
+  { fromString: intHasNumberInputVal.fromString >=> toEnum
+  , toValue: fromEnum >>> intHasNumberInputVal.toValue
+  , toNumber: fromEnum >>> intHasNumberInputVal.toNumber
+  }

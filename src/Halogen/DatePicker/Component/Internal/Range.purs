@@ -1,28 +1,40 @@
 module Halogen.Datapicker.Component.Internal.Range where
 
 import Prelude
-import Data.Maybe (Maybe)
-import Data.These (These(..), theseLeft, theseRight)
+import Data.Enum (class BoundedEnum)
+import Data.Maybe (Maybe(..))
 
-type Range a = These a a
+data Range a = MinMax a a | Min a | Max a
+instance rangeFunctor :: Functor Range where
+  map f (MinMax a b) = MinMax (f a) (f b)
+  map f (Min a) = Min (f a)
+  map f (Max a) = Max (f a)
 
 minmaxRange :: ∀ a. a -> a -> Range a
-minmaxRange = Both
+minmaxRange = MinMax
 
 minRange :: ∀ a. a -> Range a
-minRange = This
+minRange = Min
 
 maxRange :: ∀ a. a -> Range a
-maxRange = That
+maxRange = Max
 
 rangeMin :: Range ~> Maybe
-rangeMin = theseLeft
+rangeMin (MinMax m _) = Just m
+rangeMin (Min m) = Just m
+rangeMin _ = Nothing
 
 rangeMax :: Range ~> Maybe
-rangeMax = theseRight
+rangeMax (MinMax _ m) = Just m
+rangeMax (Max m) = Just m
+rangeMax _ = Nothing
 
 isInRange :: ∀ a. Ord a => Range a -> a -> Boolean
 isInRange range n = case range of
-  (This min) -> min <= n
-  (That max) -> max >= n
-  (Both min max) -> min <= n && n >= max
+  (Min min) -> min <= n
+  (Max max) -> max >= n
+  (MinMax min max) -> min <= n && n <= max
+
+
+bottomTop :: ∀ a. BoundedEnum a => Range a
+bottomTop = minmaxRange bottom top

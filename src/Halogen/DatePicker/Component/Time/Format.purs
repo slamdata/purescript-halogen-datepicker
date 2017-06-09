@@ -7,22 +7,26 @@ module Halogen.Datapicker.Component.Time.Format
   , toCommand
   , unformat
   , format
+  , toSetter
+  , toGetter
   ) where
 
 import Prelude
-import Data.Foldable (class Foldable, foldMap)
-import Data.String (joinWith)
-import Data.Traversable (traverse)
-import Data.List (List)
-import Data.DateTime (DateTime(..), time)
-import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype)
 import Data.Formatter.DateTime as FDT
 import Halogen.Datapicker.Component.Internal.Constraint as C
-import Data.Time (Time)
+import Data.DateTime (DateTime(..), time)
+import Data.Either (Either(..))
+import Data.Enum (fromEnum, toEnum)
+import Data.Foldable (class Foldable, foldMap)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
+import Data.List (List)
+import Data.Maybe (Maybe(..))
+import Data.Newtype (class Newtype)
+import Data.String (joinWith)
+import Data.Traversable (traverse)
+import Data.Time (Time, hour, millisecond, minute, second, setHour, setMillisecond, setMinute, setSecond)
+import Halogen.Datapicker.Component.Internal.Enums (hour12, meridiem, millisecond1, millisecond2, setHour12, setMeridiem, setMillisecond1, setMillisecond2)
 
 data Command
   = Hours24
@@ -52,6 +56,34 @@ instance formatShow :: Show Format where
   show = genericShow
 derive instance formatEq :: Eq Format
 derive instance formatOrd :: Ord Format
+
+
+toSetter :: Command -> Int -> Time -> Maybe Time
+toSetter Hours24 n t = toEnum n <#> ( _ `setHour` t)
+toSetter Hours12 n t = toEnum n >>= (_ `setHour12` t)
+toSetter Meridiem n t = toEnum n >>= (_ `setMeridiem` t)
+toSetter MinutesTwoDigits n t = toEnum n <#> ( _ `setMinute` t)
+toSetter Minutes n t = toEnum n <#> ( _ `setMinute` t)
+toSetter SecondsTwoDigits n t = toEnum n <#> ( _ `setSecond` t)
+toSetter Seconds n t = toEnum n <#> ( _ `setSecond` t)
+toSetter Milliseconds n t =toEnum n <#>  (_ `setMillisecond` t)
+toSetter MillisecondsTwoDigits n t = toEnum n >>= (_ `setMillisecond2` t)
+toSetter MillisecondsShort n t = toEnum n >>= (_ `setMillisecond1` t)
+toSetter (Placeholder _) _ t = pure t
+
+toGetter :: Command -> Time -> Maybe Int
+toGetter Hours24 t = Just $ fromEnum $ hour t
+toGetter Hours12 t = Just $ fromEnum $ hour12 t
+toGetter Meridiem t = Just $ fromEnum $ meridiem t
+toGetter MinutesTwoDigits t = Just $ fromEnum $ minute t
+toGetter Minutes t = Just $ fromEnum $ minute t
+toGetter SecondsTwoDigits t = Just $ fromEnum $ second t
+toGetter Seconds t = Just $ fromEnum $ second t
+toGetter Milliseconds t = Just $ fromEnum $ millisecond t
+toGetter MillisecondsTwoDigits t = Just $ fromEnum $ millisecond2 t
+toGetter MillisecondsShort t = Just $ fromEnum $ millisecond1 t
+toGetter (Placeholder _) t = Nothing
+
 
 fromString :: String -> Either String Format
 fromString s = FDT.parseFormatString s >>= fromDateTimeFormatter
