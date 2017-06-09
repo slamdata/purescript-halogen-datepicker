@@ -12,6 +12,7 @@ import Halogen.Datapicker.Component.Internal.Range (Range)
 import Halogen.Datapicker.Component.Types (PickerMessage(..))
 import Halogen.Query (Action)
 
+-- TODO just inline this function
 -- TODO change signature so that we dont need to change record type if record type is chaged in `numberElement`
 enumElement :: ∀ query x slot m
   . slot
@@ -27,7 +28,7 @@ enumElement slot q conf mkVal =
     (HE.input $ \(NotifyChange n) -> q $ mkVal n)
 
 
-
+-- TODO remove this and use Choice.picker instead 
 -- TODO parse `String` into `a` here and only invoke query if it's is valid
 choiceElement :: ∀ query a
   . Show a
