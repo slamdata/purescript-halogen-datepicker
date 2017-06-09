@@ -13,7 +13,7 @@ import Data.Foldable (foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
-import Halogen.Datapicker.Component.Internal.Elements (textElement, enumElement, choiceElement)
+import Halogen.Datapicker.Component.Internal.Elements (textElement)
 import Halogen.Datapicker.Component.Internal.Enums (setYear4, setYear2, setYear, setMonth, setDay, monthShort, year4, year2)
 import Halogen.Datapicker.Component.Types (PickerQuery(..), PickerMessage(..))
 
@@ -45,7 +45,7 @@ render {date, format} = HH.ul [HP.classes [HH.ClassName "Picker"]] $
 
 renderCommand :: Date -> F.Command -> HTML
 renderCommand t cmd = textElement { text: "foo"}
--- TODO fix it 
+-- TODO fix it
 -- renderCommand t cmd@F.YearFull            = enumElement (UpdateCommand cmd) { title: "Year" } (year4 t)
 -- renderCommand t cmd@F.YearTwoDigits       = enumElement (UpdateCommand cmd) { title: "Year" } (year2 t)
 -- renderCommand t cmd@F.YearAbsolute        = enumElement (UpdateCommand cmd) { title: "Year" } (year t)

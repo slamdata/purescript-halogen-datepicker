@@ -2,25 +2,33 @@ module Halogen.Datapicker.Component.Time where
 
 import Prelude
 import Halogen as H
-import Halogen.Datapicker.Component.Internal.Num as N
+import Halogen.Component.ChildPath as CP
+import Halogen.Datapicker.Component.Internal.Choice as Choice
+import Halogen.Datapicker.Component.Internal.Num as Num
 import Halogen.Datapicker.Component.Time.Format as F
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Control.MonadPlus (guard)
 import Data.Bifunctor (bimap)
 import Data.DateTime (Hour, Millisecond, Minute, Second)
 import Data.Either (either)
-import Data.Enum (fromEnum)
+import Data.Either.Nested (Either2)
+import Data.Enum (class Enum, fromEnum, toEnum, upFrom)
 import Data.Foldable (fold, foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
+import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.Maybe (Maybe(Nothing, Just))
+import Data.List (sort)
+import Data.Maybe (Maybe(Nothing, Just), maybe)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
+import Data.NonEmpty (NonEmpty(..))
 import Data.Time (Time)
 import Data.Traversable (for, sequence)
-import Halogen.Datapicker.Component.Internal.Elements (enumElement, textElement)
+import Data.Unfoldable (class Unfoldable)
+import Halogen.Datapicker.Component.Internal.Elements (textElement)
 import Halogen.Datapicker.Component.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
 import Halogen.Datapicker.Component.Internal.Range (Range, bottomTop)
 import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), PickerValue, isInvalid, mustBeMounted, stepPickerValue')
@@ -44,8 +52,18 @@ type State =
   , time :: Input
   }
 
-type Slot = F.Command
-type ChildQuery = N.Query Int
+type NumQuery = Num.Query Int
+-- TODO maybe change Meridiem to Int as in NumQuery
+type ChoiceQuery = Choice.Query Meridiem
+type ChildQuery = Coproduct2 NumQuery ChoiceQuery
+
+type Slot = Either2 F.Command Unit
+
+cpNum ∷ CP.ChildPath NumQuery ChildQuery F.Command Slot
+cpNum = CP.cp1
+
+cpChoice ∷ CP.ChildPath ChoiceQuery ChildQuery Unit Slot
+cpChoice = CP.cp2
 
 type HTML m = H.ParentHTML TimeQuery ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
@@ -72,12 +90,26 @@ render s =
 onMb :: ∀ a b. (a -> b -> Maybe b) -> Maybe a -> b -> Maybe b
 onMb f a b = a >>= \a' -> f a' b
 
+upFromIncluding :: ∀ a u. Enum a => Unfoldable u => a -> NonEmpty u a
+upFromIncluding x = NonEmpty x $ upFrom x
+
 renderCommand :: ∀ m. F.Command -> HTML m
--- TODO fix once we fix choiceElement
--- renderCommand cmd@F.Meridiem      = choiceElement (UpdateCommand cmd) { title: "Meridiem" } (meridiem t)
-renderCommand cmd@F.Meridiem      = textElement { text: "foo"}
 renderCommand (F.Placeholder str) = textElement { text: str}
-renderCommand cmd                 = enumElement cmd UpdateCommand (commandToConfig cmd) (onMb $ F.toSetter cmd)
+renderCommand cmd@F.Meridiem = HH.slot'
+  cpChoice
+  unit
+  (Choice.picker Choice.boundedEnumHasChoiceInputVal
+    { title: "Meridiem"
+    , values: upFromIncluding (bottom :: Meridiem)
+    })
+  unit
+  (HE.input $ \(NotifyChange n) -> UpdateCommand $ (F.toSetter cmd (fromEnum n)))
+renderCommand cmd = HH.slot'
+  cpNum
+  cmd
+  (Num.picker Num.intHasNumberInputVal $ commandToConfig cmd)
+  unit
+  (HE.input $ \(NotifyChange n) -> UpdateCommand $ \t -> n >>= (_ `F.toSetter cmd` t))
 
 commandToConfig :: F.Command -> {title :: String, range :: Range Int }
 commandToConfig F.Hours24               = {title: "Hours", range: (bottomTop :: Range Hour) <#> fromEnum }
@@ -122,14 +154,19 @@ instance monoidKleisliEndo :: Monad m => Monoid (KleisliEndo m a) where
 buildTime :: ∀ m. DSL m (Maybe Time)
 buildTime = do
   {format} <- H.get
-  mbKleisliEndo <- for (unwrap format) mkKleisli
+  mbKleisliEndo <- for (sort $ unwrap format) mkKleisli
   pure case map fold $ sequence mbKleisliEndo of
    Just (KleisliEndo f) -> f bottom
    _ -> Nothing
   where
   mkKleisli (F.Placeholder _) = pure $ Just $ mempty
+  mkKleisli cmd@F.Meridiem = do
+    num <- H.query' cpChoice unit $ H.request (left <<< GetValue)
+    pure case num of
+      Just n -> Just $ KleisliEndo $ \t -> F.toSetter cmd (fromEnum n) t
+      _ -> Nothing
   mkKleisli cmd = do
-    num <- H.query cmd $ H.request (left <<< GetValue)
+    num <- H.query' cpNum cmd $ H.request (left <<< GetValue)
     pure case num of
       Just (Just n) -> Just $ KleisliEndo $ \t -> F.toSetter cmd n t
       _ -> Nothing
@@ -148,7 +185,17 @@ propagateChange :: ∀ m . F.Format -> Input -> DSL m Unit
 propagateChange format duration = do
   map (mustBeMounted <<< fold) $ for (unwrap format) change
   where
+  change :: F.Command -> DSL m (Maybe Unit)
   change (F.Placeholder _ ) = pure (Just unit)
+  change F.Meridiem = do
+    res <- H.query' cpChoice unit $ H.request $ left <<< SetValue m
+    pure case res of
+      Just (Just Choice.ValueIsNotInValues) -> Nothing
+      Just Nothing -> Just unit
+      Nothing -> Nothing
+    where
+    m :: Meridiem
+    m = (duration >>= either (const Nothing) (F.toGetter F.Meridiem) >>= toEnum) # maybe bottom id
   change cmd = do
     let n = (duration >>= either (const Nothing) (F.toGetter cmd)) :: Maybe Int
-    H.query cmd $ H.request $ left <<< SetValue n
+    H.query' cpNum cmd $ H.request $ left <<< SetValue n

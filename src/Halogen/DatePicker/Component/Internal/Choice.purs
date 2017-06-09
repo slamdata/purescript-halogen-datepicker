@@ -3,11 +3,18 @@ module Halogen.Datapicker.Component.Internal.Choice
   , ChoiceQuery
   , Query
   , QueryIn
-  , ChoiceError
+  , ChoiceError(..)
+  , HasChoiceInputVal
+  , stringHasChoiceInputVal
+  , numberHasChoiceInputVal
+  , intHasChoiceInputVal
+  , boundedEnumHasChoiceInputVal
+  , maybeBoundedEnumHasChoiceInputVal
   )
   where
 
 import Prelude
+import Debug.Trace as D
 import Data.Int as Int
 import Data.Number as N
 import Halogen as H
@@ -46,7 +53,7 @@ picker ∷ ∀ val m
   -> {title :: String, values :: NonEmpty Array val}
   -> H.Component HH.HTML (Query val) Unit (Message val) m
 picker hasChoiceInputVal {title, values} = H.component
-  { initialState: const {title, values, value: head values}
+  { initialState: const {title, values, value: head $ values}
   , render: (render hasChoiceInputVal) <#> (map right)
   , eval: coproduct (evalPicker hasChoiceInputVal) evalChoice
   , receiver: const Nothing
@@ -63,7 +70,7 @@ render hasChoiceInputVal {title, values, value}  = HH.select
     [ HP.value $ hasChoiceInputVal.toValue value'
     , HP.selected (value' == value)
     ]
-    [ HH.text $ hasChoiceInputVal.toTitle value ]
+    [ HH.text $ hasChoiceInputVal.toTitle value' ]
   classes = [HH.ClassName "Picker-input"]
     -- <> (guard (isInvalid value) $> HH.ClassName "Picker-input--invalid")
 
@@ -71,9 +78,10 @@ render hasChoiceInputVal {title, values, value}  = HH.select
 evalChoice ∷ ∀ val m . Eq val => ChoiceQuery val ~> DSL val m
 evalChoice (Update value next) = do
   s <- H.get
+  -- there wouldn't be case when value is Nothing so it's fine to do `for_`
   for_ value \value' -> do
     H.modify _{value = value'}
-    when (value' /= s.value) $ H.raise (NotifyChange $ s.value)
+    when (value' /= s.value) $ H.raise (NotifyChange $ value')
   pure next
 
 
@@ -124,5 +132,15 @@ boundedEnumHasChoiceInputVal =
   , toTitle: show
   }
 
--- TODO implement
--- maybeBoundedEnumHasChoiceInputVal :: ∀ a. Show a => BoundedEnum a => HasChoiceInputVal (Maybe a)
+maybeBoundedEnumHasChoiceInputVal :: ∀ a. Show a => BoundedEnum a => HasChoiceInputVal (Maybe a)
+maybeBoundedEnumHasChoiceInputVal =
+  { fromString: \str -> if str == show (fromEnum (bottom :: a) - 1)
+      then pure Nothing
+      else intHasChoiceInputVal.fromString str >>= ((_ + 1) >>> toEnum >>> Just)
+  , toValue: case _ of
+      Nothing -> show $ fromEnum (bottom :: a) - 1
+      Just x -> show $ fromEnum x
+  , toTitle: case _ of
+      Nothing -> ""
+      Just x -> show x
+  }
