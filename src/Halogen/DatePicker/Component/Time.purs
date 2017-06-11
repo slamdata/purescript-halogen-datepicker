@@ -22,9 +22,11 @@ import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.List (sort)
 import Data.Maybe (Maybe(Nothing, Just), maybe)
-import Data.Monoid (class Monoid, mempty)
-import Data.Newtype (class Newtype, unwrap)
+import Data.Monoid (mempty)
+import Data.Newtype (unwrap)
 import Data.NonEmpty (NonEmpty(..))
+import Data.Profunctor.Join (Join(..))
+import Data.Profunctor.Star (Star(..))
 import Data.Time (Time)
 import Data.Traversable (for, sequence)
 import Data.Unfoldable (class Unfoldable)
@@ -131,45 +133,37 @@ evalTime (UpdateCommand update next) = do
   s <- H.get
   nextTime <- stepPickerValue'
     InvalidTime
-    case _ of
-      Nothing -> buildTime
-      Just val -> pure (update val)
+    (maybe buildTime $ update >>> pure)
     s.time
   H.modify _{ time = nextTime }
   when (nextTime /= s.time) $ H.raise (NotifyChange nextTime)
   pure next
 
 -- TODO use normal `foldl <=< pure` instead :/
-newtype KleisliEndo m a = KleisliEndo (a -> m a)
-
-derive instance newtypeKleisliEndo :: Newtype (KleisliEndo m a) _
-
-instance semigroupKleisliEndo :: Bind m => Semigroup (KleisliEndo m a) where
-  append (KleisliEndo f) (KleisliEndo g) = KleisliEndo (f <=< g)
-
-instance monoidKleisliEndo :: Monad m => Monoid (KleisliEndo m a) where
-  mempty = KleisliEndo pure
+-- newtype KleisliEndo m a = KleisliEndo (a -> m a)
+--
+-- derive instance newtypeKleisliEndo :: Newtype (KleisliEndo m a) _
+--
+-- instance semigroupKleisliEndo :: Bind m => Semigroup (KleisliEndo m a) where
+--   append (KleisliEndo f) (KleisliEndo g) = KleisliEndo (f <=< g)
+--
+-- instance monoidKleisliEndo :: Monad m => Monoid (KleisliEndo m a) where
+--   mempty = KleisliEndo pure
 
 
 buildTime :: ∀ m. DSL m (Maybe Time)
 buildTime = do
   {format} <- H.get
   mbKleisliEndo <- for (sort $ unwrap format) mkKleisli
-  pure case map fold $ sequence mbKleisliEndo of
-   Just (KleisliEndo f) -> f bottom
-   _ -> Nothing
+  pure $ map fold (sequence mbKleisliEndo) >>= \(Join (Star f)) -> f bottom
   where
   mkKleisli (F.Placeholder _) = pure $ Just $ mempty
   mkKleisli cmd@F.Meridiem = do
     num <- H.query' cpChoice unit $ H.request (left <<< GetValue)
-    pure case num of
-      Just n -> Just $ KleisliEndo $ \t -> F.toSetter cmd (fromEnum n) t
-      _ -> Nothing
+    pure $ num <#> \n -> Join $ Star $ \t -> F.toSetter cmd (fromEnum n) t
   mkKleisli cmd = do
     num <- H.query' cpNum cmd $ H.request (left <<< GetValue)
-    pure case num of
-      Just (Just n) -> Just $ KleisliEndo $ \t -> F.toSetter cmd n t
-      _ -> Nothing
+    pure $ join num <#> \n -> Join $ Star $ \t -> F.toSetter cmd n t
 
 
 
@@ -189,10 +183,9 @@ propagateChange format duration = do
   change (F.Placeholder _ ) = pure (Just unit)
   change F.Meridiem = do
     res <- H.query' cpChoice unit $ H.request $ left <<< SetValue m
-    pure case res of
-      Just (Just Choice.ValueIsNotInValues) -> Nothing
-      Just Nothing -> Just unit
-      Nothing -> Nothing
+    pure $ res >>= case _ of
+      Just Choice.ValueIsNotInValues -> Nothing
+      Nothing -> Just unit
     where
     m :: Meridiem
     m = (duration >>= either (const Nothing) (F.toGetter F.Meridiem) >>= toEnum) # maybe bottom id
