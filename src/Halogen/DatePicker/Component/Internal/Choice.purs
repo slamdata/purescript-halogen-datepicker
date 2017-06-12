@@ -14,7 +14,6 @@ module Halogen.Datapicker.Component.Internal.Choice
   where
 
 import Prelude
-import Debug.Trace as D
 import Data.Int as Int
 import Data.Number as N
 import Halogen as H

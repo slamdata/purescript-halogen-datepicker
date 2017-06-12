@@ -6,6 +6,7 @@
     "purescript-formatters": "git://github.com/safareli/purescript-formatters.git#interval",
     "purescript-datetime": "git://github.com/safareli/purescript-datetime.git#interval",
     "purescript-halogen": "^2.0.1",
+    "purescript-halogen-css": "^6.0.0",
     "purescript-generics-rep": "^5.0.0",
     "purescript-validation": "^3.1.0",
     "purescript-profunctor": "^3.1.0",
@@ -13,7 +14,6 @@
     "purescript-these": "^3.0.0"
   },
   "resolutions": {
-    "purescript-formatters": "interval",
     "purescript-datetime": "interval"
   }
 }

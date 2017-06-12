@@ -14,7 +14,7 @@ import Data.Bifunctor (bimap)
 import Data.DateTime (Hour, Millisecond, Minute, Second)
 import Data.Either (either)
 import Data.Either.Nested (Either2)
-import Data.Enum (class Enum, fromEnum, toEnum, upFromIncluding)
+import Data.Enum (fromEnum, toEnum, upFromIncluding)
 import Data.Foldable (fold, foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
@@ -24,12 +24,10 @@ import Data.List (sort)
 import Data.Maybe (Maybe(Nothing, Just), maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap)
-import Data.NonEmpty (NonEmpty(..))
 import Data.Profunctor.Join (Join(..))
 import Data.Profunctor.Star (Star(..))
 import Data.Time (Time)
 import Data.Traversable (for, sequence)
-import Data.Unfoldable (class Unfoldable)
 import Halogen.Datapicker.Component.Internal.Elements (textElement)
 import Halogen.Datapicker.Component.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
 import Halogen.Datapicker.Component.Internal.Range (Range, bottomTop)
@@ -136,17 +134,6 @@ evalTime (UpdateCommand update next) = do
   when (nextTime /= s.time) $ H.raise (NotifyChange nextTime)
   pure next
 
--- TODO use normal `foldl <=< pure` instead :/
--- newtype KleisliEndo m a = KleisliEndo (a -> m a)
---
--- derive instance newtypeKleisliEndo :: Newtype (KleisliEndo m a) _
---
--- instance semigroupKleisliEndo :: Bind m => Semigroup (KleisliEndo m a) where
---   append (KleisliEndo f) (KleisliEndo g) = KleisliEndo (f <=< g)
---
--- instance monoidKleisliEndo :: Monad m => Monoid (KleisliEndo m a) where
---   mempty = KleisliEndo pure
-
 
 buildTime :: ∀ m. DSL m (Maybe Time)
 buildTime = do
@@ -161,7 +148,6 @@ buildTime = do
   mkKleisli cmd = do
     num <- H.query' cpNum cmd $ H.request (left <<< GetValue)
     pure $ join num <#> \n -> Join $ Star $ \t -> F.toSetter cmd n t
-
 
 
 evalPicker ∷ ∀ m . QueryIn ~> DSL m
