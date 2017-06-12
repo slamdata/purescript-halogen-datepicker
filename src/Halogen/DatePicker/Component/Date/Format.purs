@@ -1,6 +1,8 @@
 module Halogen.Datapicker.Component.Date.Format
   ( Format
   , Command(..)
+  , toSetter
+  , toGetter
   , fromString
   , fromDateTimeFormatter
   , toDateTimeFormatter
@@ -10,19 +12,21 @@ module Halogen.Datapicker.Component.Date.Format
   ) where
 
 import Prelude
-import Data.Foldable (class Foldable, foldMap)
-import Data.String (joinWith)
-import Data.Traversable (traverse)
-import Data.List (List)
-import Data.DateTime (DateTime(..), date)
-import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype)
 import Data.Formatter.DateTime as FDT
 import Halogen.Datapicker.Component.Internal.Constraint as C
-import Data.Date (Date)
+import Data.Date (Date, day, month, year)
+import Data.DateTime (DateTime(..), date)
+import Data.Either (Either(..))
+import Data.Enum (fromEnum, toEnum)
+import Data.Foldable (class Foldable, foldMap)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
+import Data.List (List)
+import Data.Maybe (Maybe(..))
+import Data.Newtype (class Newtype)
+import Data.String (joinWith)
+import Data.Traversable (traverse)
+import Halogen.Datapicker.Component.Internal.Enums (monthShort, setDay, setMonth, setYear, setYear2, setYear4, year2, year4)
 
 data Command
   = YearFull
@@ -44,6 +48,29 @@ derive instance commandEq :: Eq Command
 derive instance commandOrd :: Ord Command
 instance commandShow :: Show Command where
   show = genericShow
+
+toSetter :: Command -> Int -> Date -> Maybe Date
+toSetter YearFull n d = (toEnum n) >>= (_ `setYear4` d)
+toSetter YearTwoDigits n d = (toEnum n ) >>= (_ `setYear2` d)
+toSetter YearAbsolute n d = (toEnum n) >>= (_ `setYear` d)
+toSetter MonthFull n d = (toEnum n) >>= (_ `setMonth` d)
+toSetter MonthShort n d = (toEnum n) >>= (_ `setMonth` d)
+toSetter MonthTwoDigits n d = (toEnum n) >>= (_ `setMonth` d)
+toSetter DayOfMonthTwoDigits n d = (toEnum n) >>= (_ `setDay` d)
+toSetter DayOfMonth n d = (toEnum n) >>= (_ `setDay` d)
+toSetter (Placeholder _) _ d = pure d
+
+
+toGetter :: Command -> Date -> Maybe Int
+toGetter YearFull d            = Just $ fromEnum $ year4 d
+toGetter YearTwoDigits d       = Just $ fromEnum $ year2 d
+toGetter YearAbsolute d        = Just $ fromEnum $ year d
+toGetter MonthFull d           = Just $ fromEnum $ month d
+toGetter MonthShort d          = Just $ fromEnum $ monthShort d
+toGetter MonthTwoDigits d      = Just $ fromEnum $ month d
+toGetter DayOfMonthTwoDigits d = Just $ fromEnum $ day d
+toGetter DayOfMonth d          = Just $ fromEnum $ day d
+toGetter (Placeholder str) d   = Nothing
 
 
 newtype Format = Format (List Command)

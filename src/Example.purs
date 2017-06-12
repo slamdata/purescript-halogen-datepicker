@@ -216,7 +216,8 @@ main =
     map mustBeMounted $ case payload of
       SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< (SetValue Nothing)
       -- SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< (SetValue (Just $ Right val))
-      SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< (SetValue val)
+      SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< (SetValue Nothing)
+      -- SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< (SetValue (Just $ Right val))
       SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.request $ left <<< (SetValue val)
       SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< (SetValue Nothing)
       -- SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< (SetValue (Just $ Right val))
@@ -280,7 +281,7 @@ dateConfig :: ∀ m. ExampleConfig String Date DateF.Format Date.Query Date.Mess
 dateConfig =
   { mkFormat: DateF.fromString
   , unformat: DateF.unformat
-  , picker: Date.picker
+  , picker: \fmt _ -> Date.picker fmt
   , handler: \idx msg -> HandleMessage (MsgDate idx msg)
   , setter: \idx val -> Set (SetDate idx val)
   , cp: cpDate

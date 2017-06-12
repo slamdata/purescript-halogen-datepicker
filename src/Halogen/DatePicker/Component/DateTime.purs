@@ -57,12 +57,12 @@ picker format dateTime = H.parentComponent
   }
 
 render ∷ ∀ m. State -> HTML m
-render {dateTime, format} = HH.div [HP.classes [HH.ClassName "Picker"]] $
-  foldMap (pure <<< renderCommand dateTime) (unwrap format)
+render {format} = HH.div [HP.classes [HH.ClassName "Picker"]] $
+  foldMap (pure <<< renderCommand) (unwrap format)
 
-renderCommand :: ∀ m. DateTime -> F.Command -> HTML m
-renderCommand t cmd@(F.Time fmt) = HH.slot' cpTime unit (Time.picker fmt) unit (HE.input HandleTimeMessage)
-renderCommand t cmd@(F.Date fmt) = HH.slot' cpDate unit (Date.picker fmt (date t)) unit (HE.input HandleDateMessage)
+renderCommand :: ∀ m. F.Command -> HTML m
+renderCommand cmd@(F.Time fmt) = HH.slot' cpTime unit (Time.picker fmt) unit (HE.input HandleTimeMessage)
+renderCommand cmd@(F.Date fmt) = HH.slot' cpDate unit (Date.picker fmt) unit (HE.input HandleDateMessage)
 
 
 evalDateTime ∷ ∀ m . DateTimeQuery ~> DSL m
@@ -70,7 +70,8 @@ evalDateTime (HandleDateMessage msg next) = do
   {dateTime} <- H.get
   let
     newDateTime = case msg of
-      NotifyChange newDate -> modifyDate (const newDate) dateTime
+      -- TODO fix this
+      NotifyChange newDate -> maybe dateTime (\t -> modifyDate (const t) dateTime) (value newDate)
   H.modify _{ dateTime = newDateTime }
   H.raise (NotifyChange newDateTime)
   pure next
@@ -79,7 +80,7 @@ evalDateTime (HandleTimeMessage msg next) = do
   let
     newDateTime = case msg of
       -- TODO fix this
-      NotifyChange newTime -> maybe dateTime (\d-> modifyTime (const d) dateTime) (value newTime)
+      NotifyChange newTime -> maybe dateTime (\d -> modifyTime (const d) dateTime) (value newTime)
   H.modify _{ dateTime = newDateTime }
   H.raise (NotifyChange newDateTime)
   pure next
@@ -90,8 +91,8 @@ evalPicker (SetValue dateTime next) = do
   {format} <- H.get
   for_ (unwrap format) $ case _ of
     -- TODO fix this
-    F.Time _ -> map mustBeMounted $ H.query' cpTime unit $ H.request $ left <<< (SetValue (Just $ Right $ time dateTime))
-    F.Date _ -> map mustBeMounted $ H.query' cpDate unit $ H.request $ left <<< (SetValue (date dateTime))
+    F.Time _ -> map mustBeMounted $ H.query' cpTime unit $ H.request $ left <<< (SetValue $ Just $ Right $ time dateTime)
+    F.Date _ -> map mustBeMounted $ H.query' cpDate unit $ H.request $ left <<< (SetValue $ Just $ Right $ date dateTime)
   pure $ next unit
 
 evalPicker (GetValue next) = H.gets _.dateTime <#> next

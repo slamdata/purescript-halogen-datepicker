@@ -9,6 +9,7 @@ module Halogen.Datapicker.Component.Internal.Choice
   , numberHasChoiceInputVal
   , intHasChoiceInputVal
   , boundedEnumHasChoiceInputVal
+  , maybeIntHasChoiceInputVal
   , maybeBoundedEnumHasChoiceInputVal
   )
   where
@@ -124,22 +125,35 @@ intHasChoiceInputVal =
   , toTitle: show
   }
 
-boundedEnumHasChoiceInputVal :: ∀ a. Show a => BoundedEnum a => HasChoiceInputVal a
-boundedEnumHasChoiceInputVal =
+boundedEnumHasChoiceInputVal :: ∀ a. BoundedEnum a => (a -> String) -> HasChoiceInputVal a
+boundedEnumHasChoiceInputVal showTitle =
   { fromString: intHasChoiceInputVal.fromString >=> toEnum
   , toValue: fromEnum >>> intHasChoiceInputVal.toValue
-  , toTitle: show
+  , toTitle: showTitle
   }
 
-maybeBoundedEnumHasChoiceInputVal :: ∀ a. Show a => BoundedEnum a => HasChoiceInputVal (Maybe a)
-maybeBoundedEnumHasChoiceInputVal =
-  { fromString: \str -> if str == show (fromEnum (bottom :: a) - 1)
+maybeIntHasChoiceInputVal :: (Int -> String) -> HasChoiceInputVal (Maybe Int)
+maybeIntHasChoiceInputVal showTitle =
+  { fromString: \str -> if str == ""
       then pure Nothing
-      else intHasChoiceInputVal.fromString str >>= ((_ + 1) >>> toEnum >>> Just)
+      else intHasChoiceInputVal.fromString str <#> pure
   , toValue: case _ of
-      Nothing -> show $ fromEnum (bottom :: a) - 1
+      Nothing -> ""
+      Just x -> show x
+  , toTitle: case _ of
+      Nothing -> ""
+      Just x -> showTitle x
+  }
+
+maybeBoundedEnumHasChoiceInputVal :: ∀ a. BoundedEnum a => (a -> String) -> HasChoiceInputVal (Maybe a)
+maybeBoundedEnumHasChoiceInputVal showTitle =
+  { fromString: \str -> if str == ""
+      then pure Nothing
+      else intHasChoiceInputVal.fromString str <#> toEnum
+  , toValue: case _ of
+      Nothing -> show $ ""
       Just x -> show $ fromEnum x
   , toTitle: case _ of
       Nothing -> ""
-      Just x -> show x
+      Just x -> showTitle x
   }
