@@ -14,7 +14,7 @@ import Data.Bifunctor (bimap)
 import Data.DateTime (Hour, Millisecond, Minute, Second)
 import Data.Either (either)
 import Data.Either.Nested (Either2)
-import Data.Enum (class Enum, fromEnum, toEnum, upFrom)
+import Data.Enum (class Enum, fromEnum, toEnum, upFromIncluding)
 import Data.Foldable (fold, foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
@@ -91,9 +91,6 @@ render s =
 
 onMb :: ∀ a b. (a -> b -> Maybe b) -> Maybe a -> b -> Maybe b
 onMb f a b = a >>= \a' -> f a' b
-
-upFromIncluding :: ∀ a u. Enum a => Unfoldable u => a -> NonEmpty u a
-upFromIncluding x = NonEmpty x $ upFrom x
 
 renderCommand :: ∀ m. F.Command -> HTML m
 renderCommand (F.Placeholder str) = textElement { text: str}

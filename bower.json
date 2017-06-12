@@ -2,6 +2,7 @@
   "name": "purescript-halogen-datapicker",
   "private": true,
   "dependencies": {
+    "purescript-enums": "^3.2.0",
     "purescript-formatters": "git://github.com/safareli/purescript-formatters.git#interval",
     "purescript-datetime": "git://github.com/safareli/purescript-datetime.git#interval",
     "purescript-halogen": "^2.0.1",
