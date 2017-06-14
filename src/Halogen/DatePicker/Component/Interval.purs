@@ -20,7 +20,7 @@ import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Interval (Interval(..), IsoDuration)
 import Data.Maybe (Maybe(..))
 import Halogen.Datapicker.Component.Internal.Elements (textElement)
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), mustBeMounted)
+import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..), mustBeMounted)
 
 type Input = Interval IsoDuration DateTime
 data IntervalError = IntervalIsNotInShapeOfFormat
@@ -81,7 +81,7 @@ renderDuration :: ∀ m. DurationF.Format -> HTML m
 renderDuration fmt = HH.slot' cpDuration unit (Duration.picker fmt) unit (HE.input $ HandleDurationMessage)
 
 renderDateTime :: ∀ m. DateTimeF.Format -> DateTime -> Boolean -> HTML m
-renderDateTime fmt datetime idx = HH.slot' cpDateTime idx (DateTime.picker fmt datetime) unit (HE.input $ HandleDateTimeMessage idx)
+renderDateTime fmt datetime idx = HH.slot' cpDateTime idx (DateTime.picker fmt) unit (HE.input $ HandleDateTimeMessage idx)
 
 
 
@@ -90,13 +90,14 @@ evalInterval (HandleDateTimeMessage idx msg next) = do
   {interval} <- H.get
   let
     newInterval = case msg of
-      NotifyChange newDateTime -> case interval of
+      NotifyChange (Just (Right newDateTime)) -> case interval of
         StartEnd a b -> case idx of
           true -> StartEnd newDateTime b
           false -> StartEnd a newDateTime
         DurationEnd d a -> DurationEnd d newDateTime
         StartDuration a d -> StartDuration newDateTime d
         JustDuration d -> JustDuration d
+      NotifyChange _ -> interval -- TODO fix
   H.modify _{ interval = newInterval }
   H.raise (NotifyChange newInterval)
   pure next
@@ -115,7 +116,11 @@ toShape :: forall f a b. Bifunctor f => f a b -> f Unit Unit
 toShape = bimap (const unit) (const unit)
 
 evalPicker ∷ ∀ m . (PickerQuery (Maybe IntervalError) Input) ~> DSL m
-evalPicker (SetValue interval next) = do
+evalPicker (ResetError next) = do
+  -- H.modify _{ interval = Nothing }
+  -- TODO propagate reset
+  pure next
+evalPicker (Base (SetValue interval next)) = do
   {format} <- H.get
   if (toShape format /= toShape interval)
     then pure $ next $ Just IntervalIsNotInShapeOfFormat
@@ -127,10 +132,10 @@ evalPicker (SetValue interval next) = do
         StartDuration a d -> setDateTime false a *> setDuration d
         JustDuration d -> setDuration d
       pure $ next Nothing
-evalPicker (GetValue next) = H.gets _.interval <#> next
+evalPicker (Base (GetValue next)) = H.gets _.interval <#> next
 
 setDuration :: ∀ m. IsoDuration -> DSL m Unit
-setDuration val = map mustBeMounted $ H.query' cpDuration unit $ H.request $ left <<< (SetValue (Just $ Right val))
+setDuration val = map mustBeMounted $ H.query' cpDuration unit $ H.request $ left <<< (Base <<< SetValue (Just $ Right val))
 
 setDateTime :: ∀ m. Boolean -> DateTime -> DSL m Unit
-setDateTime idx val = map mustBeMounted $ H.query' cpDateTime idx $ H.request $ left <<< (SetValue val)
+setDateTime idx val = map mustBeMounted $ H.query' cpDateTime idx $ H.request $ left <<< (Base <<< SetValue (Just $ Right val))

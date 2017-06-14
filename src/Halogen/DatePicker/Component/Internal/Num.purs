@@ -13,14 +13,8 @@ module Halogen.Datapicker.Component.Internal.Num
   where
 
 import Prelude
+
 import CSS as CSS
-import Data.Int as Int
-import Data.Number as N
-import Halogen as H
-import Halogen.HTML as HH
-import Halogen.HTML.CSS as HCSS
-import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 import Control.Alternative (class Alternative, empty)
 import Control.Monad.Except (runExcept)
 import Control.MonadPlus (guard)
@@ -31,11 +25,18 @@ import Data.Enum (class BoundedEnum, fromEnum, toEnum)
 import Data.Foreign (readBoolean, readString, toForeign)
 import Data.Foreign.Index (readProp)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
+import Data.Int as Int
 import Data.Maybe (Maybe(..), maybe)
+import Data.Number as N
 import Data.String (Pattern(..), length, stripSuffix)
 import Data.Tuple (Tuple(..), fst)
+import Halogen as H
 import Halogen.Datapicker.Component.Internal.Range (Range(..), isInRange, rangeMax, rangeMin)
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), toAlt)
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), toAlt)
+import Halogen.HTML as HH
+import Halogen.HTML.CSS as HCSS
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 
 
 type State val =
@@ -47,7 +48,7 @@ type State val =
 -- TODO maybe replace Maybe with PickerValue
 type Input val = Maybe val
 data NumQuery val a = Update (InputValue val) a
-type QueryIn val = PickerQuery Unit (Input val)
+type QueryIn val = BasePickerQuery Unit (Input val)
 type Query val = Coproduct (QueryIn val) (NumQuery val)
 type Message val = PickerMessage (Input val)
 
@@ -144,15 +145,12 @@ numberElement hasNumberInputVal query {title, range} value = HH.input $
   <> styles
   where
   valueStr = toString value
-  classes = [HH.ClassName "Picker-input"]
-    <> (guard (isInvalid value) $> HH.ClassName "Picker-input--invalid")
-  -- If there is no `min` or `max` props then `input` will not have proper size, so we set width to
-  -- `3 + {number of characters in value})ch`, so that it's not taking too much space
-  -- (the 3 is sum of: 2 for increment/decrement buttons and 1 for extra free space).
+  classes = [HH.ClassName "Picker-input"] <> (guard (isInvalid value) $> HH.ClassName "Picker-input--invalid")
   styles = case range of
     MinMax _ _ -> []
-    _ | isInvalid value || isEmpty value -> []
-    _ -> [HCSS.style $ CSS.width (CSS.Size (CSS.value (Int.toNumber $ length valueStr + 3) <> CSS.fromString "ch"))]
+    _ | isInvalid value -> []
+    _ | isEmpty value -> [HCSS.style $ CSS.width $ CSS.em 2.25]
+    _ -> [HCSS.style $ CSS.width $ CSS.em (Int.toNumber (length valueStr) * 0.5 + 1.75)]
 
 
 -- We need to validate if value is in range manually as for example,

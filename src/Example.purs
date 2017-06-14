@@ -31,7 +31,7 @@ import Data.Map (Map, lookup, insert)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Monoid (mempty)
 import Data.Time (Time, setHour, setMinute)
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), mustBeMounted)
+import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..), mustBeMounted)
 import Partial.Unsafe (unsafePartialBecause)
 
 type TimeIdx = Int
@@ -214,15 +214,16 @@ main =
   eval ∷ Query ~> DSL m
   eval (Set payload next) = do
     map mustBeMounted $ case payload of
-      SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< (SetValue Nothing)
-      -- SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< (SetValue (Just $ Right val))
-      SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< (SetValue Nothing)
-      -- SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< (SetValue (Just $ Right val))
-      SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.request $ left <<< (SetValue val)
-      SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< (SetValue Nothing)
-      -- SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< (SetValue (Just $ Right val))
+      SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue Nothing)
+      -- SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue (Just $ Right val))
+      SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue Nothing)
+      -- SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue (Just $ Right val))
+      -- SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.request $ left <<< Base <<< (SetValue Nothing)
+      SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.request $ left <<< Base <<< (SetValue (Just $ Right val))
+      SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< Base <<< (SetValue Nothing)
+      -- SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< Base <<< (SetValue (Just $ Right val))
       SetInterval idx val -> do
-        res <- H.query' intervalConfig.cp idx $ H.request $ left <<< (SetValue val)
+        res <- H.query' intervalConfig.cp idx $ H.request $ left <<< Base <<< (SetValue val)
         pure $ void $ res <#> (\error ->  D.traceAny {message:"can't update interval", error})
     pure next
   eval (HandleMessage payload next) = do
@@ -291,7 +292,7 @@ dateTimeConfig :: ∀ m. ExampleConfig String DateTime DateTimeF.Format DateTime
 dateTimeConfig =
   { mkFormat: DateTimeF.fromString
   , unformat: DateTimeF.unformat
-  , picker: DateTime.picker
+  , picker: \fmt _ -> DateTime.picker fmt
   , handler: \idx msg -> HandleMessage (MsgDateTime idx msg)
   , setter: \idx val -> Set (SetDateTime idx val)
   , cp: cpDateTime

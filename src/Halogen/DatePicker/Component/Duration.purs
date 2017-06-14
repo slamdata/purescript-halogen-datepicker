@@ -1,16 +1,10 @@
 module Halogen.Datapicker.Component.Duration where
 
 import Prelude
-import Halogen as H
-import Halogen.Datapicker.Component.Duration.Format as F
-import Halogen.Datapicker.Component.Internal.Num as N
-import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
-import Control.MonadPlus (guard)
+
 import Data.Array (fold)
 import Data.Bifunctor (bimap)
-import Data.Either (either)
+import Data.Either (Either(..), either)
 import Data.Foldable (foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Generic.Rep (class Generic)
@@ -21,8 +15,14 @@ import Data.Monoid (mempty)
 import Data.Monoid.Endo (Endo(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (for, sequence)
+import Halogen as H
+import Halogen.Datapicker.Component.Duration.Format as F
+import Halogen.Datapicker.Component.Internal.Num as N
 import Halogen.Datapicker.Component.Internal.Range (minRange)
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), PickerValue, isInvalid, mustBeMounted, stepPickerValue')
+import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper')
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 
 
 data DurationQuery a = UpdateCommand F.Command (Maybe Number) a
@@ -59,12 +59,7 @@ picker format = H.parentComponent
   }
 
 render ∷  ∀ m. State -> HTML m
-render s =
-  HH.ul
-    [ HP.classes $
-      [ HH.ClassName "Picker" ]
-      <> (guard (isInvalid s.duration) $> HH.ClassName "Picker--invalid")
-    ]
+render s = HH.ul [ HP.classes $ pickerClasses s.duration ]
     (foldMap (pure <<< f) (unwrap s.format))
   where
   f cmd = HH.li [ HP.classes [ HH.ClassName "Picker-component" ] ]
@@ -83,12 +78,9 @@ overIsoDuration f d = mkIsoDuration $ f $ unIsoDuration d
 evalDuration ∷ ∀ m . DurationQuery ~> DSL m
 evalDuration (UpdateCommand cmd val next) = do
   s <- H.get
-  nextDuration <- stepPickerValue'
-    InvalidIsoDuration
-    case _ of
-      Nothing -> buildDuration
-      Just dur -> pure $ val >>= \n -> overIsoDuration (F.toSetter cmd n) dur
-    s.duration
+  nextDuration <- map (steper' s.duration InvalidIsoDuration) $ case s.duration of
+    Just (Right duration) -> pure $ val >>= \n -> overIsoDuration (F.toSetter cmd n) duration
+    _  -> buildDuration
   H.modify (_{ duration = nextDuration })
   when (nextDuration /= s.duration) $ H.raise (NotifyChange nextDuration)
   pure next
@@ -113,12 +105,15 @@ buildDuration = do
 
 
 evalPicker ∷ ∀ m . QueryIn ~> DSL m
-evalPicker (SetValue duration next) = do
+evalPicker (ResetError next) = do
+  H.modify _{ duration = Nothing }
+  pure next
+evalPicker (Base (SetValue duration next)) = do
   {format} <- H.get
   propagateChange format duration
   H.modify \s -> s{duration = duration}
   pure $ next unit
-evalPicker (GetValue next) = H.gets _.duration <#> next
+evalPicker (Base (GetValue next)) = H.gets _.duration <#> next
 
 propagateChange :: ∀ m . F.Format -> Input -> DSL m Unit
 propagateChange format duration = do

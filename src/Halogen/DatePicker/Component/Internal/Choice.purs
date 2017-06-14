@@ -27,7 +27,7 @@ import Data.Foldable (elem, for_)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Data.Maybe (Maybe(..))
 import Data.NonEmpty (NonEmpty, fromNonEmpty, head, tail)
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..))
+import Halogen.Datapicker.Component.Types (PickerMessage(..), BasePickerQuery(..))
 
 
 
@@ -40,7 +40,7 @@ type State val =
 data ChoiceError = ValueIsNotInValues
 
 data ChoiceQuery val a = Update (Maybe val) a
-type QueryIn val = PickerQuery (Maybe ChoiceError) val
+type QueryIn val = BasePickerQuery (Maybe ChoiceError) val
 type Query val = Coproduct (QueryIn val) (ChoiceQuery val)
 type Message val = PickerMessage val
 
@@ -62,7 +62,7 @@ picker hasChoiceInputVal {title, values} = H.component
 render ∷ ∀ val. Eq val => HasChoiceInputVal val -> State val -> HTML val
 render hasChoiceInputVal {title, values, value}  = HH.select
   [ HP.title title
-  , HP.classes classes
+  , HP.classes [HH.ClassName "Picker-input"]
   , HE.onValueChange (HE.input (hasChoiceInputVal.fromString >>> Update))
   ] (fromNonEmpty cons values <#> renderValue)
   where
@@ -71,8 +71,6 @@ render hasChoiceInputVal {title, values, value}  = HH.select
     , HP.selected (value' == value)
     ]
     [ HH.text $ hasChoiceInputVal.toTitle value' ]
-  classes = [HH.ClassName "Picker-input"]
-    -- <> (guard (isInvalid value) $> HH.ClassName "Picker-input--invalid")
 
 
 evalChoice ∷ ∀ val m . Eq val => ChoiceQuery val ~> DSL val m
