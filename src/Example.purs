@@ -45,11 +45,11 @@ data Query a
   | HandleMessage MessagePayload a
 
 data SetPayload
-  = SetTime Int Time
-  | SetDate Int Date
-  | SetDateTime Int DateTime
-  | SetDuration Int IsoDuration
-  | SetInterval Int (Interval IsoDuration DateTime)
+  = SetTime Int (Maybe Time)
+  | SetDate Int (Maybe Date)
+  | SetDateTime Int (Maybe DateTime)
+  | SetDuration Int (Maybe IsoDuration)
+  | SetInterval Int (Maybe (Interval IsoDuration DateTime))
 
 data MessagePayload
   = MsgTime Int Time.Message
@@ -177,7 +177,7 @@ main =
           , DurationF.Minute
           , DurationF.Second
           ]
-          "YYYY:MM:DD"
+          "YYYY:MM:DD-HH:mm"
         )
         (Right $ DurationEnd testDuration testDateTime)
     <> renderInterval s 3
@@ -191,7 +191,7 @@ main =
   testDateTime = DateTime testDate (bottom # setHour (enum 2) # setMinute (enum 2))
 
   testDuration :: IsoDuration
-  testDuration = unsafePartialBecause "this duration must be valid" fromJust $ I.mkIsoDuration $ I.year 100.0 <> I.month 25.0 <> I.day 245.0 <> I.minute 100.0 <> I.second 124.0
+  testDuration = unsafePartialBecause "this duration must be valid" fromJust $ I.mkIsoDuration $ I.year 100.0 <> I.month 25.0 <> I.day 245.0 <> I.hour 0.0 <> I.minute 100.0 <> I.second 124.0
 
   enum :: ∀ a. BoundedEnum a => Int -> a
   enum = unsafePartialBecause "ints passed to this func must be in range" fromJust <<< toEnum
@@ -214,16 +214,12 @@ main =
   eval ∷ Query ~> DSL m
   eval (Set payload next) = do
     map mustBeMounted $ case payload of
-      SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue Nothing)
-      -- SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue (Just $ Right val))
-      SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue Nothing)
-      -- SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue (Just $ Right val))
-      -- SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.request $ left <<< Base <<< (SetValue Nothing)
-      SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.request $ left <<< Base <<< (SetValue (Just $ Right val))
-      SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< Base <<< (SetValue Nothing)
-      -- SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< Base <<< (SetValue (Just $ Right val))
+      SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+      SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+      SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+      SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
       SetInterval idx val -> do
-        res <- H.query' intervalConfig.cp idx $ H.request $ left <<< Base <<< (SetValue val)
+        res <- H.query' intervalConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
         pure $ void $ res <#> (\error ->  D.traceAny {message:"can't update interval", error})
     pure next
   eval (HandleMessage payload next) = do
@@ -240,9 +236,9 @@ main =
 type ExampleConfig fmtInput input fmt query out m =
   { mkFormat :: fmtInput -> Either String fmt
   , unformat :: fmt -> String -> Either String input
-  , picker :: fmt -> input -> H.Component HH.HTML query Unit out m
+  , picker :: fmt -> H.Component HH.HTML query Unit out m
   , handler :: ∀z. Int -> out -> z -> Query z
-  , setter :: ∀z. Int -> input -> z -> Query z
+  , setter :: ∀z. Int -> Maybe input -> z -> Query z
   , cp :: CP.ChildPath query ChildQuery Int Slot
   }
 
@@ -256,10 +252,11 @@ renderExample :: ∀ fmtInput input fmt query out m
 renderExample c items idx fmt' value'= unEither $ do
   fmt <- c.mkFormat fmt'
   value <- either (c.unformat fmt) Right value'
-  let cmp = c.picker fmt value
+  let cmp = c.picker fmt
   pure
     [ HH.slot' c.cp idx cmp unit (HE.input (c.handler idx))
-    , HH.button [ HE.onClick $ HE.input_ $ c.setter idx value] [ HH.text "reset"]
+    , HH.button [ HE.onClick $ HE.input_ $ c.setter idx (Just value)] [ HH.text "reset"]
+    , HH.button [ HE.onClick $ HE.input_ $ c.setter idx Nothing] [ HH.text "clear"]
     , case lookup idx items of
         Nothing -> HH.div_ [HH.text "no value is set"]
         Just val -> HH.div_ [HH.text $ "value: " <> val]
@@ -272,7 +269,7 @@ timeConfig :: ∀ m. ExampleConfig String Time TimeF.Format Time.Query Time.Mess
 timeConfig =
   { mkFormat: TimeF.fromString
   , unformat: TimeF.unformat
-  , picker: \fmt _ -> Time.picker fmt
+  , picker: Time.picker
   , handler: \idx msg -> HandleMessage (MsgTime idx msg)
   , setter: \idx val -> Set (SetTime idx val)
   , cp: cpTime
@@ -282,7 +279,7 @@ dateConfig :: ∀ m. ExampleConfig String Date DateF.Format Date.Query Date.Mess
 dateConfig =
   { mkFormat: DateF.fromString
   , unformat: DateF.unformat
-  , picker: \fmt _ -> Date.picker fmt
+  , picker: Date.picker
   , handler: \idx msg -> HandleMessage (MsgDate idx msg)
   , setter: \idx val -> Set (SetDate idx val)
   , cp: cpDate
@@ -292,7 +289,7 @@ dateTimeConfig :: ∀ m. ExampleConfig String DateTime DateTimeF.Format DateTime
 dateTimeConfig =
   { mkFormat: DateTimeF.fromString
   , unformat: DateTimeF.unformat
-  , picker: \fmt _ -> DateTime.picker fmt
+  , picker: DateTime.picker
   , handler: \idx msg -> HandleMessage (MsgDateTime idx msg)
   , setter: \idx val -> Set (SetDateTime idx val)
   , cp: cpDateTime
@@ -302,7 +299,7 @@ durationConfig :: ∀ m. ExampleConfig (Array DurationF.Command) IsoDuration Dur
 durationConfig =
   { mkFormat: DurationF.mkFormat
   , unformat: const DurationF.unformat
-  , picker: \fmt _ -> Duration.picker fmt
+  , picker: Duration.picker
   , handler: \idx msg -> HandleMessage (MsgDuration idx msg)
   , setter: \idx val -> Set (SetDuration idx val)
   , cp: cpDuration

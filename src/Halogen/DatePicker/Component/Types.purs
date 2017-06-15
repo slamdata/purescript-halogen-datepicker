@@ -20,7 +20,7 @@ data BasePickerQuery err val next
 data PickerMessage val
   = NotifyChange val
 
-mustBeMounted :: Maybe Unit -> Unit
+mustBeMounted :: ∀a. Maybe a -> a
 mustBeMounted a = unsafePartialBecause "children must be mounted" (fromJust a)
 
 type PickerValue e a = Maybe (Either e a)

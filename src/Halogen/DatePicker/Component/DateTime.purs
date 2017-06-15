@@ -128,8 +128,8 @@ setTime x dt = modifyTime (const x) dt
 setDate :: Date -> DateTime  -> DateTime
 setDate x dt = modifyDate (const x) dt
 
-type BuildM = Join (Star (Writer (Maybe DateTimeErrorLast))) DateTime
-formatToSteps :: ∀ m. F.Format -> DSL m (List (Maybe BuildM))
+type StepM = Join (Star (Writer (Maybe DateTimeErrorLast))) DateTime
+formatToSteps :: ∀ m. F.Format -> DSL m (List (Maybe StepM))
 formatToSteps format = for (sort $ unwrap format) $ case _ of
   F.Time _ -> do
     mbVal :: Maybe (PickerValue TimeError Time) <- H.query' cpTime unit $ H.request (left <<< Base <<< GetValue)
@@ -138,18 +138,18 @@ formatToSteps format = for (sort $ unwrap format) $ case _ of
     mbVal :: Maybe (PickerValue DateError Date) <- H.query' cpDate unit $ H.request (left <<< Base <<< GetValue)
     pure $ mbVal <#> applyDate
   where
-  applyTime :: PickerValue TimeError Time -> BuildM
+  applyTime :: PickerValue TimeError Time -> StepM
   applyTime val = Join $ Star $ \dt -> case val of
     Just (Right time) -> pure $ setTime time dt
     Just (Left err) -> tell (Just $ bimap Last Last $ timeError err) *> pure dt
     Nothing -> tell (Just $ Tuple (Last Nothing) (Last Nothing)) *> pure dt
-  applyDate :: PickerValue DateError Date -> BuildM
+  applyDate :: PickerValue DateError Date -> StepM
   applyDate val = Join $ Star $ \dt -> case val of
     Just (Right date) -> pure $ setDate date dt
     Just (Left err) -> tell (Just $ bimap Last Last $ dateError err) *> pure dt
     Nothing -> tell (Just $ Tuple (Last Nothing) (Last Nothing)) *> pure dt
 
-stepsToFunc :: List (Maybe BuildM) -> DateTime -> Either DateTimeError DateTime
+stepsToFunc :: List (Maybe StepM) -> DateTime -> Either DateTimeError DateTime
 stepsToFunc steps dt = case flat steps of
     Nothing -> Left (Tuple Nothing Nothing)
     Just (Join (Star f)) -> case runWriter $ f dt of
