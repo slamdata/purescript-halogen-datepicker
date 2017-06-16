@@ -12,15 +12,14 @@ import Data.Foldable (fold, foldMap, length)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.List (List, sort)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..))
 import Data.Maybe.Last (Last(..))
-import Data.Monoid (class Monoid)
 import Data.Monoid.Additive (Additive(..))
 import Data.Newtype (unwrap)
 import Data.Profunctor.Join (Join(..))
 import Data.Profunctor.Star (Star(..))
 import Data.Time (Time)
-import Data.Traversable (for, for_, sequence)
+import Data.Traversable (for, for_)
 import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.Component.ChildPath as CP
@@ -29,7 +28,7 @@ import Halogen.Datapicker.Component.Date as Date
 import Halogen.Datapicker.Component.DateTime.Format as F
 import Halogen.Datapicker.Component.Time (TimeError)
 import Halogen.Datapicker.Component.Time as Time
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper, steper', value)
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper, value)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -83,7 +82,7 @@ renderCommand cmd@(F.Date fmt) = HH.slot' cpDate unit (Date.picker fmt) unit (HE
 evalDateTime ∷ ∀ m . DateTimeQuery ~> DSL m
 evalDateTime (Update msg next) = do
   s <- H.get
-  nextDateTime <- map (steper' s.dateTime) $ case s.dateTime of
+  nextDateTime <- map (steper s.dateTime) $ case s.dateTime of
     Nothing -> do
       dt <- buildDateTime
       case dt of

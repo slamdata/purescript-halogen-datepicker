@@ -22,7 +22,7 @@ import Halogen.Datapicker.Component.Duration as Duration
 import Halogen.Datapicker.Component.Duration.Format as DurationF
 import Halogen.Datapicker.Component.Internal.Elements (textElement)
 import Halogen.Datapicker.Component.Interval.Format as F
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper')
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -94,7 +94,7 @@ renderDateTime fmt idx = HH.slot' cpDateTime idx (DateTime.picker fmt) unit (HE.
 evalInterval ∷ ∀ m . IntervalQuery ~> DSL m
 evalInterval (Update msg next) = do
   s <- H.get
-  nextInterval <- map (steper' s.interval) $ case s.interval of
+  nextInterval <- map (steper s.interval) $ case s.interval of
     Nothing  -> do
       interval <- buildInterval
       case interval of

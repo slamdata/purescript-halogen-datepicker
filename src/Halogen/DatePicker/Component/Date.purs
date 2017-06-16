@@ -28,7 +28,7 @@ import Halogen.Datapicker.Component.Internal.Elements (textElement)
 import Halogen.Datapicker.Component.Internal.Enums (MonthShort, Year2, Year4, setYear)
 import Halogen.Datapicker.Component.Internal.Num as Num
 import Halogen.Datapicker.Component.Internal.Range (Range, bottomTop)
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steperMaybe, steperMaybe', value)
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper', value)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -82,8 +82,6 @@ render s = HH.ul [ HP.classes $ pickerClasses s.date ]
   f cmd = HH.li [HP.classes [HH.ClassName "Picker-component"]] [renderCommand cmd]
 
 
-renderCommandText :: ∀ m. F.Command -> { text  :: String } -> HTML m
-renderCommandText cmd conf = textElement conf
 
 renderCommandEnum :: ∀ m. F.Command -> { title :: String , range  :: Range Int } -> HTML m
 renderCommandEnum cmd conf' = let conf = conf'{range = conf'.range} in
@@ -103,7 +101,7 @@ renderCommandChoice cmd conf = HH.slot' cpChoice cmd
 
 renderCommand :: ∀ m. F.Command -> HTML m
 renderCommand cmd = case cmd of
-  F.Placeholder str     -> renderCommandText cmd { text: str}
+  F.Placeholder str     -> textElement { text: str}
   F.YearFull            -> renderCommandEnum cmd { title: "Year", range: (bottomTop :: Range Year4) <#> fromEnum }
   F.YearTwoDigits       -> renderCommandEnum cmd { title: "Year", range: (bottomTop :: Range Year2) <#> fromEnum }
   F.YearAbsolute        -> renderCommandEnum cmd { title: "Year", range: (bottomTop :: Range Year) <#> fromEnum }
@@ -116,7 +114,7 @@ renderCommand cmd = case cmd of
 evalDate ∷ ∀ m . DateQuery ~> DSL m
 evalDate (Update update next) = do
   s <- H.get
-  nextDate <- map (steperMaybe' s.date InvalidDate) $ case s.date of
+  nextDate <- map (steper' s.date InvalidDate) $ case s.date of
     Just (Right date) -> pure $ maybe (Left false) Right $ update date
     _  -> buildDate
   H.modify _{ date = nextDate }

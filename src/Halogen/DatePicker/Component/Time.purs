@@ -16,7 +16,7 @@ import Data.List (sort)
 import Data.Maybe (Maybe(Nothing, Just), maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap)
-import Data.NonEmpty (NonEmpty(..))
+import Data.NonEmpty (NonEmpty)
 import Data.Profunctor.Join (Join(..))
 import Data.Profunctor.Star (Star(..))
 import Data.Time (Time)
@@ -29,7 +29,7 @@ import Halogen.Datapicker.Component.Internal.Enums (Hour12, Meridiem, Millisecon
 import Halogen.Datapicker.Component.Internal.Num as Num
 import Halogen.Datapicker.Component.Internal.Range (Range, bottomTop)
 import Halogen.Datapicker.Component.Time.Format as F
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steperMaybe, toAlt, value)
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper', value)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -82,8 +82,6 @@ render s = HH.ul [ HP.classes $ pickerClasses s.time ]
   where
   f cmd = HH.li [HP.classes [HH.ClassName "Picker-component"]] $ [renderCommand cmd]
 
-renderCommandText :: ∀ m. F.Command -> { text  :: String } -> HTML m
-renderCommandText cmd conf = textElement conf
 
 renderCommandEnum :: ∀ m. F.Command -> { title :: String , range  :: Range Int } -> HTML m
 renderCommandEnum cmd conf' = let conf = conf'{range = conf'.range} in
@@ -102,11 +100,10 @@ renderCommandChoice cmd conf = HH.slot' cpChoice cmd
 
 renderCommand :: ∀ m. F.Command -> HTML m
 renderCommand cmd = case cmd of
-  F.Placeholder str       -> renderCommandText cmd { text: str}
+  F.Placeholder str       -> textElement { text: str}
   F.Meridiem              -> renderCommandChoice cmd { title: "Meridiem", values: upFromIncluding (bottom :: Maybe Meridiem) }
   F.Hours24               -> renderCommandEnum cmd { title: "Hours", range: (bottomTop :: Range Hour) <#> fromEnum }
   F.Hours12               -> renderCommandEnum cmd { title: "Hours", range: (bottomTop :: Range Hour12) <#> fromEnum }
-  F.Meridiem              -> renderCommandEnum cmd { title: "Meridiem", range: (bottomTop :: Range Meridiem) <#> fromEnum }
   F.MinutesTwoDigits      -> renderCommandEnum cmd { title: "Minutes", range: (bottomTop :: Range Minute) <#> fromEnum }
   F.Minutes               -> renderCommandEnum cmd { title: "Minutes", range: (bottomTop :: Range Minute) <#> fromEnum }
   F.SecondsTwoDigits      -> renderCommandEnum cmd { title: "Seconds", range: (bottomTop :: Range Second) <#> fromEnum }
@@ -118,9 +115,10 @@ renderCommand cmd = case cmd of
 evalTime ∷ ∀ m . TimeQuery ~> DSL m
 evalTime (Update update next) = do
   s <- H.get
-  nextTime <- map (steperMaybe s.time InvalidTime) $ case s.time of
-    Just (Right time) -> pure $ update time
-    _  -> buildTime
+  nextTime <- map (steper' s.time InvalidTime <<< maybe (Left false) Right) $
+    case s.time of
+      Just (Right time) -> pure $ update time
+      _  -> buildTime
   H.modify _{ time = nextTime }
   when (nextTime /= s.time) $ H.raise (NotifyChange nextTime)
   pure next

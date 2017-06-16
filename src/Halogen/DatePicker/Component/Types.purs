@@ -27,41 +27,20 @@ mustBeMounted a = unsafePartialBecause "children must be mounted" (fromJust a)
 
 type PickerValue e a = Maybe (Either e a)
 
-isIdle :: ∀ e a. PickerValue e a -> Boolean
-isIdle = isNothing
-
-isInvalid :: ∀ e a. PickerValue e a -> Boolean
-isInvalid (Just (Left _)) = true
-isInvalid _ = false
-
-isValid :: ∀ e a. PickerValue e a -> Boolean
-isValid (Just (Right _)) = true
-isValid _ = false
-
 value :: ∀ e a. PickerValue e a -> Maybe a
 value (Just (Right x)) = Just x
 value _ = Nothing
 
-error :: ∀ e a. PickerValue e a -> Maybe e
-error (Just (Left x)) = Just x
-error _ = Nothing
+steper' :: ∀ e a. PickerValue e a -> e -> Either Boolean a -> PickerValue e a
+steper' old err = steper old <<< lmap (_ `Tuple` err)
 
-steperMaybe :: ∀ e a. PickerValue e a -> e -> Maybe a -> PickerValue e a
-steperMaybe old err = steper old <<< maybe (Left err) Right
-
-steperMaybe' :: ∀ e a. PickerValue e a -> e -> Either Boolean a -> PickerValue e a
-steperMaybe' old err = steper' old <<< lmap (_ `Tuple` err)
-
-steper' :: ∀ e a. PickerValue e a -> Either (Tuple Boolean e) a -> PickerValue e a
-steper' old new = case old, new of
+steper :: ∀ e a. PickerValue e a -> Either (Tuple Boolean e) a -> PickerValue e a
+steper old new = case old, new of
   _, Right x -> Just (Right x)
   Just _, Left (Tuple _ err) -> Just (Left err)
   -- `true` indicates if we want to force state change to "invalid"
   Nothing, Left (Tuple true err) -> Just (Left err)
   Nothing, Left _ -> Nothing
-
-steper :: ∀ e a. PickerValue e a -> Either e a -> PickerValue e a
-steper old new = steper' old (lmap (Tuple false) new)
 
 toAlt :: ∀ f. Alternative f => Maybe ~> f
 toAlt (Just a) = pure a
@@ -69,3 +48,7 @@ toAlt Nothing = empty
 
 pickerClasses :: forall e a. PickerValue e a -> Array ClassName
 pickerClasses val = [ClassName "Picker"] <> (guard (isInvalid val) $> ClassName "Picker--invalid")
+  where
+  isInvalid :: PickerValue e a -> Boolean
+  isInvalid (Just (Left _)) = true
+  isInvalid _ = false

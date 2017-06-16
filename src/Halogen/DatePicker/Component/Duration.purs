@@ -19,7 +19,7 @@ import Halogen as H
 import Halogen.Datapicker.Component.Duration.Format as F
 import Halogen.Datapicker.Component.Internal.Num as N
 import Halogen.Datapicker.Component.Internal.Range (minRange)
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper, steperMaybe, steperMaybe')
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper')
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -78,7 +78,7 @@ overIsoDuration f d = mkIsoDuration $ f $ unIsoDuration d
 evalDuration ∷ ∀ m . DurationQuery ~> DSL m
 evalDuration (UpdateCommand cmd val next) = do
   s <- H.get
-  nextDuration <- map (steperMaybe' s.duration InvalidIsoDuration) $ case s.duration of
+  nextDuration <- map (steper' s.duration InvalidIsoDuration) $ case s.duration of
     Just (Right duration) -> pure
       $ maybe (Left false) Right
       $ val >>= \n -> overIsoDuration (F.toSetter cmd n) duration
