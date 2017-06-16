@@ -127,16 +127,7 @@ numberElement hasNumberInputVal query {title, range} value = HH.input $
   , HP.value valueStr
   , HE.onInput $ HE.input $
     inputValueFromEvent
-    -- TODO bug
-    -- we might want number and string value to comute?
-    --  i.e.  if user types `-0` we will parse it as `0`
-    --  or   if user types `001` we will parse it as `1`
-    --  or   if user types `0.1111111111111111111111` we will parse it as `0.1111111111111111`
-    --  or   if user types `1e1` we will parse it as `10`
-    -- we can't use `pattern` attr as it's not supported for number input
-    -- but we can either use some regex to validate if input is valid
-    -- or check if  fromString and toString give same result
-    >>> lmap (_ >>= hasNumberInputVal.fromString)
+    >>> parseValidInput
     >>> isInputInRange range
     >>> query
   ]
@@ -144,6 +135,18 @@ numberElement hasNumberInputVal query {title, range} value = HH.input $
   <> (rangeMax range <#> hasNumberInputVal.toNumber >>> HP.max # toAlt)
   <> styles
   where
+  -- Number and String value must comute (`map toValue (fromString x) == Just x`)
+  -- to avoid this issues:
+  --  * if user types `-0` we will parse it as `0` or
+  --  * if user types `001` we will parse it as `1` or
+  --  * if user types `0.1111111111111111111111` we will parse it as `0.1111111111111111` or
+  --  * if user types `1e1` we will parse it as `10`
+  parseValidInput :: InputValue String -> InputValue val
+  parseValidInput = lmap $ (=<<) \str -> do
+    val <- hasNumberInputVal.fromString str
+    guard (hasNumberInputVal.toValue val == str)
+    pure val
+
   valueStr = toString value
   classes = [HH.ClassName "Picker-input"] <> (guard (isInvalid value) $> HH.ClassName "Picker-input--invalid")
   styles = case range of
