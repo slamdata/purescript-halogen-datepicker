@@ -22,7 +22,7 @@ import Halogen.Datapicker.Component.Duration as Duration
 import Halogen.Datapicker.Component.Duration.Format as DurationF
 import Halogen.Datapicker.Component.Internal.Elements (textElement)
 import Halogen.Datapicker.Component.Interval.Format as F
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper)
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper')
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -89,15 +89,20 @@ renderDateTime :: ∀ m. DateTimeF.Format -> Boolean -> HTML m
 renderDateTime fmt idx = HH.slot' cpDateTime idx (DateTime.picker fmt) unit (HE.input $ Update <<< Right <<< (Tuple idx))
 
 
--- [1] - this case will not happen as interval will not Just Right
---       if any of it's child is Nothing so return nonsence value
+-- [1] - this case will not happen as interval will not be `Just Right`
+--       if any of it's child is `Nothing` so return nonsence value
 evalInterval ∷ ∀ m . IntervalQuery ~> DSL m
 evalInterval (Update msg next) = do
   s <- H.get
-  nextInterval <- map (steper s.interval) $ case s.interval of
-    Nothing  -> resetChildErrorBasedOnMessage msg *> buildInterval
+  nextInterval <- map (steper' s.interval) $ case s.interval of
+    Nothing  -> do
+      interval <- buildInterval
+      case interval of
+        Left (Tuple false _) -> resetChildErrorBasedOnMessage msg
+        _ -> pure unit
+      pure interval
     Just (Left err) -> buildInterval
-    Just (Right interval) -> pure case msg of
+    Just (Right interval) -> pure $ lmap (Tuple false) $ case msg of
       Left (NotifyChange newDuration) -> case newDuration of
         Just (Left x) -> Left $ bimap (const $ Just x) (const Nothing) s.format
         Nothing -> Left $ bimap (const Nothing) (const Nothing) s.format -- [1]
@@ -116,12 +121,20 @@ evalInterval (Update msg next) = do
   when (nextInterval /= s.interval) $ H.raise (NotifyChange nextInterval)
   pure next
 
--- TODO implement
-buildInterval :: ∀ m. DSL m (Either IntervalError IsoInterval)
+
+buildInterval :: ∀ m. DSL m (Either (Tuple Boolean IntervalError) IsoInterval)
 buildInterval = do
   {format} <- H.get
   vals <- collectValues format
-  pure $ unVals vals
+  pure $ lmap addForce $ unVals vals
+
+addForce :: IntervalError -> Tuple Boolean IntervalError
+addForce err = case err of
+  StartEnd Nothing Nothing -> Tuple false err
+  DurationEnd Nothing Nothing -> Tuple false err
+  StartDuration Nothing Nothing -> Tuple false err
+  JustDuration Nothing -> Tuple false err
+  _ -> Tuple true err
 
 unVals :: Interval Duration.Input DateTime.Input -> Either IntervalError IsoInterval
 unVals vals = case bimap maybeLeft maybeLeft vals of

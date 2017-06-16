@@ -28,7 +28,7 @@ import Halogen.Datapicker.Component.Internal.Enums (Hour12, Meridiem, Millisecon
 import Halogen.Datapicker.Component.Internal.Num as Num
 import Halogen.Datapicker.Component.Internal.Range (Range, bottomTop)
 import Halogen.Datapicker.Component.Time.Format as F
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper', toAlt, value)
+import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steperMaybe, toAlt, value)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -119,7 +119,7 @@ commandToConfig (F.Placeholder _)       = Nothing
 evalTime ∷ ∀ m . TimeQuery ~> DSL m
 evalTime (Update update next) = do
   s <- H.get
-  nextTime <- map (steper' s.time InvalidTime) $ case s.time of
+  nextTime <- map (steperMaybe s.time InvalidTime) $ case s.time of
     Just (Right time) -> pure $ update time
     _  -> buildTime
   H.modify _{ time = nextTime }

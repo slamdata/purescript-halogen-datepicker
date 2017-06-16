@@ -1,6 +1,7 @@
 module Halogen.Datapicker.Component.Date where
 
 import Prelude
+
 import Data.Bifunctor (bimap)
 import Data.Date (Date, Day, Month, Year)
 import Data.Either (Either(..))
@@ -27,8 +28,7 @@ import Halogen.Datapicker.Component.Internal.Elements (textElement)
 import Halogen.Datapicker.Component.Internal.Enums (MonthShort, Year2, Year4)
 import Halogen.Datapicker.Component.Internal.Num as Num
 import Halogen.Datapicker.Component.Internal.Range (Range, bottomTop)
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper', value)
-
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steperMaybe, steperMaybe', value)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -116,15 +116,15 @@ renderCommand cmd = case cmd of
 evalDate ∷ ∀ m . DateQuery ~> DSL m
 evalDate (Update update next) = do
   s <- H.get
-  nextDate <- map (steper' s.date InvalidDate) $ case s.date of
-    Just (Right date) -> pure $ update date
+  nextDate <- map (steperMaybe' s.date InvalidDate) $ case s.date of
+    Just (Right date) -> pure $ maybe (Left false) Right $ update date
     _  -> buildDate
   H.modify _{ date = nextDate }
   when (nextDate /= s.date) $ H.raise (NotifyChange nextDate)
   pure next
 
 
-buildDate :: ∀ m. DSL m (Maybe Date)
+buildDate :: ∀ m. DSL m (Either Boolean Date)
 buildDate = do
   {format} <- H.get
   mbKleisliEndo <- for (sort $ unwrap format) $ commandCata
@@ -136,7 +136,9 @@ buildDate = do
       num <- H.query' cpChoice cmd $ H.request (left <<< GetValue)
       pure $ num <#> \n -> Join $ Star $ \t -> n >>= (_ `F.toSetter cmd` t)
     }
-  pure $ map fold (sequence mbKleisliEndo) >>= \(Join (Star f)) -> f bottom
+  pure $ case map fold (sequence mbKleisliEndo) of
+    Just (Join (Star f)) -> maybe (Left true) Right $ f bottom
+    Nothing -> Left false
 
 
 evalPicker ∷ ∀ m . QueryIn ~> DSL m

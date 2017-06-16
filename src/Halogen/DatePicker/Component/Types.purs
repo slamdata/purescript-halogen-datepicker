@@ -4,8 +4,10 @@ import Prelude
 
 import Control.Alternative (class Alternative, empty)
 import Control.MonadPlus (guard)
+import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromJust, isNothing, maybe)
+import Data.Tuple (Tuple(..))
 import Halogen.HTML (ClassName(..))
 import Partial.Unsafe (unsafePartialBecause)
 
@@ -44,23 +46,22 @@ error :: ∀ e a. PickerValue e a -> Maybe e
 error (Just (Left x)) = Just x
 error _ = Nothing
 
-steper' :: ∀ e a. PickerValue e a -> e -> Maybe a -> PickerValue e a
-steper' old err = steper old <<< maybe (Left err) Right
+steperMaybe :: ∀ e a. PickerValue e a -> e -> Maybe a -> PickerValue e a
+steperMaybe old err = steper old <<< maybe (Left err) Right
 
-steper :: ∀ e a. PickerValue e a -> Either e a -> PickerValue e a
-steper old new = case old, new of
+steperMaybe' :: ∀ e a. PickerValue e a -> e -> Either Boolean a -> PickerValue e a
+steperMaybe' old err = steper' old <<< lmap (_ `Tuple` err)
+
+steper' :: ∀ e a. PickerValue e a -> Either (Tuple Boolean e) a -> PickerValue e a
+steper' old new = case old, new of
   _, Right x -> Just (Right x)
-  Just _, Left err -> Just (Left err)
+  Just _, Left (Tuple _ err) -> Just (Left err)
+  -- `true` indicates if we want to force state change to "invalid"
+  Nothing, Left (Tuple true err) -> Just (Left err)
   Nothing, Left _ -> Nothing
 
-stepPickerValue :: ∀ e a m . Monad m => (Maybe a -> m (Either e a)) -> PickerValue e a -> m (PickerValue e a)
-stepPickerValue step old = do
-  newVal <- step (value old)
-  pure $ steper old newVal
-
-stepPickerValue' :: ∀ m e a. Monad m => e -> (Maybe a -> m (Maybe a)) -> PickerValue e a -> m (PickerValue e a)
-stepPickerValue' err step = stepPickerValue (\mbI -> step mbI <#> maybe (Left err) Right)
-
+steper :: ∀ e a. PickerValue e a -> Either e a -> PickerValue e a
+steper old new = steper' old (lmap (Tuple false) new)
 
 toAlt :: ∀ f. Alternative f => Maybe ~> f
 toAlt (Just a) = pure a

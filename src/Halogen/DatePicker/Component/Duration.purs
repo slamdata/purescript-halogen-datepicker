@@ -19,7 +19,7 @@ import Halogen as H
 import Halogen.Datapicker.Component.Duration.Format as F
 import Halogen.Datapicker.Component.Internal.Num as N
 import Halogen.Datapicker.Component.Internal.Range (minRange)
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper')
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper, steperMaybe, steperMaybe')
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -78,20 +78,16 @@ overIsoDuration f d = mkIsoDuration $ f $ unIsoDuration d
 evalDuration ∷ ∀ m . DurationQuery ~> DSL m
 evalDuration (UpdateCommand cmd val next) = do
   s <- H.get
-  nextDuration <- map (steper' s.duration InvalidIsoDuration) $ case s.duration of
-    Just (Right duration) -> pure $ val >>= \n -> overIsoDuration (F.toSetter cmd n) duration
+  nextDuration <- map (steperMaybe' s.duration InvalidIsoDuration) $ case s.duration of
+    Just (Right duration) -> pure
+      $ maybe (Left false) Right
+      $ val >>= \n -> overIsoDuration (F.toSetter cmd n) duration
     _  -> buildDuration
   H.modify (_{ duration = nextDuration })
   when (nextDuration /= s.duration) $ H.raise (NotifyChange nextDuration)
   pure next
 
--- TODO bug
--- if when duration is Nothing user uses fractional value incorectly
--- it will be parsed as valid number and input will not fail
--- but there combination gives invalid duration and it will stay as nothing
--- resulting in having valid values in input but indication of invlaidity
--- we need to change state to invalid if we have value for all commands
-buildDuration :: ∀ m. DSL m (Maybe IsoDuration)
+buildDuration :: ∀ m. DSL m (Either Boolean IsoDuration)
 buildDuration = do
   {format} <- H.get
   mbEndo <- for (unwrap format) \cmd -> do
@@ -100,8 +96,8 @@ buildDuration = do
       Just (Just n) -> Just $ Endo $ F.toSetter cmd n
       _ -> Nothing
   pure case map fold $ sequence mbEndo of
-   Just (Endo f) -> mkIsoDuration $ f mempty
-   _ -> Nothing
+   Just (Endo f) -> maybe (Left true) Right $ mkIsoDuration $ f mempty
+   _ -> Left false
 
 
 evalPicker ∷ ∀ m . QueryIn ~> DSL m
