@@ -45,7 +45,6 @@ type State val =
   , title:: String
   }
 
--- TODO maybe replace Maybe with PickerValue
 type Input val = Maybe val
 data NumQuery val a = Update (InputValue val) a
 type QueryIn val = BasePickerQuery Unit (Input val)

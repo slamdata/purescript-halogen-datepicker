@@ -6,7 +6,7 @@ import Data.Bifunctor (bimap)
 import Data.DateTime (Hour, Millisecond, Minute, Second)
 import Data.Either (Either(..))
 import Data.Either.Nested (Either2)
-import Data.Enum (fromEnum, toEnum, upFromIncluding)
+import Data.Enum (class BoundedEnum, fromEnum, toEnum, upFromIncluding)
 import Data.Foldable (fold, foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
@@ -16,6 +16,7 @@ import Data.List (sort)
 import Data.Maybe (Maybe(Nothing, Just), maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap)
+import Data.NonEmpty (NonEmpty(..))
 import Data.Profunctor.Join (Join(..))
 import Data.Profunctor.Star (Star(..))
 import Data.Time (Time)
@@ -53,16 +54,15 @@ type State =
   }
 
 type NumQuery = Num.Query Int
--- TODO maybe change Meridiem to Int as in NumQuery
-type ChoiceQuery = Choice.Query Meridiem
+type ChoiceQuery = Choice.Query (Maybe Int)
 type ChildQuery = Coproduct2 NumQuery ChoiceQuery
 
-type Slot = Either2 F.Command Unit
+type Slot = Either2 F.Command F.Command
 
 cpNum ∷ CP.ChildPath NumQuery ChildQuery F.Command Slot
 cpNum = CP.cp1
 
-cpChoice ∷ CP.ChildPath ChoiceQuery ChildQuery Unit Slot
+cpChoice ∷ CP.ChildPath ChoiceQuery ChildQuery F.Command Slot
 cpChoice = CP.cp2
 
 type HTML m = H.ParentHTML TimeQuery ChildQuery Slot m
@@ -80,41 +80,40 @@ render ∷ ∀ m. State -> HTML m
 render s = HH.ul [ HP.classes $ pickerClasses s.time ]
     (foldMap (pure <<< f) (unwrap s.format))
   where
-  f cmd = HH.li [HP.classes [HH.ClassName "Picker-component"]] $ renderCommand cmd
+  f cmd = HH.li [HP.classes [HH.ClassName "Picker-component"]] $ [renderCommand cmd]
 
-onMb :: ∀ a b. (a -> b -> Maybe b) -> Maybe a -> b -> Maybe b
-onMb f a b = a >>= \a' -> f a' b
+renderCommandText :: ∀ m. F.Command -> { text  :: String } -> HTML m
+renderCommandText cmd conf = textElement conf
 
-renderCommand :: ∀ m. F.Command -> Array (HTML m)
-renderCommand (F.Placeholder str) = pure $ textElement { text: str}
-renderCommand cmd@F.Meridiem = pure $ HH.slot'
-  cpChoice
-  unit
-  (Choice.picker (Choice.boundedEnumHasChoiceInputVal show)
-    { title: "Meridiem"
-    , values: upFromIncluding (bottom :: Meridiem)
-    })
-  unit
-  (HE.input $ \(NotifyChange n) -> Update $ (F.toSetter cmd (fromEnum n)))
-renderCommand cmd = toAlt $ do
-  conf <- commandToConfig cmd
-  pure $ HH.slot' cpNum cmd (Num.picker Num.intHasNumberInputVal conf) unit
+renderCommandEnum :: ∀ m. F.Command -> { title :: String , range  :: Range Int } -> HTML m
+renderCommandEnum cmd conf' = let conf = conf'{range = conf'.range} in
+  HH.slot' cpNum cmd
+    (Num.picker Num.intHasNumberInputVal conf) unit
     (HE.input $ \(NotifyChange n) -> Update $ \t -> n >>= (_ `F.toSetter cmd` t))
 
-commandToConfig :: F.Command -> Maybe {title :: String, range :: Range Int }
-commandToConfig F.Hours24               = Just {title: "Hours", range: (bottomTop :: Range Hour) <#> fromEnum }
-commandToConfig F.Hours12               = Just {title: "Hours", range: (bottomTop :: Range Hour12) <#> fromEnum }
-commandToConfig F.Meridiem              = Just {title: "Meridiem", range: (bottomTop :: Range Meridiem) <#> fromEnum }
-commandToConfig F.MinutesTwoDigits      = Just {title: "Minutes", range: (bottomTop :: Range Minute) <#> fromEnum }
-commandToConfig F.Minutes               = Just {title: "Minutes", range: (bottomTop :: Range Minute) <#> fromEnum }
-commandToConfig F.SecondsTwoDigits      = Just {title: "Seconds", range: (bottomTop :: Range Second) <#> fromEnum }
-commandToConfig F.Seconds               = Just {title: "Seconds", range: (bottomTop :: Range Second) <#> fromEnum }
-commandToConfig F.Milliseconds          = Just {title: "Milliseconds", range: (bottomTop :: Range Millisecond) <#> fromEnum }
-commandToConfig F.MillisecondsTwoDigits = Just {title: "Milliseconds", range: (bottomTop :: Range Millisecond2) <#> fromEnum }
-commandToConfig F.MillisecondsShort     = Just {title: "Milliseconds", range: (bottomTop :: Range Millisecond1) <#> fromEnum }
-commandToConfig (F.Placeholder _)       = Nothing
+renderCommandChoice :: ∀ m a. BoundedEnum a => Show a => F.Command -> { title :: String , values :: NonEmpty Array (Maybe a) } -> HTML m
+renderCommandChoice cmd conf = HH.slot' cpChoice cmd
+    (Choice.picker
+      (Choice.maybeIntHasChoiceInputVal \n -> (toEnum n :: Maybe a) # maybe "" show)
+      (conf{values = conf.values <#> map fromEnum})
+    )
+    unit
+    (HE.input $ \(NotifyChange n) -> Update $ \t -> n >>= (_ `F.toSetter cmd` t))
 
-
+renderCommand :: ∀ m. F.Command -> HTML m
+renderCommand cmd = case cmd of
+  F.Placeholder str       -> renderCommandText cmd { text: str}
+  F.Meridiem              -> renderCommandChoice cmd { title: "Meridiem", values: upFromIncluding (bottom :: Maybe Meridiem) }
+  F.Hours24               -> renderCommandEnum cmd { title: "Hours", range: (bottomTop :: Range Hour) <#> fromEnum }
+  F.Hours12               -> renderCommandEnum cmd { title: "Hours", range: (bottomTop :: Range Hour12) <#> fromEnum }
+  F.Meridiem              -> renderCommandEnum cmd { title: "Meridiem", range: (bottomTop :: Range Meridiem) <#> fromEnum }
+  F.MinutesTwoDigits      -> renderCommandEnum cmd { title: "Minutes", range: (bottomTop :: Range Minute) <#> fromEnum }
+  F.Minutes               -> renderCommandEnum cmd { title: "Minutes", range: (bottomTop :: Range Minute) <#> fromEnum }
+  F.SecondsTwoDigits      -> renderCommandEnum cmd { title: "Seconds", range: (bottomTop :: Range Second) <#> fromEnum }
+  F.Seconds               -> renderCommandEnum cmd { title: "Seconds", range: (bottomTop :: Range Second) <#> fromEnum }
+  F.Milliseconds          -> renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop :: Range Millisecond) <#> fromEnum }
+  F.MillisecondsTwoDigits -> renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop :: Range Millisecond2) <#> fromEnum }
+  F.MillisecondsShort     -> renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop :: Range Millisecond1) <#> fromEnum }
 
 evalTime ∷ ∀ m . TimeQuery ~> DSL m
 evalTime (Update update next) = do
@@ -135,8 +134,8 @@ buildTime = do
   where
   mkKleisli (F.Placeholder _) = pure $ Just $ mempty
   mkKleisli cmd@F.Meridiem = do
-    num <- H.query' cpChoice unit $ H.request (left <<< GetValue)
-    pure $ num <#> \n -> Join $ Star $ \t -> F.toSetter cmd (fromEnum n) t
+    num <- H.query' cpChoice cmd $ H.request (left <<< GetValue)
+    pure $ join num <#> \n -> Join $ Star $ \t -> F.toSetter cmd n t
   mkKleisli cmd = do
     num <- H.query' cpNum cmd $ H.request (left <<< GetValue)
     pure $ join num <#> \n -> Join $ Star $ \t -> F.toSetter cmd n t
@@ -159,14 +158,14 @@ propagateChange format time = do
   where
   change :: F.Command -> DSL m (Maybe Unit)
   change (F.Placeholder _ ) = pure (Just unit)
-  change F.Meridiem = do
-    res <- H.query' cpChoice unit $ H.request $ left <<< SetValue m
+  change cmd@F.Meridiem = do
+    res <- H.query' cpChoice cmd $ H.request $ left <<< SetValue m
     pure $ res >>= case _ of
       Just Choice.ValueIsNotInValues -> Nothing
       Nothing -> Just unit
     where
-    m :: Meridiem
-    m = (value time >>= F.toGetter F.Meridiem >>= toEnum) # maybe bottom id
+    m :: Maybe Int
+    m = value time >>= F.toGetter F.Meridiem
   change cmd = do
     let n = value time >>= F.toGetter cmd
     H.query' cpNum cmd $ H.request $ left <<< SetValue n

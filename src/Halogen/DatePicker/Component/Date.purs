@@ -25,7 +25,7 @@ import Halogen.Component.ChildPath as CP
 import Halogen.Datapicker.Component.Date.Format as F
 import Halogen.Datapicker.Component.Internal.Choice as Choice
 import Halogen.Datapicker.Component.Internal.Elements (textElement)
-import Halogen.Datapicker.Component.Internal.Enums (MonthShort, Year2, Year4)
+import Halogen.Datapicker.Component.Internal.Enums (MonthShort, Year2, Year4, setYear)
 import Halogen.Datapicker.Component.Internal.Num as Num
 import Halogen.Datapicker.Component.Internal.Range (Range, bottomTop)
 import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steperMaybe, steperMaybe', value)
@@ -134,10 +134,10 @@ buildDate = do
       pure $ join num <#> \n -> Join $ Star $ \t -> F.toSetter cmd n t
     , choice: \cmd -> do
       num <- H.query' cpChoice cmd $ H.request (left <<< GetValue)
-      pure $ num <#> \n -> Join $ Star $ \t -> n >>= (_ `F.toSetter cmd` t)
+      pure $ join num <#> \n -> Join $ Star $ \t -> F.toSetter cmd n t
     }
   pure $ case map fold (sequence mbKleisliEndo) of
-    Just (Join (Star f)) -> maybe (Left true) Right $ f bottom
+    Just (Join (Star f)) -> maybe (Left true) Right $  (toEnum 0) >>= (_ `setYear` bottom) >>= f
     Nothing -> Left false
 
 

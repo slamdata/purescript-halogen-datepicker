@@ -100,7 +100,6 @@ type HasChoiceInputVal a =
   { fromString :: String -> Maybe a
   , toValue :: a -> String
   , toTitle :: a -> String
-  -- TODO add isValid
   }
 
 stringHasChoiceInputVal :: HasChoiceInputVal String
