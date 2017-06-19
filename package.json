@@ -1,8 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "watch": "pulp --watch build --to dist/example.js",
-    "build": "pulp build --to dist/example.js"
+    "watch": "pulp --watch build --include example/src --to example/example.js",
+    "build": "pulp build --include example/src --to example/example.js"
   },
   "devDependencies": {
     "pulp": "^11.0.0",

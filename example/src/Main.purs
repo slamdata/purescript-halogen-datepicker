@@ -1,10 +1,12 @@
-module Example where
+module Main where
 
 import Prelude
+import Control.Monad.Eff (Eff)
+import Halogen.Aff as HA
+import Halogen.VDom.Driver (runUI)
 import Data.Either.Nested as Either
 import Data.Functor.Coproduct.Nested as Coproduct
 import Data.Interval as I
-import Debug.Trace as D
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.Datapicker.Component.Date as Date
@@ -89,10 +91,13 @@ cpInterval = CP.cp5
 type HTML m = H.ParentHTML Query ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Void m
 
+main ∷ Eff (HA.HalogenEffects ()) Unit
+main = HA.runHalogenAff do
+  body <- HA.awaitBody
+  runUI example unit body
 
-
-main ∷ forall m. Applicative m => H.Component HH.HTML Query Unit Void m
-main =
+example ∷ forall m. Applicative m => H.Component HH.HTML Query Unit Void m
+example =
   H.parentComponent
     { initialState: const initialState
     , render
@@ -221,7 +226,7 @@ main =
       SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
       SetInterval idx val -> do
         res <- H.query' intervalConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
-        pure $ void $ res <#> (\error ->  D.traceAny {message:"can't update interval", error})
+        pure $ void res -- <#> (\error ->  D.traceAny {message:"can't update interval", error})
     pure next
   eval (HandleMessage payload next) = do
     case payload of
