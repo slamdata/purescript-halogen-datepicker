@@ -2,7 +2,6 @@ module Halogen.Datapicker.Internal.Utils where
 
 import Prelude
 
-import Control.Alternative (class Alternative, empty)
 import Control.MonadPlus (guard)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
@@ -15,7 +14,6 @@ import Halogen.Datapicker.Component.Types (PickerValue)
 mustBeMounted :: ∀a. Maybe a -> a
 mustBeMounted a = unsafePartialBecause "children must be mounted" (fromJust a)
 
-
 steper' :: ∀ e a. PickerValue e a -> e -> Either Boolean a -> PickerValue e a
 steper' old err = steper old <<< lmap (_ `Tuple` err)
 
@@ -26,11 +24,6 @@ steper old new = case old, new of
   -- `true` indicates if we want to force state change to "invalid"
   Nothing, Left (Tuple true err) -> Just (Left err)
   Nothing, Left _ -> Nothing
-
---TODO move to NUM
-toAlt :: ∀ f. Alternative f => Maybe ~> f
-toAlt (Just a) = pure a
-toAlt Nothing = empty
 
 pickerClasses :: forall e a. PickerValue e a -> Array ClassName
 pickerClasses val = [ClassName "Picker"] <> (guard (isInvalid val) $> ClassName "Picker--invalid")

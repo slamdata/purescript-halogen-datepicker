@@ -5,6 +5,7 @@ import Data.Enum (class BoundedEnum)
 import Data.Maybe (Maybe(..))
 
 data Range a = MinMax a a | Min a | Max a
+
 instance rangeFunctor :: Functor Range where
   map f (MinMax a b) = MinMax (f a) (f b)
   map f (Min a) = Min (f a)

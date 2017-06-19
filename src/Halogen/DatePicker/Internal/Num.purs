@@ -32,7 +32,6 @@ import Data.String (Pattern(..), length, stripSuffix)
 import Data.Tuple (Tuple(..), fst)
 import Halogen as H
 import Halogen.Datapicker.Internal.Range (Range(..), isInRange, rangeMax, rangeMin)
-import Halogen.Datapicker.Internal.Utils (toAlt)
 import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..))
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
@@ -131,10 +130,11 @@ numberElement hasNumberInputVal query {title, range} value = HH.input $
     >>> isInputInRange range
     >>> query
   ]
-  <> (rangeMin range <#> hasNumberInputVal.toNumber >>> HP.min # toAlt)
-  <> (rangeMax range <#> hasNumberInputVal.toNumber >>> HP.max # toAlt)
+  <> (toArray (rangeMin range) <#> hasNumberInputVal.toNumber >>> HP.min)
+  <> (toArray (rangeMax range) <#> hasNumberInputVal.toNumber >>> HP.max)
   <> styles
   where
+  toArray = maybe [] pure
   -- Number and String value must comute (`map toValue (fromString x) == Just x`)
   -- to avoid this issues:
   --  * if user types `-0` we will parse it as `0` or
