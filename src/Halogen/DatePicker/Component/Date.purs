@@ -7,12 +7,11 @@ import Data.Date (Date, Day, Month, Year)
 import Data.Either (Either(..))
 import Data.Either.Nested (Either2)
 import Data.Enum (class BoundedEnum, fromEnum, toEnum, upFromIncluding)
-import Data.Foldable (foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.List (sort)
+import Data.Array (sort)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap)
@@ -22,7 +21,7 @@ import Data.Profunctor.Star (Star(..))
 import Data.Traversable (fold, for, sequence)
 import Halogen as H
 import Halogen.Component.ChildPath as CP
-import Halogen.Datapicker.Component.Date.Format as F
+import Halogen.Datapicker.Format.Date as F
 import Halogen.Datapicker.Component.Internal.Choice as Choice
 import Halogen.Datapicker.Component.Internal.Elements (textElement)
 import Halogen.Datapicker.Component.Internal.Enums (MonthShort, Year2, Year4, setYear)
@@ -77,7 +76,7 @@ picker format = H.parentComponent
 
 render ∷ ∀ m. State -> HTML m
 render s = HH.ul [ HP.classes $ pickerClasses s.date ]
-  (foldMap (pure <<< f) (unwrap s.format))
+  (f <$> unwrap s.format)
   where
   f cmd = HH.li [HP.classes [HH.ClassName "Picker-component"]] [renderCommand cmd]
 

@@ -7,12 +7,12 @@ import Data.DateTime (Hour, Millisecond, Minute, Second)
 import Data.Either (Either(..))
 import Data.Either.Nested (Either2)
 import Data.Enum (class BoundedEnum, fromEnum, toEnum, upFromIncluding)
-import Data.Foldable (fold, foldMap)
+import Data.Foldable (fold)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.List (sort)
+import Data.Array (sort)
 import Data.Maybe (Maybe(Nothing, Just), maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap)
@@ -28,7 +28,7 @@ import Halogen.Datapicker.Component.Internal.Elements (textElement)
 import Halogen.Datapicker.Component.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
 import Halogen.Datapicker.Component.Internal.Num as Num
 import Halogen.Datapicker.Component.Internal.Range (Range, bottomTop)
-import Halogen.Datapicker.Component.Time.Format as F
+import Halogen.Datapicker.Format.Time as F
 import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper', value)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -78,7 +78,7 @@ picker format = H.parentComponent
 
 render ∷ ∀ m. State -> HTML m
 render s = HH.ul [ HP.classes $ pickerClasses s.time ]
-    (foldMap (pure <<< f) (unwrap s.format))
+    (f <$> unwrap s.format)
   where
   f cmd = HH.li [HP.classes [HH.ClassName "Picker-component"]] $ [renderCommand cmd]
 

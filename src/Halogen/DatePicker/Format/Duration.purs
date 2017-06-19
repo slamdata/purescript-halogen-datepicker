@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.Duration.Format
+module Halogen.Datapicker.Format.Duration
   ( Format
   , Command
   , mkFormat
@@ -16,7 +16,7 @@ import Data.Interval (DurationComponent(..)) as ReExport
 import Data.Foldable (class Foldable)
 import Data.Map (insert, lookup)
 import Data.String (joinWith)
-import Data.List (List, fromFoldable)
+import Data.Array (fromFoldable)
 import Data.Maybe (Maybe)
 import Data.Either (Either(..))
 import Data.Newtype (class Newtype, over, unwrap)
@@ -27,7 +27,7 @@ import Data.Generic.Rep.Show (genericShow)
 
 type Command = I.DurationComponent
 
-newtype Format = Format (List Command)
+newtype Format = Format (Array Command)
 derive instance formatNewtype :: Newtype Format _
 derive instance formatGeneric :: Generic Format _
 derive instance formatEq :: Eq Format
@@ -48,8 +48,8 @@ mkFormat cmds = if (errs /= [])
   then Left $ joinWith "; " errs
   else pure $ Format fmt
   where
-  fmt :: List Command
-  fmt = (fromFoldable cmds)
+  fmt :: Array Command
+  fmt = fromFoldable cmds
   errs = C.runConstraint formatConstraint fmt
 
 unformat ∷ String -> Either String I.IsoDuration

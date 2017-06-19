@@ -5,7 +5,6 @@ import Prelude
 import Data.Array (fold)
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
-import Data.Foldable (foldMap)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
@@ -16,7 +15,7 @@ import Data.Monoid.Endo (Endo(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (for, sequence)
 import Halogen as H
-import Halogen.Datapicker.Component.Duration.Format as F
+import Halogen.Datapicker.Format.Duration as F
 import Halogen.Datapicker.Component.Internal.Num as N
 import Halogen.Datapicker.Component.Internal.Range (minRange)
 import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper')
@@ -60,7 +59,7 @@ picker format = H.parentComponent
 
 render ∷  ∀ m. State -> HTML m
 render s = HH.ul [ HP.classes $ pickerClasses s.duration ]
-    (foldMap (pure <<< f) (unwrap s.format))
+    (f <$> unwrap s.format)
   where
   f cmd = HH.li [ HP.classes [ HH.ClassName "Picker-component" ] ]
     [ HH.slot

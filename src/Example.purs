@@ -8,15 +8,15 @@ import Debug.Trace as D
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.Datapicker.Component.Date as Date
-import Halogen.Datapicker.Component.Date.Format as DateF
+import Halogen.Datapicker.Format.Date as DateF
 import Halogen.Datapicker.Component.DateTime as DateTime
-import Halogen.Datapicker.Component.DateTime.Format as DateTimeF
+import Halogen.Datapicker.Format.DateTime as DateTimeF
 import Halogen.Datapicker.Component.Duration as Duration
-import Halogen.Datapicker.Component.Duration.Format as DurationF
+import Halogen.Datapicker.Format.Duration as DurationF
 import Halogen.Datapicker.Component.Interval as Interval
-import Halogen.Datapicker.Component.Interval.Format as IntervalF
+import Halogen.Datapicker.Format.Interval as IntervalF
 import Halogen.Datapicker.Component.Time as Time
-import Halogen.Datapicker.Component.Time.Format as TimeF
+import Halogen.Datapicker.Format.Time as TimeF
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Data.Bitraversable (bitraverse)

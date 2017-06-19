@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.DateTime.Format
+module Halogen.Datapicker.Format.DateTime
   ( Format
   , Command(..)
   , fromString
@@ -8,23 +8,25 @@ module Halogen.Datapicker.Component.DateTime.Format
   ) where
 
 import Prelude
-import Data.Foldable (foldMap)
-import Data.String (joinWith)
+
 import Control.Alt ((<|>))
-import Data.List (List(..), null, span)
-import Data.Tuple (Tuple(..))
+import Control.Monad.State.Trans (StateT, put, get, evalStateT, lift)
+import Data.Array (fromFoldable)
 import Data.Bifunctor (bimap)
 import Data.DateTime (DateTime)
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), isJust)
-import Data.Newtype (class Newtype)
+import Data.Foldable (foldMap)
 import Data.Formatter.DateTime as FDT
-import Control.Monad.State.Trans (StateT, put, get, evalStateT, lift)
-import Halogen.Datapicker.Component.Internal.Constraint as C
-import Halogen.Datapicker.Component.Time.Format as TimeF
-import Halogen.Datapicker.Component.Date.Format as DateF
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
+import Data.List (List(..), null, span)
+import Data.Maybe (Maybe(..), isJust)
+import Data.Newtype (class Newtype)
+import Data.String (joinWith)
+import Data.Tuple (Tuple(..))
+import Halogen.Datapicker.Format.Date as DateF
+import Halogen.Datapicker.Component.Internal.Constraint as C
+import Halogen.Datapicker.Format.Time as TimeF
 
 data Command
   = Date DateF.Format
@@ -42,7 +44,7 @@ derive instance commandOrd :: Ord Command
 instance commandShow :: Show Command where
   show = genericShow
 
-newtype Format = Format (List Command)
+newtype Format = Format (Array Command)
 
 derive instance formatNewtype :: Newtype Format _
 derive instance formatGeneric :: Generic Format _
@@ -63,7 +65,7 @@ fromDateTimeFormatter fmt = run $ go Nil
     resFmt <- evalStateT s fmt
     let errs = C.runConstraint formatConstraint resFmt
     when (errs /= []) $ Left $ joinWith "; " errs
-    pure $ Format resFmt
+    pure $ Format $ fromFoldable resFmt --- TODO make sure List used here is fine
 
 go :: List Command -> StateT FDT.Formatter (Either String) (List Command)
 go currFmt = get >>= \a -> case (takeDate a <|> takeTime a) of

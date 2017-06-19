@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.Date.Format
+module Halogen.Datapicker.Format.Date
   ( Format
   , Command(..)
   , toSetter
@@ -12,20 +12,21 @@ module Halogen.Datapicker.Component.Date.Format
   ) where
 
 import Prelude
-import Data.Formatter.DateTime as FDT
-import Halogen.Datapicker.Component.Internal.Constraint as C
+
+import Data.Array (fromFoldable)
 import Data.Date (Date, day, month, year)
 import Data.DateTime (DateTime(..), date)
 import Data.Either (Either(..))
 import Data.Enum (fromEnum, toEnum)
 import Data.Foldable (class Foldable, foldMap)
+import Data.Formatter.DateTime as FDT
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.List (List)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.String (joinWith)
 import Data.Traversable (traverse)
+import Halogen.Datapicker.Component.Internal.Constraint as C
 import Halogen.Datapicker.Component.Internal.Enums (monthShort, setDay, setMonth, setYear, setYear2, setYear4, year2, year4)
 
 data Command
@@ -73,7 +74,7 @@ toGetter DayOfMonth d          = Just $ fromEnum $ day d
 toGetter (Placeholder str) d   = Nothing
 
 
-newtype Format = Format (List Command)
+newtype Format = Format (Array Command)
 derive instance formatNewtype :: Newtype Format _
 derive instance formatGeneric :: Generic Format _
 instance formatShow :: Show Format where
@@ -89,7 +90,7 @@ fromDateTimeFormatter fmt = do
   let errs = C.runConstraint formatConstraint fmt
   when (errs /= []) $ Left $ joinWith "; " errs
   case traverse toCommand fmt of
-    Just fmt' -> pure $ Format fmt'
+    Just fmt' -> pure $ Format $ fromFoldable fmt'
     Nothing -> Left "(unreachable) invalid FormatterCommand has leaked while checking constraints"
 
 toCommand :: FDT.FormatterCommand -> Maybe Command

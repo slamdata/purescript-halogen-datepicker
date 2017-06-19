@@ -8,10 +8,9 @@ import Data.Date (Date)
 import Data.DateTime (DateTime, date, modifyDate, modifyTime, time)
 import Data.Either (Either(..))
 import Data.Either.Nested (Either2)
-import Data.Foldable (fold, foldMap, length)
+import Data.Foldable (class Foldable, fold, length)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
-import Data.List (List, sort)
 import Data.Maybe (Maybe(..))
 import Data.Maybe.Last (Last(..))
 import Data.Monoid.Additive (Additive(..))
@@ -25,7 +24,7 @@ import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.Datapicker.Component.Date (DateError)
 import Halogen.Datapicker.Component.Date as Date
-import Halogen.Datapicker.Component.DateTime.Format as F
+import Halogen.Datapicker.Format.DateTime as F
 import Halogen.Datapicker.Component.Time (TimeError)
 import Halogen.Datapicker.Component.Time as Time
 import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper, value)
@@ -70,9 +69,10 @@ picker format = H.parentComponent
   }
 
 render ∷ ∀ m. State -> HTML m
-render s = HH.div [ HP.classes $ pickerClasses s.dateTime ] $
-  -- TODO wrap in .Picker-component
-  foldMap (pure <<< renderCommand) (unwrap s.format)
+render s = HH.div [ HP.classes $ pickerClasses s.dateTime ]
+  (f <$> unwrap s.format)
+  where
+  f a = HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderCommand a
 
 renderCommand :: ∀ m. F.Command -> HTML m
 renderCommand cmd@(F.Time fmt) = HH.slot' cpTime unit (Time.picker fmt) unit (HE.input $ Right >>> Update)
@@ -123,8 +123,8 @@ dateError :: DateError -> DateTimeError
 dateError x = Tuple (Just x) Nothing
 
 type StepM = Join (Star (Writer (Maybe (Tuple (Additive Int) DateTimeErrorLast)))) DateTime
-formatToSteps :: ∀ m. F.Format -> DSL m (List StepM)
-formatToSteps format = for (sort $ unwrap format) $ case _ of
+formatToSteps :: ∀ m. F.Format -> DSL m (Array StepM)
+formatToSteps format = for (unwrap format) $ case _ of
   F.Time _ -> applyTime <$> queryTime (H.request $ left <<< Base <<< GetValue)
   F.Date _ -> applyDate <$> queryDate (H.request $ left <<< Base <<< GetValue)
   where
@@ -145,7 +145,7 @@ setDateDt :: Date -> DateTime -> DateTime
 setDateDt x dt = modifyDate (const x) dt
 
 
-stepsToFunc :: Int -> List StepM -> DateTime -> Either (Tuple Boolean DateTimeError) DateTime
+stepsToFunc :: ∀ f. Foldable f => Int -> f StepM -> DateTime -> Either (Tuple Boolean DateTimeError) DateTime
 stepsToFunc childCount steps dt = fold steps # \(Join (Star f)) -> case runWriter $ f dt of
   Tuple res Nothing -> Right res
   Tuple res (Just (Tuple (Additive errCount) err)) -> Left $ Tuple
