@@ -20,9 +20,10 @@ import Halogen.Datapicker.Format.DateTime as DateTimeF
 import Halogen.Datapicker.Component.Duration (DurationError)
 import Halogen.Datapicker.Component.Duration as Duration
 import Halogen.Datapicker.Format.Duration as DurationF
-import Halogen.Datapicker.Component.Internal.Elements (textElement)
+import Halogen.Datapicker.Internal.Elements (textElement)
 import Halogen.Datapicker.Format.Interval as F
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper)
+import Halogen.Datapicker.Internal.Utils (steper, pickerClasses, mustBeMounted)
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP

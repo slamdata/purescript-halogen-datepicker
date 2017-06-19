@@ -22,12 +22,13 @@ import Data.Traversable (fold, for, sequence)
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.Datapicker.Format.Date as F
-import Halogen.Datapicker.Component.Internal.Choice as Choice
-import Halogen.Datapicker.Component.Internal.Elements (textElement)
-import Halogen.Datapicker.Component.Internal.Enums (MonthShort, Year2, Year4, setYear)
-import Halogen.Datapicker.Component.Internal.Num as Num
-import Halogen.Datapicker.Component.Internal.Range (Range, bottomTop)
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper', value)
+import Halogen.Datapicker.Internal.Choice as Choice
+import Halogen.Datapicker.Internal.Elements (textElement)
+import Halogen.Datapicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
+import Halogen.Datapicker.Internal.Num as Num
+import Halogen.Datapicker.Internal.Range (Range, bottomTop)
+import Halogen.Datapicker.Internal.Utils (steper', pickerClasses, mustBeMounted)
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP

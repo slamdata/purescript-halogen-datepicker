@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.Internal.Choice
+module Halogen.Datapicker.Internal.Choice
   ( picker
   , ChoiceQuery
   , Query
@@ -15,19 +15,20 @@ module Halogen.Datapicker.Component.Internal.Choice
   where
 
 import Prelude
-import Data.Int as Int
-import Data.Number as N
-import Halogen as H
-import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
+
 import Data.Array (cons)
 import Data.Enum (class BoundedEnum, fromEnum, toEnum)
 import Data.Foldable (elem, for_)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
-import Data.Maybe (Maybe(..))
+import Data.Int as Int
+import Data.Maybe (Maybe(..), maybe)
 import Data.NonEmpty (NonEmpty, fromNonEmpty, head, tail)
+import Data.Number as N
+import Halogen as H
 import Halogen.Datapicker.Component.Types (PickerMessage(..), BasePickerQuery(..))
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 
 
 
@@ -134,12 +135,8 @@ maybeIntHasChoiceInputVal showTitle =
   { fromString: \str -> if str == ""
       then pure Nothing
       else intHasChoiceInputVal.fromString str <#> pure
-  , toValue: case _ of
-      Nothing -> ""
-      Just x -> show x
-  , toTitle: case _ of
-      Nothing -> ""
-      Just x -> showTitle x
+  , toValue: maybe "" show
+  , toTitle: maybe "" showTitle
   }
 
 maybeBoundedEnumHasChoiceInputVal :: ∀ a. BoundedEnum a => (a -> String) -> HasChoiceInputVal (Maybe a)
@@ -147,10 +144,6 @@ maybeBoundedEnumHasChoiceInputVal showTitle =
   { fromString: \str -> if str == ""
       then pure Nothing
       else intHasChoiceInputVal.fromString str <#> toEnum
-  , toValue: case _ of
-      Nothing -> show $ ""
-      Just x -> show $ fromEnum x
-  , toTitle: case _ of
-      Nothing -> ""
-      Just x -> showTitle x
+  , toValue: maybe "" (show <<< fromEnum)
+  , toTitle: maybe "" showTitle
   }

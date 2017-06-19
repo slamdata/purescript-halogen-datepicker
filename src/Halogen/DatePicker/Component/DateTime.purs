@@ -27,7 +27,8 @@ import Halogen.Datapicker.Component.Date as Date
 import Halogen.Datapicker.Format.DateTime as F
 import Halogen.Datapicker.Component.Time (TimeError)
 import Halogen.Datapicker.Component.Time as Time
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper, value)
+import Halogen.Datapicker.Internal.Utils (steper, pickerClasses, mustBeMounted)
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP

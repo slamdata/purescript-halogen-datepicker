@@ -25,7 +25,7 @@ import Data.Newtype (class Newtype)
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
 import Halogen.Datapicker.Format.Date as DateF
-import Halogen.Datapicker.Component.Internal.Constraint as C
+import Halogen.Datapicker.Internal.Constraint as C
 import Halogen.Datapicker.Format.Time as TimeF
 
 data Command

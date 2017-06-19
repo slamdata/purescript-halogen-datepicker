@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.Internal.Num
+module Halogen.Datapicker.Internal.Num
   ( picker
   , NumQuery
   , Query
@@ -31,8 +31,9 @@ import Data.Number as N
 import Data.String (Pattern(..), length, stripSuffix)
 import Data.Tuple (Tuple(..), fst)
 import Halogen as H
-import Halogen.Datapicker.Component.Internal.Range (Range(..), isInRange, rangeMax, rangeMin)
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), toAlt)
+import Halogen.Datapicker.Internal.Range (Range(..), isInRange, rangeMax, rangeMin)
+import Halogen.Datapicker.Internal.Utils (toAlt)
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..))
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE

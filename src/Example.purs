@@ -31,7 +31,8 @@ import Data.Map (Map, lookup, insert)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Monoid (mempty)
 import Data.Time (Time, setHour, setMinute)
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..), mustBeMounted)
+import Halogen.Datapicker.Internal.Utils (mustBeMounted)
+import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..))
 import Partial.Unsafe (unsafePartialBecause)
 
 type TimeIdx = Int

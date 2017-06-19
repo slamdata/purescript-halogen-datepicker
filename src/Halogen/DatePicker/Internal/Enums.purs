@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.Internal.Enums where
+module Halogen.Datapicker.Internal.Enums where
 
 import Data.Date
   ( Date
@@ -31,7 +31,7 @@ import Data.Enum
 
 
 meridiem :: Time -> Meridiem
-meridiem =  hour >>> fromEnum >>> \h -> if h >= 12 then PM else AM
+meridiem = hour >>> fromEnum >>> \h -> if h >= 12 then PM else AM
 
 setMeridiem :: Meridiem -> Time -> Maybe Time
 setMeridiem m t = newHour <#> (_ `setHour` t)

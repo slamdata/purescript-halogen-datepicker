@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.Internal.Range where
+module Halogen.Datapicker.Internal.Range where
 
 import Prelude
 import Data.Enum (class BoundedEnum)

@@ -16,9 +16,10 @@ import Data.Newtype (unwrap)
 import Data.Traversable (for, sequence)
 import Halogen as H
 import Halogen.Datapicker.Format.Duration as F
-import Halogen.Datapicker.Component.Internal.Num as N
-import Halogen.Datapicker.Component.Internal.Range (minRange)
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, mustBeMounted, pickerClasses, steper')
+import Halogen.Datapicker.Internal.Num as N
+import Halogen.Datapicker.Internal.Range (minRange)
+import Halogen.Datapicker.Internal.Utils (steper', pickerClasses, mustBeMounted)
+import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP

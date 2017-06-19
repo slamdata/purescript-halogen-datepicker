@@ -26,8 +26,8 @@ import Data.Newtype (class Newtype)
 import Data.String (joinWith)
 import Data.Time (Time, hour, millisecond, minute, second, setHour, setMillisecond, setMinute, setSecond)
 import Data.Traversable (traverse)
-import Halogen.Datapicker.Component.Internal.Constraint as C
-import Halogen.Datapicker.Component.Internal.Enums (hour12, meridiem, millisecond1, millisecond2, setHour12, setMeridiem, setMillisecond1, setMillisecond2)
+import Halogen.Datapicker.Internal.Constraint as C
+import Halogen.Datapicker.Internal.Enums (hour12, meridiem, millisecond1, millisecond2, setHour12, setMeridiem, setMillisecond1, setMillisecond2)
 
 data Command
   = Hours24

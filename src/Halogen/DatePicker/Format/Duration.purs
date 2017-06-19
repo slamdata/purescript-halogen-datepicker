@@ -20,7 +20,7 @@ import Data.Array (fromFoldable)
 import Data.Maybe (Maybe)
 import Data.Either (Either(..))
 import Data.Newtype (class Newtype, over, unwrap)
-import Halogen.Datapicker.Component.Internal.Constraint as C
+import Halogen.Datapicker.Internal.Constraint as C
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 
