@@ -161,7 +161,6 @@ buildDateTime = do
   pure $ stepsToFunc (length $ unwrap format) steps bottom
 
 
-
 evalPicker ∷ ∀ m . QueryIn ~> DSL m
 evalPicker (ResetError next) = do
   H.modify _{ dateTime = Nothing }

@@ -31,7 +31,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 
-
 type State val =
   { value:: val
   , values:: NonEmpty Array val
@@ -94,7 +93,6 @@ evalPicker hasChoiceInputVal (SetValue value next) = do
     else do
       pure $ next (Just ValueIsNotInValues)
 evalPicker _ (GetValue next) = H.gets _.value <#> next
-
 
 
 type HasChoiceInputVal a =

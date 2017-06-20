@@ -36,7 +36,6 @@ instance formatShow :: Show Format where
   show = genericShow
 
 
-
 toSetter :: Command -> Number -> I.Duration -> I.Duration
 toSetter cmd n d = over I.Duration (insert cmd n) d
 

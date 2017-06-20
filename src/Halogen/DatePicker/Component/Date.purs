@@ -82,7 +82,6 @@ render s = HH.ul [ HP.classes $ pickerClasses s.date ]
   f cmd = HH.li [HP.classes [HH.ClassName "Picker-component"]] [renderCommand cmd]
 
 
-
 renderCommandEnum :: ∀ m. F.Command -> { title :: String , range  :: Range Int } -> HTML m
 renderCommandEnum cmd conf' = let conf = conf'{range = conf'.range} in
   HH.slot' cpNum cmd

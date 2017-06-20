@@ -29,7 +29,6 @@ import Data.Enum
   , defaultPred)
 
 
-
 meridiem :: Time -> Meridiem
 meridiem = hour >>> fromEnum >>> \h -> if h >= 12 then PM else AM
 
@@ -158,8 +157,6 @@ instance millisecond1BoundedEnum :: BoundedEnum Millisecond1 where
 
 instance millisecond1Show :: Show Millisecond1 where
   show = genericShow
-
-
 
 
 monthShort :: Date -> MonthShort

@@ -181,7 +181,6 @@ validValueFromEvent event = unF $ do
     Right x -> x
 
 
-
 type HasNumberInputVal a  =
   { fromString :: String -> Maybe a
   , toValue :: a -> String
