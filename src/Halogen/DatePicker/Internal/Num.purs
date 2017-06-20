@@ -57,8 +57,8 @@ type HTML val = H.ComponentHTML (NumQuery val)
 picker ∷ ∀ val m
   . Ord val
   => HasNumberInputVal val
-  -> {title ∷ String, range ∷ Range val}
-  -> H.Component HH.HTML (Query val) Unit (Message val) m
+  → {title ∷ String, range ∷ Range val}
+  → H.Component HH.HTML (Query val) Unit (Message val) m
 picker hasNumberInputVal {title, range} = H.component
   { initialState: const {title, range, number: emptyNumberInputValue}
   , render: (render hasNumberInputVal) <#> (map right)
@@ -66,7 +66,7 @@ picker hasNumberInputVal {title, range} = H.component
   , receiver: const Nothing
   }
 
-render ∷ ∀ val. Ord val => HasNumberInputVal val -> State val -> HTML val
+render ∷ ∀ val. Ord val => HasNumberInputVal val → State val → HTML val
 render hasNumberInputVal s = numberElement hasNumberInputVal Update { title:s.title, range: s.range} s.number
 
 evalNumber ∷ ∀ val m . Eq val => NumQuery val ~> DSL val m
@@ -76,10 +76,10 @@ evalNumber (Update number next) = do
   unless (number == s.number) $ H.raise (NotifyChange $ fst number)
   pure next
 
-toMbString ∷ ∀ a. HasNumberInputVal a -> Maybe a -> Maybe String
+toMbString ∷ ∀ a. HasNumberInputVal a → Maybe a → Maybe String
 toMbString hasNumberInputVal number = (Just $ maybe "" hasNumberInputVal.toValue number)
 
-evalPicker ∷ ∀ val m . HasNumberInputVal val -> QueryIn val ~> DSL val m
+evalPicker ∷ ∀ val m . HasNumberInputVal val → QueryIn val ~> DSL val m
 evalPicker hasNumberInputVal (SetValue number next) = do
   H.modify _{number = Tuple number (toMbString hasNumberInputVal number)}
   pure $ next unit
@@ -88,26 +88,26 @@ evalPicker _ (GetValue next) = H.gets _.number <#> (fst >>> next)
 
 type InputValue a = Tuple (Maybe a) (Maybe String)
 
-toString ∷ ∀ a. InputValue a -> String
+toString ∷ ∀ a. InputValue a → String
 toString (Tuple _ mbStr) = maybe "" id mbStr
 
-mkInputValue ∷ ∀ a. HasNumberInputVal a -> a -> InputValue a
+mkInputValue ∷ ∀ a. HasNumberInputVal a → a → InputValue a
 mkInputValue hasNumberInputVal n = Tuple (Just n) (Just $ hasNumberInputVal.toValue n)
 
 emptyNumberInputValue ∷ ∀ a. InputValue a
 emptyNumberInputValue = Tuple Nothing (Just "")
 
-isInvalid  ∷ ∀ a. InputValue a -> Boolean
+isInvalid  ∷ ∀ a. InputValue a → Boolean
 isInvalid (Tuple Nothing (Just "")) = false
 isInvalid (Tuple Nothing (Just _)) = true
 isInvalid (Tuple _ Nothing) = true
 isInvalid _ = false
 
-isEmpty  ∷ ∀ a. InputValue a -> Boolean
+isEmpty  ∷ ∀ a. InputValue a → Boolean
 isEmpty (Tuple _ (Just "")) = true
 isEmpty _ = false
 
-showNum ∷ Number -> String
+showNum ∷ Number → String
 showNum 0.0 = "0"
 showNum n = let str = show n
   in maybe str id (stripSuffix (Pattern ".0") str)
@@ -115,10 +115,10 @@ showNum n = let str = show n
 numberElement ∷ ∀ val query
   . Ord val
   => HasNumberInputVal val
-  -> (∀ b. InputValue val -> b -> query b)
-  -> {title ∷ String, range ∷ Range val}
-  -> InputValue val
-  -> H.ComponentHTML query
+  → (∀ b. InputValue val → b → query b)
+  → {title ∷ String, range ∷ Range val}
+  → InputValue val
+  → H.ComponentHTML query
 numberElement hasNumberInputVal query {title, range} value = HH.input $
   [ HP.type_ HP.InputNumber
   , HP.classes classes
@@ -141,8 +141,8 @@ numberElement hasNumberInputVal query {title, range} value = HH.input $
   --  * if user types `001` we will parse it as `1` or
   --  * if user types `0.1111111111111111111111` we will parse it as `0.1111111111111111` or
   --  * if user types `1e1` we will parse it as `10`
-  parseValidInput ∷ InputValue String -> InputValue val
-  parseValidInput = lmap $ (=<<) \str -> do
+  parseValidInput ∷ InputValue String → InputValue val
+  parseValidInput = lmap $ (=<<) \str → do
     val <- hasNumberInputVal.fromString str
     guard (hasNumberInputVal.toValue val == str)
     pure val
@@ -150,25 +150,25 @@ numberElement hasNumberInputVal query {title, range} value = HH.input $
   valueStr = toString value
   classes = [HH.ClassName "Picker-input"] <> (guard (isInvalid value) $> HH.ClassName "Picker-input--invalid")
   styles = case range of
-    MinMax _ _ -> []
-    _ | isInvalid value -> []
-    _ | isEmpty value -> [HCSS.style $ CSS.width $ CSS.em 2.25]
-    _ -> [HCSS.style $ CSS.width $ CSS.em (Int.toNumber (length valueStr) * 0.5 + 1.75)]
+    MinMax _ _ → []
+    _ | isInvalid value → []
+    _ | isEmpty value → [HCSS.style $ CSS.width $ CSS.em 2.25]
+    _ → [HCSS.style $ CSS.width $ CSS.em (Int.toNumber (length valueStr) * 0.5 + 1.75)]
 
 
 -- We need to validate if value is in range manually as for example,
 -- if `min = 0`, user still can enter `-1` in chrome.
-isInputInRange ∷ ∀ a. Ord a => Range a -> InputValue a -> InputValue a
+isInputInRange ∷ ∀ a. Ord a => Range a → InputValue a → InputValue a
 isInputInRange range val = lmap (_ >>= boolToAltPredicate (isInRange range)) val
 
-boolToAltPredicate ∷ ∀ a f. Alternative f => (a -> Boolean) -> a -> f a
+boolToAltPredicate ∷ ∀ a f. Alternative f => (a → Boolean) → a → f a
 boolToAltPredicate f a =  if f a then pure a else empty
 
-inputValueFromEvent ∷ Event -> InputValue String
+inputValueFromEvent ∷ Event → InputValue String
 inputValueFromEvent event = let val = validValueFromEvent event
   in Tuple val val
 
-validValueFromEvent ∷ Event -> Maybe String
+validValueFromEvent ∷ Event → Maybe String
 validValueFromEvent event = unF $ do
   target <- readProp "target" $ toForeign event
   validity <- readProp "validity" target
@@ -177,14 +177,14 @@ validValueFromEvent event = unF $ do
   pure (if badInput then Nothing else Just value)
   where
   unF e = case runExcept e of
-    Left _ -> Nothing
-    Right x -> x
+    Left _ → Nothing
+    Right x → x
 
 
 type HasNumberInputVal a  =
-  { fromString ∷ String -> Maybe a
-  , toValue ∷ a -> String
-  , toNumber ∷ a -> Number
+  { fromString ∷ String → Maybe a
+  , toValue ∷ a → String
+  , toNumber ∷ a → Number
   }
 
 numberHasNumberInputVal ∷ HasNumberInputVal Number

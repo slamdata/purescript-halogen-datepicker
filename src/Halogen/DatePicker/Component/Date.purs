@@ -33,7 +33,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
-data DateQuery a = Update (Date -> Maybe Date) a
+data DateQuery a = Update (Date → Maybe Date) a
 type Input = PickerValue DateError Date
 type QueryIn = PickerQuery Unit Input
 type Query = Coproduct QueryIn DateQuery
@@ -67,7 +67,7 @@ type HTML m = H.ParentHTML DateQuery ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
 
-picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit Message m
+picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
 picker format = H.parentComponent
   { initialState: const {format, date: Nothing}
   , render: render >>> bimap (map right) right
@@ -75,56 +75,56 @@ picker format = H.parentComponent
   , receiver: const Nothing
   }
 
-render ∷ ∀ m. State -> HTML m
+render ∷ ∀ m. State → HTML m
 render s = HH.ul [ HP.classes $ pickerClasses s.date ]
   (f <$> unwrap s.format)
   where
   f cmd = HH.li [HP.classes [HH.ClassName "Picker-component"]] [renderCommand cmd]
 
 
-renderCommandEnum ∷ ∀ m. F.Command -> { title ∷ String , range  ∷ Range Int } -> HTML m
+renderCommandEnum ∷ ∀ m. F.Command → { title ∷ String , range  ∷ Range Int } → HTML m
 renderCommandEnum cmd conf' = let conf = conf'{range = conf'.range} in
   HH.slot' cpNum cmd
     (Num.picker Num.intHasNumberInputVal conf) unit
-    (HE.input $ \(NotifyChange n) -> Update $ \t -> n >>= (_ `F.toSetter cmd` t))
+    (HE.input $ \(NotifyChange n) → Update $ \t → n >>= (_ `F.toSetter cmd` t))
 
-renderCommandChoice ∷ ∀ m a. BoundedEnum a => Show a => F.Command -> { title ∷ String , values ∷ NonEmpty Array (Maybe a) } -> HTML m
+renderCommandChoice ∷ ∀ m a. BoundedEnum a => Show a => F.Command → { title ∷ String , values ∷ NonEmpty Array (Maybe a) } → HTML m
 renderCommandChoice cmd conf = HH.slot' cpChoice cmd
     ( Choice.picker
-      (Choice.maybeIntHasChoiceInputVal \n -> (toEnum n ∷ Maybe a) # maybe "" show)
+      (Choice.maybeIntHasChoiceInputVal \n → (toEnum n ∷ Maybe a) # maybe "" show)
       (conf{values = conf.values <#> map fromEnum})
     )
     unit
-    (HE.input $ \(NotifyChange n) -> Update $ \t -> n >>= (_ `F.toSetter cmd` t))
+    (HE.input $ \(NotifyChange n) → Update $ \t → n >>= (_ `F.toSetter cmd` t))
 
 
-renderCommand ∷ ∀ m. F.Command -> HTML m
+renderCommand ∷ ∀ m. F.Command → HTML m
 renderCommand cmd = case cmd of
-  F.Placeholder str ->
+  F.Placeholder str →
     textElement { text: str}
-  F.YearFull ->
+  F.YearFull →
     renderCommandEnum cmd { title: "Year", range: (bottomTop ∷ Range Year4) <#> fromEnum }
-  F.YearTwoDigits ->
+  F.YearTwoDigits →
     renderCommandEnum cmd { title: "Year", range: (bottomTop ∷ Range Year2) <#> fromEnum }
-  F.YearAbsolute ->
+  F.YearAbsolute →
     renderCommandEnum cmd { title: "Year", range: (bottomTop ∷ Range Year) <#> fromEnum }
-  F.MonthFull ->
+  F.MonthFull →
     renderCommandChoice cmd { title: "Month", values: upFromIncluding (bottom ∷ Maybe Month) }
-  F.MonthShort ->
+  F.MonthShort →
     renderCommandChoice cmd { title: "Month", values: upFromIncluding (bottom ∷ Maybe MonthShort) }
-  F.MonthTwoDigits ->
+  F.MonthTwoDigits →
     renderCommandEnum cmd { title: "Month", range: (bottomTop ∷ Range Month) <#> fromEnum }
-  F.DayOfMonthTwoDigits ->
+  F.DayOfMonthTwoDigits →
     renderCommandEnum cmd { title: "Day", range: (bottomTop ∷ Range Day) <#> fromEnum }
-  F.DayOfMonth ->
+  F.DayOfMonth →
     renderCommandEnum cmd { title: "Day", range: (bottomTop ∷ Range Day) <#> fromEnum }
 
 evalDate ∷ ∀ m . DateQuery ~> DSL m
 evalDate (Update update next) = do
   s <- H.get
   nextDate <- map (steper' s.date InvalidDate) $ case s.date of
-    Just (Right date) -> pure $ maybe (Left false) Right $ update date
-    _  -> buildDate
+    Just (Right date) → pure $ maybe (Left false) Right $ update date
+    _  → buildDate
   H.modify _{ date = nextDate }
   unless (nextDate == s.date) $ H.raise (NotifyChange nextDate)
   pure next
@@ -134,17 +134,17 @@ buildDate ∷ ∀ m. DSL m (Either Boolean Date)
 buildDate = do
   {format} <- H.get
   mbKleisliEndo <- for (sort $ unwrap format) $ commandCata
-    { text: \cmd -> pure $ Just $ mempty
-    , enum: \cmd -> do
+    { text: \cmd → pure $ Just $ mempty
+    , enum: \cmd → do
       num <- H.query' cpNum cmd $ H.request (left <<< GetValue)
-      pure $ join num <#> \n -> Join $ Star $ \t -> F.toSetter cmd n t
-    , choice: \cmd -> do
+      pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
+    , choice: \cmd → do
       num <- H.query' cpChoice cmd $ H.request (left <<< GetValue)
-      pure $ join num <#> \n -> Join $ Star $ \t -> F.toSetter cmd n t
+      pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     }
   pure $ case map fold (sequence mbKleisliEndo) of
-    Just (Join (Star f)) -> maybe (Left true) Right $  (toEnum 0) >>= (_ `setYear` bottom) >>= f
-    Nothing -> Left false
+    Just (Join (Star f)) → maybe (Left true) Right $  (toEnum 0) >>= (_ `setYear` bottom) >>= f
+    Nothing → Left false
 
 
 evalPicker ∷ ∀ m . QueryIn ~> DSL m
@@ -158,33 +158,33 @@ evalPicker (Base (SetValue date next)) = do
   pure $ next unit
 evalPicker (Base (GetValue next)) = H.gets _.date <#> next
 
-propagateChange ∷ ∀ m . F.Format -> Input -> DSL m Unit
+propagateChange ∷ ∀ m . F.Format → Input → DSL m Unit
 propagateChange format date = do
   map (mustBeMounted <<< fold) $ for (unwrap format) $ commandCata
-    { text: \cmd -> pure (Just unit)
-    , enum: \cmd -> do
+    { text: \cmd → pure (Just unit)
+    , enum: \cmd → do
       let val = value date >>= F.toGetter cmd
       H.query' cpNum cmd $ H.request $ left <<< SetValue val
-    , choice: \cmd -> do
+    , choice: \cmd → do
       let val = value date >>= F.toGetter cmd
       res <- H.query' cpChoice cmd $ H.request $ left <<< SetValue val
       pure $ res >>= case _ of
-        Just Choice.ValueIsNotInValues -> Nothing
-        Nothing -> Just unit
+        Just Choice.ValueIsNotInValues → Nothing
+        Nothing → Just unit
     }
 
 commandCata ∷ ∀ a.
-  { text   ∷ F.Command -> a
-  , enum   ∷ F.Command -> a
-  , choice ∷ F.Command -> a
-  } -> F.Command -> a
+  { text   ∷ F.Command → a
+  , enum   ∷ F.Command → a
+  , choice ∷ F.Command → a
+  } → F.Command → a
 commandCata p cmd = case cmd of
-  F.Placeholder str     -> p.text cmd
-  F.YearFull            -> p.enum cmd
-  F.YearTwoDigits       -> p.enum cmd
-  F.YearAbsolute        -> p.enum cmd
-  F.MonthFull           -> p.choice cmd
-  F.MonthShort          -> p.choice cmd
-  F.MonthTwoDigits      -> p.enum cmd
-  F.DayOfMonthTwoDigits -> p.enum cmd
-  F.DayOfMonth          -> p.enum cmd
+  F.Placeholder str     → p.text cmd
+  F.YearFull            → p.enum cmd
+  F.YearTwoDigits       → p.enum cmd
+  F.YearAbsolute        → p.enum cmd
+  F.MonthFull           → p.choice cmd
+  F.MonthShort          → p.choice cmd
+  F.MonthTwoDigits      → p.enum cmd
+  F.DayOfMonthTwoDigits → p.enum cmd
+  F.DayOfMonth          → p.enum cmd

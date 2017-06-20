@@ -50,7 +50,7 @@ type HTML m = H.ParentHTML DurationQuery (N.Query Number) Slot m
 type DSL m = H.ParentDSL State Query (N.Query Number) Slot Message m
 
 
-picker ∷ ∀ m. F.Format -> H.Component HH.HTML Query Unit Message m
+picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
 picker format = H.parentComponent
   { initialState: const $ {format, duration: Nothing}
   , render: render >>> bimap (map right) right
@@ -58,7 +58,7 @@ picker format = H.parentComponent
   , receiver: const Nothing
   }
 
-render ∷  ∀ m. State -> HTML m
+render ∷  ∀ m. State → HTML m
 render s = HH.ul [ HP.classes $ pickerClasses s.duration ]
     (f <$> unwrap s.format)
   where
@@ -67,22 +67,22 @@ render s = HH.ul [ HP.classes $ pickerClasses s.duration ]
       cmd
       (N.picker N.numberHasNumberInputVal { title: show cmd, range: minRange 0.0 })
       unit
-      (HE.input $ \(NotifyChange n) -> UpdateCommand cmd n)]
+      (HE.input $ \(NotifyChange n) → UpdateCommand cmd n)]
 
-getComponent ∷ F.Command -> IsoDuration -> Number
+getComponent ∷ F.Command → IsoDuration → Number
 getComponent cmd d = maybe 0.0 id $ F.toGetter cmd (unIsoDuration d)
 
-overIsoDuration ∷ (Duration -> Duration) -> IsoDuration -> Maybe IsoDuration
+overIsoDuration ∷ (Duration → Duration) → IsoDuration → Maybe IsoDuration
 overIsoDuration f d = mkIsoDuration $ f $ unIsoDuration d
 
 evalDuration ∷ ∀ m . DurationQuery ~> DSL m
 evalDuration (UpdateCommand cmd val next) = do
   s <- H.get
   nextDuration <- map (steper' s.duration InvalidIsoDuration) $ case s.duration of
-    Just (Right duration) -> pure
+    Just (Right duration) → pure
       $ maybe (Left false) Right
-      $ val >>= \n -> overIsoDuration (F.toSetter cmd n) duration
-    _  -> buildDuration
+      $ val >>= \n → overIsoDuration (F.toSetter cmd n) duration
+    _  → buildDuration
   H.modify (_{ duration = nextDuration })
   unless (nextDuration == s.duration) $ H.raise (NotifyChange nextDuration)
   pure next
@@ -90,14 +90,14 @@ evalDuration (UpdateCommand cmd val next) = do
 buildDuration ∷ ∀ m. DSL m (Either Boolean IsoDuration)
 buildDuration = do
   {format} <- H.get
-  mbEndo <- for (unwrap format) \cmd -> do
+  mbEndo <- for (unwrap format) \cmd → do
     num <- H.query cmd $ H.request (left <<< GetValue)
     pure case num of
-      Just (Just n) -> Just $ Endo $ F.toSetter cmd n
-      _ -> Nothing
+      Just (Just n) → Just $ Endo $ F.toSetter cmd n
+      _ → Nothing
   pure case map fold $ sequence mbEndo of
-   Just (Endo f) -> maybe (Left true) Right $ mkIsoDuration $ f mempty
-   _ -> Left false
+   Just (Endo f) → maybe (Left true) Right $ mkIsoDuration $ f mempty
+   _ → Left false
 
 
 evalPicker ∷ ∀ m . QueryIn ~> DSL m
@@ -107,12 +107,12 @@ evalPicker (ResetError next) = do
 evalPicker (Base (SetValue duration next)) = do
   {format} <- H.get
   propagateChange format duration
-  H.modify \s -> s{duration = duration}
+  H.modify \s → s{duration = duration}
   pure $ next unit
 evalPicker (Base (GetValue next)) = H.gets _.duration <#> next
 
-propagateChange ∷ ∀ m . F.Format -> Input -> DSL m Unit
+propagateChange ∷ ∀ m . F.Format → Input → DSL m Unit
 propagateChange format duration = do
-  map (mustBeMounted <<< fold) $ for (unwrap format) \cmd -> do
+  map (mustBeMounted <<< fold) $ for (unwrap format) \cmd → do
     let n = (duration >>= either (const Nothing) (F.toGetter cmd <<< unIsoDuration)) ∷ Maybe Number
     H.query cmd $ H.request $ left <<< SetValue n

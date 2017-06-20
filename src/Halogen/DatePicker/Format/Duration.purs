@@ -37,13 +37,13 @@ instance formatShow ∷ Show Format where
   show = genericShow
 
 
-toSetter ∷ Command -> Number -> I.Duration -> I.Duration
+toSetter ∷ Command → Number → I.Duration → I.Duration
 toSetter cmd n d = over I.Duration (insert cmd n) d
 
-toGetter ∷ Command -> I.Duration -> Maybe Number
+toGetter ∷ Command → I.Duration → Maybe Number
 toGetter cmd = unwrap >>> lookup cmd
 
-mkFormat ∷ ∀ f. Foldable f => f Command -> Either String Format
+mkFormat ∷ ∀ f. Foldable f => f Command → Either String Format
 mkFormat cmds = if (errs /= [])
   then Left $ joinWith "; " errs
   else pure $ Format fmt
@@ -52,12 +52,12 @@ mkFormat cmds = if (errs /= [])
   fmt = fromFoldable cmds
   errs = C.runConstraint formatConstraint fmt
 
-unformat ∷ String -> Either String I.IsoDuration
+unformat ∷ String → Either String I.IsoDuration
 unformat str = unformatInterval str >>= case _ of
-  I.JustDuration d -> pure d
-  x -> Left $ "unformating of duration string returned wrong result: " <> show x
+  I.JustDuration d → pure d
+  x → Left $ "unformating of duration string returned wrong result: " <> show x
 
-format ∷ I.IsoDuration -> String
+format ∷ I.IsoDuration → String
 format = formatInterval <<< I.JustDuration
 
 

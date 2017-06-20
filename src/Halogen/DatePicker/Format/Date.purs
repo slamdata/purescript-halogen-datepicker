@@ -50,7 +50,7 @@ derive instance commandOrd ∷ Ord Command
 instance commandShow ∷ Show Command where
   show = genericShow
 
-toSetter ∷ Command -> Int -> Date -> Maybe Date
+toSetter ∷ Command → Int → Date → Maybe Date
 toSetter YearFull n d = (toEnum n) >>= (_ `setYear4` d)
 toSetter YearTwoDigits n d = (toEnum n ) >>= (_ `setYear2` d)
 toSetter YearAbsolute n d = (toEnum n) >>= (_ `setYear` d)
@@ -62,7 +62,7 @@ toSetter DayOfMonth n d = (toEnum n) >>= (_ `setDay` d)
 toSetter (Placeholder _) _ d = pure d
 
 
-toGetter ∷ Command -> Date -> Maybe Int
+toGetter ∷ Command → Date → Maybe Int
 toGetter YearFull d            = Just $ fromEnum $ year4 d
 toGetter YearTwoDigits d       = Just $ fromEnum $ year2 d
 toGetter YearAbsolute d        = Just $ fromEnum $ year d
@@ -82,18 +82,18 @@ instance formatShow ∷ Show Format where
 derive instance formatEq ∷ Eq Format
 derive instance formatOrd ∷ Ord Format
 
-fromString ∷ String -> Either String Format
+fromString ∷ String → Either String Format
 fromString s = FDT.parseFormatString s >>= fromDateTimeFormatter
 
-fromDateTimeFormatter ∷ FDT.Formatter -> Either String Format
+fromDateTimeFormatter ∷ FDT.Formatter → Either String Format
 fromDateTimeFormatter fmt = do
   let errs = C.runConstraint formatConstraint fmt
   when (errs /= []) $ Left $ joinWith "; " errs
   case traverse toCommand fmt of
-    Just fmt' -> pure $ Format $ fromFoldable fmt'
-    Nothing -> Left "(unreachable) invalid FormatterCommand has leaked while checking constraints"
+    Just fmt' → pure $ Format $ fromFoldable fmt'
+    Nothing → Left "(unreachable) invalid FormatterCommand has leaked while checking constraints"
 
-toCommand ∷ FDT.FormatterCommand -> Maybe Command
+toCommand ∷ FDT.FormatterCommand → Maybe Command
 toCommand FDT.YearFull = Just YearFull
 toCommand FDT.YearTwoDigits = Just YearTwoDigits
 toCommand FDT.YearAbsolute = Just YearAbsolute
@@ -106,7 +106,7 @@ toCommand FDT.DayOfMonth = Just DayOfMonth
 toCommand (FDT.Placeholder str)= Just $ Placeholder str
 toCommand _ = Nothing
 
-toDateTimeFormatter ∷ Format -> FDT.Formatter
+toDateTimeFormatter ∷ Format → FDT.Formatter
 toDateTimeFormatter (Format fmt) = foldMap (pure <<< toDTCommand) fmt
   where
   toDTCommand YearFull = FDT.YearFull
@@ -120,13 +120,13 @@ toDateTimeFormatter (Format fmt) = foldMap (pure <<< toDTCommand) fmt
   -- toDTCommand DayOfWeek = FDT.DayOfWeek
   toDTCommand (Placeholder str) = FDT.Placeholder str
 
-unformat ∷ Format -> String -> Either String Date
+unformat ∷ Format → String → Either String Date
 unformat fmt str = FDT.unformat (toDateTimeFormatter fmt) str <#> date
 
-format ∷ Format -> Date -> String
+format ∷ Format → Date → String
 format fmt = FDT.format (toDateTimeFormatter fmt) <<< toDateTime
   where
-  toDateTime ∷ Date -> DateTime
+  toDateTime ∷ Date → DateTime
   toDateTime d = DateTime d bottom
 
 
@@ -151,6 +151,6 @@ formatConstraint
     [ C.EqPred
         "'Placeholder'"
         case _ of
-          FDT.Placeholder _ -> true
-          _ -> false
+          FDT.Placeholder _ → true
+          _ → false
     ]

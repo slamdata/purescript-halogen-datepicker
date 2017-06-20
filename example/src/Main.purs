@@ -113,7 +113,7 @@ example =
     , durations: mempty
     , intervals: mempty
     }
-  render ∷ State -> HTML m
+  render ∷ State → HTML m
   render s = HH.div_
     $  [HH.h1_ [ HH.text "Time" ]]
     <> renderTime s 0 "HH:mm" (Left "13:45")
@@ -200,62 +200,62 @@ example =
   testDuration ∷ IsoDuration
   testDuration = unsafePartialBecause "this duration must be valid" fromJust $ I.mkIsoDuration $ I.year 100.0 <> I.month 25.0 <> I.day 245.0 <> I.hour 0.0 <> I.minute 100.0 <> I.second 124.0
 
-  enum ∷ ∀ a. BoundedEnum a => Int -> a
+  enum ∷ ∀ a. BoundedEnum a => Int → a
   enum = unsafePartialBecause "ints passed to this func must be in range" fromJust <<< toEnum
 
-  renderTime ∷ State -> Int -> String -> Either String Time -> Array (HTML m)
+  renderTime ∷ State → Int → String → Either String Time → Array (HTML m)
   renderTime s = renderExample timeConfig s.times
 
-  renderDate ∷ State -> Int -> String -> Either String Date -> Array (HTML m)
+  renderDate ∷ State → Int → String → Either String Date → Array (HTML m)
   renderDate s = renderExample dateConfig s.dates
 
-  renderDuration ∷ State -> Int -> Array DurationF.Command -> Either String IsoDuration -> Array (HTML m)
+  renderDuration ∷ State → Int → Array DurationF.Command → Either String IsoDuration → Array (HTML m)
   renderDuration s = renderExample durationConfig s.durations
 
-  renderInterval ∷ State -> Int -> Interval (Array DurationF.Command) String -> Either String (Interval IsoDuration DateTime) -> Array (HTML m)
+  renderInterval ∷ State → Int → Interval (Array DurationF.Command) String → Either String (Interval IsoDuration DateTime) → Array (HTML m)
   renderInterval s = renderExample intervalConfig s.intervals
 
-  renderDateTime ∷ State -> Int -> String -> Either String DateTime -> Array (HTML m)
+  renderDateTime ∷ State → Int → String → Either String DateTime → Array (HTML m)
   renderDateTime s = renderExample dateTimeConfig s.dateTimes
 
   eval ∷ Query ~> DSL m
   eval (Set payload next) = do
     map mustBeMounted $ case payload of
-      SetTime     idx val -> H.query' timeConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
-      SetDate     idx val -> H.query' dateConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
-      SetDateTime idx val -> H.query' dateTimeConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
-      SetDuration idx val -> H.query' durationConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
-      SetInterval idx val -> do
+      SetTime     idx val → H.query' timeConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+      SetDate     idx val → H.query' dateConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+      SetDateTime idx val → H.query' dateTimeConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+      SetDuration idx val → H.query' durationConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+      SetInterval idx val → do
         res <- H.query' intervalConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
-        pure $ void res -- <#> (\error ->  D.traceAny {message:"can't update interval", error})
+        pure $ void res -- <#> (\error →  D.traceAny {message:"can't update interval", error})
     pure next
   eval (HandleMessage payload next) = do
     case payload of
-      MsgTime     idx (NotifyChange val) -> H.modify \s -> s {times     = insert idx (show val) s.times}
-      MsgDate     idx (NotifyChange val) -> H.modify \s -> s {dates     = insert idx (show val) s.dates}
-      MsgDateTime idx (NotifyChange val) -> H.modify \s -> s {dateTimes = insert idx (show val) s.dateTimes}
-      MsgDuration idx (NotifyChange val) -> H.modify \s -> s {durations = insert idx (show val) s.durations}
-      MsgInterval idx (NotifyChange val) -> H.modify \s -> s {intervals = insert idx (show val) s.intervals}
+      MsgTime     idx (NotifyChange val) → H.modify \s → s {times     = insert idx (show val) s.times}
+      MsgDate     idx (NotifyChange val) → H.modify \s → s {dates     = insert idx (show val) s.dates}
+      MsgDateTime idx (NotifyChange val) → H.modify \s → s {dateTimes = insert idx (show val) s.dateTimes}
+      MsgDuration idx (NotifyChange val) → H.modify \s → s {durations = insert idx (show val) s.durations}
+      MsgInterval idx (NotifyChange val) → H.modify \s → s {intervals = insert idx (show val) s.intervals}
     pure next
 
 
 
 type ExampleConfig fmtInput input fmt query out m =
-  { mkFormat ∷ fmtInput -> Either String fmt
-  , unformat ∷ fmt -> String -> Either String input
-  , picker ∷ fmt -> H.Component HH.HTML query Unit out m
-  , handler ∷ ∀ z. Int -> out -> z -> Query z
-  , setter ∷ ∀ z. Int -> Maybe input -> z -> Query z
+  { mkFormat ∷ fmtInput → Either String fmt
+  , unformat ∷ fmt → String → Either String input
+  , picker ∷ fmt → H.Component HH.HTML query Unit out m
+  , handler ∷ ∀ z. Int → out → z → Query z
+  , setter ∷ ∀ z. Int → Maybe input → z → Query z
   , cp ∷ CP.ChildPath query ChildQuery Int Slot
   }
 
 renderExample ∷ ∀ fmtInput input fmt query out m
   . ExampleConfig fmtInput input fmt query out m
-  -> Map Int String
-  -> Int
-  -> fmtInput
-  -> Either String input
-  -> Array (HTML m)
+  → Map Int String
+  → Int
+  → fmtInput
+  → Either String input
+  → Array (HTML m)
 renderExample c items idx fmt' value'= unEither $ do
   fmt <- c.mkFormat fmt'
   value <- either (c.unformat fmt) Right value'
@@ -265,11 +265,11 @@ renderExample c items idx fmt' value'= unEither $ do
     , HH.button [ HE.onClick $ HE.input_ $ c.setter idx (Just value)] [ HH.text "reset"]
     , HH.button [ HE.onClick $ HE.input_ $ c.setter idx Nothing] [ HH.text "clear"]
     , case lookup idx items of
-        Nothing -> HH.div_ [HH.text "no value is set"]
-        Just val -> HH.div_ [HH.text $ "value: " <> val]
+        Nothing → HH.div_ [HH.text "no value is set"]
+        Just val → HH.div_ [HH.text $ "value: " <> val]
     ]
   where
-  unEither ∷ Either String (Array (HTML m)) -> Array (HTML m)
+  unEither ∷ Either String (Array (HTML m)) → Array (HTML m)
   unEither = either (HH.text >>> pure >>> HH.div_ >>> pure) id
 
 timeConfig ∷ ∀ m. ExampleConfig String Time TimeF.Format Time.Query Time.Message m
@@ -277,8 +277,8 @@ timeConfig =
   { mkFormat: TimeF.fromString
   , unformat: TimeF.unformat
   , picker: Time.picker
-  , handler: \idx msg -> HandleMessage (MsgTime idx msg)
-  , setter: \idx val -> Set (SetTime idx val)
+  , handler: \idx msg → HandleMessage (MsgTime idx msg)
+  , setter: \idx val → Set (SetTime idx val)
   , cp: cpTime
   }
 
@@ -287,8 +287,8 @@ dateConfig =
   { mkFormat: DateF.fromString
   , unformat: DateF.unformat
   , picker: Date.picker
-  , handler: \idx msg -> HandleMessage (MsgDate idx msg)
-  , setter: \idx val -> Set (SetDate idx val)
+  , handler: \idx msg → HandleMessage (MsgDate idx msg)
+  , setter: \idx val → Set (SetDate idx val)
   , cp: cpDate
   }
 
@@ -297,8 +297,8 @@ dateTimeConfig =
   { mkFormat: DateTimeF.fromString
   , unformat: DateTimeF.unformat
   , picker: DateTime.picker
-  , handler: \idx msg -> HandleMessage (MsgDateTime idx msg)
-  , setter: \idx val -> Set (SetDateTime idx val)
+  , handler: \idx msg → HandleMessage (MsgDateTime idx msg)
+  , setter: \idx val → Set (SetDateTime idx val)
   , cp: cpDateTime
   }
 
@@ -307,8 +307,8 @@ durationConfig =
   { mkFormat: DurationF.mkFormat
   , unformat: const DurationF.unformat
   , picker: Duration.picker
-  , handler: \idx msg -> HandleMessage (MsgDuration idx msg)
-  , setter: \idx val -> Set (SetDuration idx val)
+  , handler: \idx msg → HandleMessage (MsgDuration idx msg)
+  , setter: \idx val → Set (SetDuration idx val)
   , cp: cpDuration
   }
 
@@ -322,7 +322,7 @@ intervalConfig =
   { mkFormat: bitraverse DurationF.mkFormat DateTimeF.fromString
   , unformat: const unformatInterval
   , picker: Interval.picker
-  , handler: \idx msg -> HandleMessage (MsgInterval idx msg)
-  , setter: \idx val -> Set (SetInterval idx val)
+  , handler: \idx msg → HandleMessage (MsgInterval idx msg)
+  , setter: \idx val → Set (SetInterval idx val)
   , cp: cpInterval
   }

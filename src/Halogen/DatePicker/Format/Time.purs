@@ -59,7 +59,7 @@ derive instance formatEq ∷ Eq Format
 derive instance formatOrd ∷ Ord Format
 
 
-toSetter ∷ Command -> Int -> Time -> Maybe Time
+toSetter ∷ Command → Int → Time → Maybe Time
 toSetter Hours24 n t = toEnum n <#> ( _ `setHour` t)
 toSetter Hours12 n t = toEnum n >>= (_ `setHour12` t)
 toSetter Meridiem n t = toEnum n >>= (_ `setMeridiem` t)
@@ -72,7 +72,7 @@ toSetter MillisecondsTwoDigits n t = toEnum n >>= (_ `setMillisecond2` t)
 toSetter MillisecondsShort n t = toEnum n >>= (_ `setMillisecond1` t)
 toSetter (Placeholder _) _ t = pure t
 
-toGetter ∷ Command -> Time -> Maybe Int
+toGetter ∷ Command → Time → Maybe Int
 toGetter Hours24 t = Just $ fromEnum $ hour t
 toGetter Hours12 t = Just $ fromEnum $ hour12 t
 toGetter Meridiem t = Just $ fromEnum $ meridiem t
@@ -86,18 +86,18 @@ toGetter MillisecondsShort t = Just $ fromEnum $ millisecond1 t
 toGetter (Placeholder _) t = Nothing
 
 
-fromString ∷ String -> Either String Format
+fromString ∷ String → Either String Format
 fromString s = FDT.parseFormatString s >>= fromDateTimeFormatter
 
-fromDateTimeFormatter ∷ FDT.Formatter -> Either String Format
+fromDateTimeFormatter ∷ FDT.Formatter → Either String Format
 fromDateTimeFormatter fmt = do
   let errs = C.runConstraint formatConstraint fmt
   when (errs /= []) $ Left $ joinWith "; " errs
   case traverse toCommand fmt of
-    Just fmt' -> pure $ Format $ fromFoldable fmt'
-    Nothing -> Left "(unreachable) invalid FormatterCommand has leaked while checking constraints"
+    Just fmt' → pure $ Format $ fromFoldable fmt'
+    Nothing → Left "(unreachable) invalid FormatterCommand has leaked while checking constraints"
 
-toCommand ∷ FDT.FormatterCommand -> Maybe Command
+toCommand ∷ FDT.FormatterCommand → Maybe Command
 toCommand FDT.Hours24 = Just Hours24
 toCommand FDT.Hours12 = Just Hours12
 toCommand FDT.Meridiem = Just Meridiem
@@ -111,7 +111,7 @@ toCommand FDT.MillisecondsShort = Just MillisecondsShort
 toCommand (FDT.Placeholder str)= Just $ Placeholder str
 toCommand _ = Nothing
 
-toDateTimeFormatter ∷ Format -> FDT.Formatter
+toDateTimeFormatter ∷ Format → FDT.Formatter
 toDateTimeFormatter (Format fmt) = foldMap (pure <<< toDTCommand) fmt
   where
   toDTCommand Hours24 = FDT.Hours24
@@ -126,13 +126,13 @@ toDateTimeFormatter (Format fmt) = foldMap (pure <<< toDTCommand) fmt
   toDTCommand MillisecondsShort = FDT.MillisecondsShort
   toDTCommand (Placeholder str) = FDT.Placeholder str
 
-unformat ∷ Format -> String -> Either String Time
+unformat ∷ Format → String → Either String Time
 unformat fmt str = FDT.unformat (toDateTimeFormatter fmt) str  <#> time
 
-format ∷ Format -> Time -> String
+format ∷ Format → Time → String
 format fmt = FDT.format (toDateTimeFormatter fmt) <<< toDateTime
   where
-  toDateTime ∷ Time -> DateTime
+  toDateTime ∷ Time → DateTime
   toDateTime = DateTime bottom
 
 
@@ -162,6 +162,6 @@ formatConstraint
     [ C.EqPred
         "'Placeholder'"
         case _ of
-          FDT.Placeholder _ -> true
-          _ -> false
+          FDT.Placeholder _ → true
+          _ → false
     ]

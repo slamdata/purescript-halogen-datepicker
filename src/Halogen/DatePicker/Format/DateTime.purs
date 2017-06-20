@@ -54,34 +54,34 @@ derive instance formatOrd ∷ Ord Format
 instance formatShow ∷ Show Format where
   show = genericShow
 
-fromString ∷ String -> Either String Format
+fromString ∷ String → Either String Format
 fromString s = FDT.parseFormatString s >>= fromDateTimeFormatter
 
-fromDateTimeFormatter ∷ FDT.Formatter -> Either String Format
+fromDateTimeFormatter ∷ FDT.Formatter → Either String Format
 fromDateTimeFormatter fmt = run $ go Nil
   where
-  run ∷ StateT FDT.Formatter (Either String) (List Command) -> Either String Format
+  run ∷ StateT FDT.Formatter (Either String) (List Command) → Either String Format
   run s = do
     resFmt <- evalStateT s fmt
     let errs = C.runConstraint formatConstraint resFmt
     when (errs /= []) $ Left $ joinWith "; " errs
     pure $ Format $ fromFoldable resFmt --- TODO make sure List used here is fine
 
-go ∷ List Command -> StateT FDT.Formatter (Either String) (List Command)
-go currFmt = get >>= \a -> case (takeDate a <|> takeTime a) of
-  Just (Left err)  -> lift $ Left err
-  Just (Right (Tuple restRes restFmt)) -> let res = put restFmt *> pure (currFmt <> restRes) in
+go ∷ List Command → StateT FDT.Formatter (Either String) (List Command)
+go currFmt = get >>= \a → case (takeDate a <|> takeTime a) of
+  Just (Left err)  → lift $ Left err
+  Just (Right (Tuple restRes restFmt)) → let res = put restFmt *> pure (currFmt <> restRes) in
     if null restFmt then res else res >>= go
-  Nothing -> get >>= \restFmt -> lift $ Left $ "left unconsumed format: " <> show restFmt
+  Nothing → get >>= \restFmt → lift $ Left $ "left unconsumed format: " <> show restFmt
 
-takeDate ∷ FDT.Formatter -> Maybe (Either String (Tuple (List Command) FDT.Formatter))
+takeDate ∷ FDT.Formatter → Maybe (Either String (Tuple (List Command) FDT.Formatter))
 takeDate = consumeWhile
   (DateF.toCommand >>> isJust)
   (DateF.fromDateTimeFormatter >>> bimap
     ("Date Format error: " <> _ )
     (Date >>> pure))
 
-takeTime ∷ FDT.Formatter -> Maybe (Either String (Tuple (List Command) FDT.Formatter))
+takeTime ∷ FDT.Formatter → Maybe (Either String (Tuple (List Command) FDT.Formatter))
 takeTime = consumeWhile
   (TimeF.toCommand >>> isJust)
   (TimeF.fromDateTimeFormatter >>> bimap
@@ -94,20 +94,20 @@ consumeWhile ∷ ∀ a
   → List FDT.FormatterCommand
   → Maybe (Either String (Tuple a FDT.Formatter))
 consumeWhile whileFn consumer fmt = span whileFn fmt #
-  \({init, rest}) -> if null init then Nothing
-    else Just $ consumer init <#> (\a -> Tuple a rest)
+  \({init, rest}) → if null init then Nothing
+    else Just $ consumer init <#> (\a → Tuple a rest)
 
-toDateTimeFormatter ∷ Format -> FDT.Formatter
+toDateTimeFormatter ∷ Format → FDT.Formatter
 toDateTimeFormatter (Format fmt) = foldMap toDTCommand fmt
   where
   toDTCommand (Date inFmt) = DateF.toDateTimeFormatter inFmt
   toDTCommand (Time inFmt) = TimeF.toDateTimeFormatter inFmt
   -- toDTCommand (Placeholder str) = FDT.Placeholder str
 
-unformat ∷ Format -> String -> Either String DateTime
+unformat ∷ Format → String → Either String DateTime
 unformat fmt str = FDT.unformat (toDateTimeFormatter fmt) str
 
-format ∷ Format -> DateTime -> String
+format ∷ Format → DateTime → String
 format fmt = FDT.format (toDateTimeFormatter fmt)
 
 
@@ -117,10 +117,10 @@ formatConstraint
   <> C.allowNoneOrOne [ C.EqPred "Date" isDate ]
   <> C.allowNoneOrOne [ C.EqPred "Time" isTime ]
   where
-  isDate ∷ Command -> Boolean
+  isDate ∷ Command → Boolean
   isDate (Date _) = true
   isDate _ = false
 
-  isTime ∷ Command -> Boolean
+  isTime ∷ Command → Boolean
   isTime (Time _) = true
   isTime _ = false

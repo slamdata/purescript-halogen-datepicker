@@ -12,16 +12,16 @@ import Data.String as Str
 import Data.Time (Time, hour, millisecond, setHour, setMillisecond)
 
 
-meridiem ∷ Time -> Meridiem
-meridiem = hour >>> fromEnum >>> \h -> if h >= 12 then PM else AM
+meridiem ∷ Time → Meridiem
+meridiem = hour >>> fromEnum >>> \h → if h >= 12 then PM else AM
 
-setMeridiem ∷ Meridiem -> Time -> Maybe Time
+setMeridiem ∷ Meridiem → Time → Maybe Time
 setMeridiem m t = newHour <#> (_ `setHour` t)
   where
   h = fromEnum (hour t)
   newHour = toEnum $ case m of
-    AM -> if h > 12 then h - 12 else h
-    PM -> if h < 12 then h + 12 else h
+    AM → if h > 12 then h - 12 else h
+    PM → if h < 12 then h + 12 else h
 
 data Meridiem = AM | PM
 derive instance meridiemEq ∷ Eq Meridiem
@@ -49,10 +49,10 @@ instance meridiemBoundedEnum ∷ BoundedEnum Meridiem where
   fromEnum PM = 2
 
 
-hour12 ∷ Time -> Hour12
-hour12 = hour >>> fromEnum >>> (\h -> if h >= 12 then h - 12 else h) >>> Hour12
+hour12 ∷ Time → Hour12
+hour12 = hour >>> fromEnum >>> (\h → if h >= 12 then h - 12 else h) >>> Hour12
 
-setHour12 ∷ Hour12 -> Time -> Maybe Time
+setHour12 ∷ Hour12 → Time → Maybe Time
 setHour12 (Hour12 h) t = toEnum (if (fromEnum $ hour t) < 12 then h else h + 12) <#> (_ `setHour` t)
 
 
@@ -80,10 +80,10 @@ instance hour12BoundedEnum ∷ BoundedEnum Hour12 where
 instance hour12Show ∷ Show Hour12 where
   show = genericShow
 
-millisecond2 ∷ Time -> Millisecond2
+millisecond2 ∷ Time → Millisecond2
 millisecond2 = millisecond >>> fromEnum >>> (_ / 10) >>> Millisecond2
 
-setMillisecond2 ∷ Millisecond2 -> Time -> Maybe Time
+setMillisecond2 ∷ Millisecond2 → Time → Maybe Time
 setMillisecond2 (Millisecond2 ms) t = toEnum (ms * 10) <#> (_ `setMillisecond` t)
 
 
@@ -111,10 +111,10 @@ instance millisecond2Show ∷ Show Millisecond2 where
   show = genericShow
 
 
-millisecond1 ∷ Time -> Millisecond1
+millisecond1 ∷ Time → Millisecond1
 millisecond1 = millisecond >>> fromEnum >>> (_ / 100) >>> Millisecond1
 
-setMillisecond1 ∷ Millisecond1 -> Time -> Maybe Time
+setMillisecond1 ∷ Millisecond1 → Time → Maybe Time
 setMillisecond1 (Millisecond1 ms) t = toEnum (ms * 100) <#> (_ `setMillisecond` t)
 
 
@@ -142,7 +142,7 @@ instance millisecond1Show ∷ Show Millisecond1 where
   show = genericShow
 
 
-monthShort ∷ Date -> MonthShort
+monthShort ∷ Date → MonthShort
 monthShort = month >>> MonthShort
 
 
@@ -168,10 +168,10 @@ instance monthShortBoundedEnum ∷ BoundedEnum MonthShort where
 instance monthShortShow ∷ Show MonthShort where
   show (MonthShort m) = Str.take 3 $ show m
 
-year2 ∷ Date -> Year2
-year2 = year >>> fromEnum >>> \y -> Year2 $ y - (y `unPrecise` 100)
+year2 ∷ Date → Year2
+year2 = year >>> fromEnum >>> \y → Year2 $ y - (y `unPrecise` 100)
 
-setYear2 ∷ Year2 -> Date -> Maybe Date
+setYear2 ∷ Year2 → Date → Maybe Date
 setYear2 (Year2 n) d = (toEnum $ ((fromEnum $ year d) `unPrecise` 100) + n) >>= (_ `setYear` d)
 
 newtype Year2 = Year2 Int
@@ -198,10 +198,10 @@ instance year2Show ∷ Show Year2 where
   show = genericShow
 
 
-year4 ∷ Date -> Year4
-year4 = year >>> fromEnum >>> \y -> Year4 $ y - (y `unPrecise` 10000)
+year4 ∷ Date → Year4
+year4 = year >>> fromEnum >>> \y → Year4 $ y - (y `unPrecise` 10000)
 
-setYear4 ∷ Year4 -> Date -> Maybe Date
+setYear4 ∷ Year4 → Date → Maybe Date
 setYear4 (Year4 n) d = toEnum n >>= (_ `setYear` d)
 
 
@@ -229,16 +229,16 @@ instance year4Show ∷ Show Year4 where
   show = genericShow
 
 
-setYear ∷ Year -> Date -> Maybe Date
+setYear ∷ Year → Date → Maybe Date
 setYear a d = exactDate a (month d) (day d)
 
-setMonth ∷ Month -> Date -> Maybe Date
+setMonth ∷ Month → Date → Maybe Date
 setMonth a d = exactDate (year d) a (day d)
 
-setDay ∷ Day -> Date -> Maybe Date
+setDay ∷ Day → Date → Maybe Date
 setDay a d = exactDate (year d) (month d) a
 
 -- > 123456789 `unPrecise` 1000
 -- 123456000
-unPrecise ∷ Int -> Int -> Int
+unPrecise ∷ Int → Int → Int
 unPrecise n by = n / by * by

@@ -50,8 +50,8 @@ type HTML val = H.ComponentHTML (ChoiceQuery val)
 picker ∷ ∀ val m
   . Ord val
   => HasChoiceInputVal val
-  -> {title ∷ String, values ∷ NonEmpty Array val}
-  -> H.Component HH.HTML (Query val) Unit (Message val) m
+  → {title ∷ String, values ∷ NonEmpty Array val}
+  → H.Component HH.HTML (Query val) Unit (Message val) m
 picker hasChoiceInputVal {title, values} = H.component
   { initialState: const {title, values, value: head $ values}
   , render: (render hasChoiceInputVal) <#> (map right)
@@ -59,7 +59,7 @@ picker hasChoiceInputVal {title, values} = H.component
   , receiver: const Nothing
   }
 
-render ∷ ∀ val. Eq val => HasChoiceInputVal val -> State val -> HTML val
+render ∷ ∀ val. Eq val => HasChoiceInputVal val → State val → HTML val
 render hasChoiceInputVal {title, values, value}  = HH.select
   [ HP.title title
   , HP.classes [HH.ClassName "Picker-input"]
@@ -77,13 +77,13 @@ evalChoice ∷ ∀ val m . Eq val => ChoiceQuery val ~> DSL val m
 evalChoice (Update value next) = do
   s <- H.get
   -- there wouldn't be case when value is Nothing so it's fine to do `for_`
-  for_ value \value' -> do
+  for_ value \value' → do
     H.modify _{value = value'}
     when (value' /= s.value) $ H.raise (NotifyChange $ value')
   pure next
 
 
-evalPicker ∷ ∀ val m . Eq val => HasChoiceInputVal val -> QueryIn val ~> DSL val m
+evalPicker ∷ ∀ val m . Eq val => HasChoiceInputVal val → QueryIn val ~> DSL val m
 evalPicker hasChoiceInputVal (SetValue value next) = do
   {values} <- H.get
   if (value == head values || elem value (tail values))
@@ -96,9 +96,9 @@ evalPicker _ (GetValue next) = H.gets _.value <#> next
 
 
 type HasChoiceInputVal a =
-  { fromString ∷ String -> Maybe a
-  , toValue ∷ a -> String
-  , toTitle ∷ a -> String
+  { fromString ∷ String → Maybe a
+  , toValue ∷ a → String
+  , toTitle ∷ a → String
   }
 
 stringHasChoiceInputVal ∷ HasChoiceInputVal String
@@ -121,25 +121,25 @@ intHasChoiceInputVal =
   , toTitle: show
   }
 
-boundedEnumHasChoiceInputVal ∷ ∀ a. BoundedEnum a => (a -> String) -> HasChoiceInputVal a
+boundedEnumHasChoiceInputVal ∷ ∀ a. BoundedEnum a => (a → String) → HasChoiceInputVal a
 boundedEnumHasChoiceInputVal showTitle =
   { fromString: intHasChoiceInputVal.fromString >=> toEnum
   , toValue: fromEnum >>> intHasChoiceInputVal.toValue
   , toTitle: showTitle
   }
 
-maybeIntHasChoiceInputVal ∷ (Int -> String) -> HasChoiceInputVal (Maybe Int)
+maybeIntHasChoiceInputVal ∷ (Int → String) → HasChoiceInputVal (Maybe Int)
 maybeIntHasChoiceInputVal showTitle =
-  { fromString: \str -> if str == ""
+  { fromString: \str → if str == ""
       then pure Nothing
       else intHasChoiceInputVal.fromString str <#> pure
   , toValue: maybe "" show
   , toTitle: maybe "" showTitle
   }
 
-maybeBoundedEnumHasChoiceInputVal ∷ ∀ a. BoundedEnum a => (a -> String) -> HasChoiceInputVal (Maybe a)
+maybeBoundedEnumHasChoiceInputVal ∷ ∀ a. BoundedEnum a => (a → String) → HasChoiceInputVal (Maybe a)
 maybeBoundedEnumHasChoiceInputVal showTitle =
-  { fromString: \str -> if str == ""
+  { fromString: \str → if str == ""
       then pure Nothing
       else intHasChoiceInputVal.fromString str <#> toEnum
   , toValue: maybe "" (show <<< fromEnum)
