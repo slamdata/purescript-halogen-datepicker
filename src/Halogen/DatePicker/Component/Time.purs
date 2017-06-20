@@ -132,7 +132,7 @@ evalTime (Update update next) = do
       Just (Right time) -> pure $ update time
       _  -> buildTime
   H.modify _{ time = nextTime }
-  when (nextTime /= s.time) $ H.raise (NotifyChange nextTime)
+  unless (nextTime == s.time) $ H.raise (NotifyChange nextTime)
   pure next
 
 

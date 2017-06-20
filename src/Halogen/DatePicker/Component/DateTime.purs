@@ -101,7 +101,7 @@ evalDateTime (Update msg next) = do
         Just (Left x) -> Left $ timeError x
         Nothing -> Left $ Tuple Nothing Nothing
   H.modify _{ dateTime = nextDateTime }
-  when (nextDateTime /= s.dateTime) $ H.raise (NotifyChange nextDateTime)
+  unless (nextDateTime == s.dateTime) $ H.raise (NotifyChange nextDateTime)
   pure next
 
 resetChildErrorBasedOnMessage ∷ ∀ m. MessageIn -> DSL m Unit

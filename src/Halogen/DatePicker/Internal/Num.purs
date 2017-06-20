@@ -73,7 +73,7 @@ evalNumber ∷ ∀ val m . Eq val => NumQuery val ~> DSL val m
 evalNumber (Update number next) = do
   s <- H.get
   H.modify _{number = number}
-  when (number /= s.number) $ H.raise (NotifyChange $ fst number)
+  unless (number == s.number) $ H.raise (NotifyChange $ fst number)
   pure next
 
 toMbString ∷ ∀ a. HasNumberInputVal a -> Maybe a -> Maybe String

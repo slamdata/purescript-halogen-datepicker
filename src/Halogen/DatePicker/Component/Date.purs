@@ -126,7 +126,7 @@ evalDate (Update update next) = do
     Just (Right date) -> pure $ maybe (Left false) Right $ update date
     _  -> buildDate
   H.modify _{ date = nextDate }
-  when (nextDate /= s.date) $ H.raise (NotifyChange nextDate)
+  unless (nextDate == s.date) $ H.raise (NotifyChange nextDate)
   pure next
 
 

@@ -84,7 +84,7 @@ evalDuration (UpdateCommand cmd val next) = do
       $ val >>= \n -> overIsoDuration (F.toSetter cmd n) duration
     _  -> buildDuration
   H.modify (_{ duration = nextDuration })
-  when (nextDuration /= s.duration) $ H.raise (NotifyChange nextDuration)
+  unless (nextDuration == s.duration) $ H.raise (NotifyChange nextDuration)
   pure next
 
 buildDuration ∷ ∀ m. DSL m (Either Boolean IsoDuration)

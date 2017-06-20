@@ -119,7 +119,7 @@ evalInterval (Update msg next) = do
           StartDuration a d -> StartDuration dateTime d
           JustDuration d -> JustDuration d
   H.modify _{ interval = nextInterval }
-  when (nextInterval /= s.interval) $ H.raise (NotifyChange nextInterval)
+  unless (nextInterval == s.interval) $ H.raise (NotifyChange nextInterval)
   pure next
 
 
