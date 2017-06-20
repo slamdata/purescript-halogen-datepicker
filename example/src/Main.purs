@@ -243,8 +243,8 @@ type ExampleConfig fmtInput input fmt query out m =
   { mkFormat ∷ fmtInput -> Either String fmt
   , unformat ∷ fmt -> String -> Either String input
   , picker ∷ fmt -> H.Component HH.HTML query Unit out m
-  , handler ∷ ∀z. Int -> out -> z -> Query z
-  , setter ∷ ∀z. Int -> Maybe input -> z -> Query z
+  , handler ∷ ∀ z. Int -> out -> z -> Query z
+  , setter ∷ ∀ z. Int -> Maybe input -> z -> Query z
   , cp ∷ CP.ChildPath query ChildQuery Int Slot
   }
 

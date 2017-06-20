@@ -11,7 +11,7 @@ import Halogen.HTML (ClassName(..))
 import Partial.Unsafe (unsafePartialBecause)
 import Halogen.Datepicker.Component.Types (PickerValue)
 
-mustBeMounted ∷ ∀a. Maybe a -> a
+mustBeMounted ∷ ∀ a. Maybe a -> a
 mustBeMounted a = unsafePartialBecause "children must be mounted" (fromJust a)
 
 steper' ∷ ∀ e a. PickerValue e a -> e -> Either Boolean a -> PickerValue e a
