@@ -1,6 +1,7 @@
 module Halogen.Datepicker.Internal.Range where
 
 import Prelude
+
 import Data.Enum (class BoundedEnum)
 import Data.Maybe (Maybe(..))
 

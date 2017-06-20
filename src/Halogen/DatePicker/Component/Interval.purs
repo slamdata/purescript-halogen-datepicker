@@ -16,14 +16,14 @@ import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.Datepicker.Component.DateTime (DateTimeError)
 import Halogen.Datepicker.Component.DateTime as DateTime
-import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Component.Duration (DurationError)
 import Halogen.Datepicker.Component.Duration as Duration
-import Halogen.Datepicker.Format.Duration as DurationF
-import Halogen.Datepicker.Internal.Elements (textElement)
-import Halogen.Datepicker.Format.Interval as F
-import Halogen.Datepicker.Internal.Utils (steper, pickerClasses, mustBeMounted)
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
+import Halogen.Datepicker.Format.DateTime as DateTimeF
+import Halogen.Datepicker.Format.Duration as DurationF
+import Halogen.Datepicker.Format.Interval as F
+import Halogen.Datepicker.Internal.Elements (textElement)
+import Halogen.Datepicker.Internal.Utils (steper, pickerClasses, mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP

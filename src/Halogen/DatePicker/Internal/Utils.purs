@@ -7,9 +7,9 @@ import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Tuple (Tuple(..))
+import Halogen.Datepicker.Component.Types (PickerValue)
 import Halogen.HTML (ClassName(..))
 import Partial.Unsafe (unsafePartialBecause)
-import Halogen.Datepicker.Component.Types (PickerValue)
 
 mustBeMounted ∷ ∀ a. Maybe a -> a
 mustBeMounted a = unsafePartialBecause "children must be mounted" (fromJust a)

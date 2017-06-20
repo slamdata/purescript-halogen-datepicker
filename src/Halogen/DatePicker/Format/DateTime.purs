@@ -25,8 +25,8 @@ import Data.Newtype (class Newtype)
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
 import Halogen.Datepicker.Format.Date as DateF
-import Halogen.Datepicker.Internal.Constraint as C
 import Halogen.Datepicker.Format.Time as TimeF
+import Halogen.Datepicker.Internal.Constraint as C
 
 data Command
   = Date DateF.Format

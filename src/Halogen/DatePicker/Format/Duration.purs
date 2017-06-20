@@ -10,19 +10,20 @@ module Halogen.Datepicker.Format.Duration
   ) where
 
 import Prelude
-import Data.Formatter.Interval (unformatInterval, formatInterval)
-import Data.Interval as I
-import Data.Interval (DurationComponent(..)) as ReExport
-import Data.Foldable (class Foldable)
-import Data.Map (insert, lookup)
-import Data.String (joinWith)
+
 import Data.Array (fromFoldable)
-import Data.Maybe (Maybe)
 import Data.Either (Either(..))
-import Data.Newtype (class Newtype, over, unwrap)
-import Halogen.Datepicker.Internal.Constraint as C
+import Data.Foldable (class Foldable)
+import Data.Formatter.Interval (unformatInterval, formatInterval)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
+import Data.Interval (DurationComponent(..)) as ReExport
+import Data.Interval as I
+import Data.Map (insert, lookup)
+import Data.Maybe (Maybe)
+import Data.Newtype (class Newtype, over, unwrap)
+import Data.String (joinWith)
+import Halogen.Datepicker.Internal.Constraint as C
 
 
 type Command = I.DurationComponent

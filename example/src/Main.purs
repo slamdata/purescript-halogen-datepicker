@@ -1,40 +1,41 @@
 module Main where
 
 import Prelude
+
 import Control.Monad.Eff (Eff)
-import Halogen.Aff as HA
-import Halogen.VDom.Driver (runUI)
-import Data.Either.Nested as Either
-import Data.Functor.Coproduct.Nested as Coproduct
-import Data.Interval as I
-import Halogen as H
-import Halogen.Component.ChildPath as CP
-import Halogen.Datepicker.Component.Date as Date
-import Halogen.Datepicker.Format.Date as DateF
-import Halogen.Datepicker.Component.DateTime as DateTime
-import Halogen.Datepicker.Format.DateTime as DateTimeF
-import Halogen.Datepicker.Component.Duration as Duration
-import Halogen.Datepicker.Format.Duration as DurationF
-import Halogen.Datepicker.Component.Interval as Interval
-import Halogen.Datepicker.Format.Interval as IntervalF
-import Halogen.Datepicker.Component.Time as Time
-import Halogen.Datepicker.Format.Time as TimeF
-import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 import Data.Bitraversable (bitraverse)
 import Data.Date (Date, canonicalDate)
 import Data.DateTime (DateTime(..))
 import Data.Either (Either(..), either)
+import Data.Either.Nested as Either
 import Data.Enum (class BoundedEnum, toEnum)
 import Data.Formatter.Interval (unformatInterval)
 import Data.Functor.Coproduct (left)
+import Data.Functor.Coproduct.Nested as Coproduct
 import Data.Interval (Interval(..), IsoDuration)
+import Data.Interval as I
 import Data.Map (Map, lookup, insert)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Monoid (mempty)
 import Data.Time (Time, setHour, setMinute)
-import Halogen.Datepicker.Internal.Utils (mustBeMounted)
+import Halogen as H
+import Halogen.Aff as HA
+import Halogen.Component.ChildPath as CP
+import Halogen.Datepicker.Component.Date as Date
+import Halogen.Datepicker.Component.DateTime as DateTime
+import Halogen.Datepicker.Component.Duration as Duration
+import Halogen.Datepicker.Component.Interval as Interval
+import Halogen.Datepicker.Component.Time as Time
 import Halogen.Datepicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..))
+import Halogen.Datepicker.Format.Date as DateF
+import Halogen.Datepicker.Format.DateTime as DateTimeF
+import Halogen.Datepicker.Format.Duration as DurationF
+import Halogen.Datepicker.Format.Interval as IntervalF
+import Halogen.Datepicker.Format.Time as TimeF
+import Halogen.Datepicker.Internal.Utils (mustBeMounted)
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.VDom.Driver (runUI)
 import Partial.Unsafe (unsafePartialBecause)
 
 type TimeIdx = Int

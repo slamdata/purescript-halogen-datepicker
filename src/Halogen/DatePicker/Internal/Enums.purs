@@ -1,32 +1,15 @@
 module Halogen.Datepicker.Internal.Enums where
 
-import Data.Date
-  ( Date
-  , Year, Month, Day
-  , year, month, day
-  , exactDate
-  )
+import Prelude
 
-import Data.Time
-  ( Time
-  , hour, millisecond
-  , setHour, setMillisecond
-  )
-import Data.String as Str
-import Data.Maybe (Maybe(..))
+import Data.Date (Date, Year, Month, Day, year, month, day, exactDate)
+import Data.Enum (class Enum, class BoundedEnum, Cardinality(..), cardinality, toEnum, fromEnum, defaultSucc, defaultPred)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
-import Prelude
-import Data.Enum
-  ( class Enum
-  , class BoundedEnum
-  , Cardinality(..)
-  , cardinality
-  , toEnum
-  , fromEnum
-  , defaultSucc
-  , defaultPred)
+import Data.String as Str
+import Data.Time (Time, hour, millisecond, setHour, setMillisecond)
 
 
 meridiem ∷ Time -> Meridiem

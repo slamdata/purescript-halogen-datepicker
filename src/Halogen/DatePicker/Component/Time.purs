@@ -2,6 +2,7 @@ module Halogen.Datepicker.Component.Time where
 
 import Prelude
 
+import Data.Array (sort)
 import Data.Bifunctor (bimap)
 import Data.DateTime (Hour, Millisecond, Minute, Second)
 import Data.Either (Either(..))
@@ -12,7 +13,6 @@ import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.Array (sort)
 import Data.Maybe (Maybe(Nothing, Just), maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap)
@@ -23,14 +23,14 @@ import Data.Time (Time)
 import Data.Traversable (for, sequence)
 import Halogen as H
 import Halogen.Component.ChildPath as CP
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
+import Halogen.Datepicker.Format.Time as F
 import Halogen.Datepicker.Internal.Choice as Choice
 import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
 import Halogen.Datepicker.Internal.Utils (steper', pickerClasses, mustBeMounted)
-import Halogen.Datepicker.Format.Time as F
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP

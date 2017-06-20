@@ -24,15 +24,14 @@ import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.Datepicker.Component.Date (DateError)
 import Halogen.Datepicker.Component.Date as Date
-import Halogen.Datepicker.Format.DateTime as F
 import Halogen.Datepicker.Component.Time (TimeError)
 import Halogen.Datepicker.Component.Time as Time
-import Halogen.Datepicker.Internal.Utils (steper, pickerClasses, mustBeMounted)
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
+import Halogen.Datepicker.Format.DateTime as F
+import Halogen.Datepicker.Internal.Utils (steper, pickerClasses, mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-
 
 type MessageIn = Either Date.Message Time.Message
 data DateTimeQuery a = Update MessageIn a
