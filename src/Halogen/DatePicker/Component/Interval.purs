@@ -39,8 +39,8 @@ data IntervalQuery a = Update MessageIn  a
 type Query = Coproduct (PickerQuery (Maybe SetIntervalError) Input) IntervalQuery
 type Message = PickerMessage Input
 type State =
-  { format :: F.Format
-  , interval :: Input
+  { format ∷ F.Format
+  , interval ∷ Input
   }
 
 type ChildQuery = Coproduct2 Duration.Query DateTime.Query
@@ -83,10 +83,10 @@ render s = HH.div [HP.classes $ pickerClasses s.interval] $ case s.format of
   where
   elem a = HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ a
 
-renderDuration :: ∀ m. DurationF.Format -> HTML m
+renderDuration ∷ ∀ m. DurationF.Format -> HTML m
 renderDuration fmt = HH.slot' cpDuration unit (Duration.picker fmt) unit (HE.input $ Update <<< Left)
 
-renderDateTime :: ∀ m. DateTimeF.Format -> Boolean -> HTML m
+renderDateTime ∷ ∀ m. DateTimeF.Format -> Boolean -> HTML m
 renderDateTime fmt idx = HH.slot' cpDateTime idx (DateTime.picker fmt) unit (HE.input $ Update <<< Right <<< (Tuple idx))
 
 
@@ -123,13 +123,13 @@ evalInterval (Update msg next) = do
   pure next
 
 
-buildInterval :: ∀ m. DSL m (Either (Tuple Boolean IntervalError) IsoInterval)
+buildInterval ∷ ∀ m. DSL m (Either (Tuple Boolean IntervalError) IsoInterval)
 buildInterval = do
   {format} <- H.get
   vals <- collectValues format
   pure $ lmap addForce $ unVals vals
 
-addForce :: IntervalError -> Tuple Boolean IntervalError
+addForce ∷ IntervalError -> Tuple Boolean IntervalError
 addForce err = case err of
   StartEnd Nothing Nothing -> Tuple false err
   DurationEnd Nothing Nothing -> Tuple false err
@@ -137,7 +137,7 @@ addForce err = case err of
   JustDuration Nothing -> Tuple false err
   _ -> Tuple true err
 
-unVals :: Interval Duration.Input DateTime.Input -> Either IntervalError IsoInterval
+unVals ∷ Interval Duration.Input DateTime.Input -> Either IntervalError IsoInterval
 unVals vals = case bimap maybeLeft maybeLeft vals of
   StartEnd (Right dtStart) (Right dtEnd) -> Right $ StartEnd dtStart dtEnd
   DurationEnd (Right dur) (Right dt) -> Right $ DurationEnd dur dt
@@ -145,38 +145,38 @@ unVals vals = case bimap maybeLeft maybeLeft vals of
   JustDuration (Right dur) -> Right $ JustDuration dur
   interval -> Left $ bimap toError toError interval
 
-toError :: ∀ e a. Either (Maybe e) a -> Maybe e
+toError ∷ ∀ e a. Either (Maybe e) a -> Maybe e
 toError = either id (const Nothing)
 
-maybeLeft :: ∀ e a. Maybe (Either e a) -> Either (Maybe e) a
+maybeLeft ∷ ∀ e a. Maybe (Either e a) -> Either (Maybe e) a
 maybeLeft (Just (Right a)) = Right a
 maybeLeft (Just (Left a)) = Left $ Just a
 maybeLeft Nothing = Left $ Nothing
 
-collectValues :: ∀ d a m. Interval d a -> DSL m (Interval Duration.Input DateTime.Input)
+collectValues ∷ ∀ d a m. Interval d a -> DSL m (Interval Duration.Input DateTime.Input)
 collectValues format = case format of
   StartEnd a b -> StartEnd <$> getDateTime false <*> getDateTime true
   DurationEnd d a -> DurationEnd <$> getDuration <*> getDateTime false
   StartDuration a d -> StartDuration <$> getDateTime false <*> getDuration
   JustDuration d -> JustDuration <$> getDuration
 
-getDuration :: ∀ m. DSL m (PickerValue DurationError IsoDuration)
+getDuration ∷ ∀ m. DSL m (PickerValue DurationError IsoDuration)
 getDuration = queryDuration $ H.request $ left <<< Base <<< GetValue
 
-getDateTime :: ∀ m. Boolean -> DSL m (PickerValue DateTimeError DateTime)
+getDateTime ∷ ∀ m. Boolean -> DSL m (PickerValue DateTimeError DateTime)
 getDateTime idx  = queryDateTime idx $ H.request $ left <<< Base <<< GetValue
 
-resetChildErrorBasedOnMessage :: ∀ m. MessageIn -> DSL m Unit
+resetChildErrorBasedOnMessage ∷ ∀ m. MessageIn -> DSL m Unit
 resetChildErrorBasedOnMessage (Left (NotifyChange (Just (Left _)))) = resetDuration
 resetChildErrorBasedOnMessage (Right (Tuple idx (NotifyChange (Just (Left _))))) = resetDateTime idx
 resetChildErrorBasedOnMessage _ = pure unit
 
-resetChildError :: ∀ m. DSL m Unit
+resetChildError ∷ ∀ m. DSL m Unit
 resetChildError = do
   {format} <- H.get
   onFormat resetDateTime resetDuration format
 
-onFormat :: ∀ m a d. Apply m => (Boolean -> m Unit) -> m Unit -> Interval d a -> m Unit
+onFormat ∷ ∀ m a d. Apply m => (Boolean -> m Unit) -> m Unit -> Interval d a -> m Unit
 onFormat onDateTime onDuration format = case format of
   StartEnd a b -> onDateTime false *> onDateTime true
   DurationEnd d a -> onDuration *> onDateTime false
@@ -200,7 +200,7 @@ evalPicker (Base (SetValue interval next)) = do
   pure $ next res
 evalPicker (Base (GetValue next)) = H.gets _.interval <#> next
 
-viewInterval :: F.Format -> Input -> Maybe (Interval (Maybe Duration.Input) (Maybe DateTime.Input))
+viewInterval ∷ F.Format -> Input -> Maybe (Interval (Maybe Duration.Input) (Maybe DateTime.Input))
 viewInterval format input = case format, mapedInput input of
   StartEnd _ _ , Just interval@(StartEnd _ _) -> Just $ interval
   DurationEnd _ _ , Just interval@(DurationEnd _ _) -> Just $ interval
@@ -209,27 +209,27 @@ viewInterval format input = case format, mapedInput input of
   _, Nothing -> Just $ bimap (const $ Just Nothing) (const $ Just Nothing) format
   _ , _ -> Nothing
   where
-  mapedInput :: Input -> Maybe (Interval (Maybe Duration.Input) (Maybe DateTime.Input))
+  mapedInput ∷ Input -> Maybe (Interval (Maybe Duration.Input) (Maybe DateTime.Input))
   mapedInput = map $ either (bimap mkErr mkErr) (bimap mkVal mkVal)
-  mkVal :: ∀ e a. a -> Maybe (PickerValue e a)
+  mkVal ∷ ∀ e a. a -> Maybe (PickerValue e a)
   mkVal = Just <<< Just <<< Right
-  mkErr :: ∀ e a. Maybe e -> Maybe (PickerValue e a)
+  mkErr ∷ ∀ e a. Maybe e -> Maybe (PickerValue e a)
   mkErr = map (Just <<< Left)
 
-setDuration :: ∀ m. PickerValue DurationError IsoDuration -> DSL m Unit
+setDuration ∷ ∀ m. PickerValue DurationError IsoDuration -> DSL m Unit
 setDuration val = queryDuration $ H.request $ left <<< (Base <<< SetValue val)
 
-setDateTime :: ∀ m. Boolean -> PickerValue DateTimeError DateTime -> DSL m Unit
+setDateTime ∷ ∀ m. Boolean -> PickerValue DateTimeError DateTime -> DSL m Unit
 setDateTime idx val = queryDateTime idx $ H.request $ left <<< (Base <<< SetValue val)
 
-resetDuration :: ∀ m. DSL m Unit
+resetDuration ∷ ∀ m. DSL m Unit
 resetDuration = queryDuration $ H.action $ left <<< ResetError
 
-resetDateTime :: ∀ m. Boolean -> DSL m Unit
+resetDateTime ∷ ∀ m. Boolean -> DSL m Unit
 resetDateTime idx = queryDateTime idx $ H.action $ left <<< ResetError
 
-queryDuration :: ∀ m a. Duration.Query a -> DSL m a
+queryDuration ∷ ∀ m a. Duration.Query a -> DSL m a
 queryDuration q = map mustBeMounted $ H.query' cpDuration unit $ q
 
-queryDateTime :: ∀ m a. Boolean -> DateTime.Query a -> DSL m a
+queryDateTime ∷ ∀ m a. Boolean -> DateTime.Query a -> DSL m a
 queryDateTime idx q = map mustBeMounted $ H.query' cpDateTime idx $ q

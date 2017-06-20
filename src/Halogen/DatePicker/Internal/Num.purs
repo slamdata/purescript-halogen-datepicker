@@ -40,9 +40,9 @@ import Halogen.HTML.Properties as HP
 
 
 type State val =
-  { number:: InputValue val
-  , range:: Range val
-  , title:: String
+  { number∷ InputValue val
+  , range∷ Range val
+  , title∷ String
   }
 
 type Input val = Maybe val
@@ -57,7 +57,7 @@ type HTML val = H.ComponentHTML (NumQuery val)
 picker ∷ ∀ val m
   . Ord val
   => HasNumberInputVal val
-  -> {title :: String, range :: Range val}
+  -> {title ∷ String, range ∷ Range val}
   -> H.Component HH.HTML (Query val) Unit (Message val) m
 picker hasNumberInputVal {title, range} = H.component
   { initialState: const {title, range, number: emptyNumberInputValue}
@@ -76,7 +76,7 @@ evalNumber (Update number next) = do
   when (number /= s.number) $ H.raise (NotifyChange $ fst number)
   pure next
 
-toMbString :: ∀ a. HasNumberInputVal a -> Maybe a -> Maybe String
+toMbString ∷ ∀ a. HasNumberInputVal a -> Maybe a -> Maybe String
 toMbString hasNumberInputVal number = (Just $ maybe "" hasNumberInputVal.toValue number)
 
 evalPicker ∷ ∀ val m . HasNumberInputVal val -> QueryIn val ~> DSL val m
@@ -88,35 +88,35 @@ evalPicker _ (GetValue next) = H.gets _.number <#> (fst >>> next)
 
 type InputValue a = Tuple (Maybe a) (Maybe String)
 
-toString :: ∀ a. InputValue a -> String
+toString ∷ ∀ a. InputValue a -> String
 toString (Tuple _ mbStr) = maybe "" id mbStr
 
-mkInputValue :: ∀ a. HasNumberInputVal a -> a -> InputValue a
+mkInputValue ∷ ∀ a. HasNumberInputVal a -> a -> InputValue a
 mkInputValue hasNumberInputVal n = Tuple (Just n) (Just $ hasNumberInputVal.toValue n)
 
-emptyNumberInputValue :: ∀ a. InputValue a
+emptyNumberInputValue ∷ ∀ a. InputValue a
 emptyNumberInputValue = Tuple Nothing (Just "")
 
-isInvalid  :: ∀ a. InputValue a -> Boolean
+isInvalid  ∷ ∀ a. InputValue a -> Boolean
 isInvalid (Tuple Nothing (Just "")) = false
 isInvalid (Tuple Nothing (Just _)) = true
 isInvalid (Tuple _ Nothing) = true
 isInvalid _ = false
 
-isEmpty  :: ∀ a. InputValue a -> Boolean
+isEmpty  ∷ ∀ a. InputValue a -> Boolean
 isEmpty (Tuple _ (Just "")) = true
 isEmpty _ = false
 
-showNum :: Number -> String
+showNum ∷ Number -> String
 showNum 0.0 = "0"
 showNum n = let str = show n
   in maybe str id (stripSuffix (Pattern ".0") str)
 
-numberElement :: ∀ val query
+numberElement ∷ ∀ val query
   . Ord val
   => HasNumberInputVal val
   -> (∀ b. InputValue val -> b -> query b)
-  -> {title :: String, range :: Range val}
+  -> {title ∷ String, range ∷ Range val}
   -> InputValue val
   -> H.ComponentHTML query
 numberElement hasNumberInputVal query {title, range} value = HH.input $
@@ -141,7 +141,7 @@ numberElement hasNumberInputVal query {title, range} value = HH.input $
   --  * if user types `001` we will parse it as `1` or
   --  * if user types `0.1111111111111111111111` we will parse it as `0.1111111111111111` or
   --  * if user types `1e1` we will parse it as `10`
-  parseValidInput :: InputValue String -> InputValue val
+  parseValidInput ∷ InputValue String -> InputValue val
   parseValidInput = lmap $ (=<<) \str -> do
     val <- hasNumberInputVal.fromString str
     guard (hasNumberInputVal.toValue val == str)
@@ -158,17 +158,17 @@ numberElement hasNumberInputVal query {title, range} value = HH.input $
 
 -- We need to validate if value is in range manually as for example,
 -- if `min = 0`, user still can enter `-1` in chrome.
-isInputInRange :: ∀ a. Ord a => Range a -> InputValue a -> InputValue a
+isInputInRange ∷ ∀ a. Ord a => Range a -> InputValue a -> InputValue a
 isInputInRange range val = lmap (_ >>= boolToAltPredicate (isInRange range)) val
 
-boolToAltPredicate :: ∀ a f. Alternative f => (a -> Boolean) -> a -> f a
+boolToAltPredicate ∷ ∀ a f. Alternative f => (a -> Boolean) -> a -> f a
 boolToAltPredicate f a =  if f a then pure a else empty
 
-inputValueFromEvent :: Event -> InputValue String
+inputValueFromEvent ∷ Event -> InputValue String
 inputValueFromEvent event = let val = validValueFromEvent event
   in Tuple val val
 
-validValueFromEvent :: Event -> Maybe String
+validValueFromEvent ∷ Event -> Maybe String
 validValueFromEvent event = unF $ do
   target <- readProp "target" $ toForeign event
   validity <- readProp "validity" target
@@ -182,26 +182,26 @@ validValueFromEvent event = unF $ do
 
 
 type HasNumberInputVal a  =
-  { fromString :: String -> Maybe a
-  , toValue :: a -> String
-  , toNumber :: a -> Number
+  { fromString ∷ String -> Maybe a
+  , toValue ∷ a -> String
+  , toNumber ∷ a -> Number
   }
 
-numberHasNumberInputVal :: HasNumberInputVal Number
+numberHasNumberInputVal ∷ HasNumberInputVal Number
 numberHasNumberInputVal =
   { fromString: N.fromString
   , toValue: showNum
   , toNumber: id
   }
 
-intHasNumberInputVal :: HasNumberInputVal Int
+intHasNumberInputVal ∷ HasNumberInputVal Int
 intHasNumberInputVal =
   { fromString: numberHasNumberInputVal.fromString >=> Int.fromNumber
   , toValue: show
   , toNumber: Int.toNumber
   }
 
-boundedEnumHasNumberInputVal :: ∀ a. BoundedEnum a => HasNumberInputVal a
+boundedEnumHasNumberInputVal ∷ ∀ a. BoundedEnum a => HasNumberInputVal a
 boundedEnumHasNumberInputVal =
   { fromString: intHasNumberInputVal.fromString >=> toEnum
   , toValue: fromEnum >>> intHasNumberInputVal.toValue

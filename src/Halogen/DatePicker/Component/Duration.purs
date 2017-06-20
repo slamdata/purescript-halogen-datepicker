@@ -32,15 +32,15 @@ type Query = Coproduct QueryIn DurationQuery
 type Message = PickerMessage Input
 
 data DurationError = InvalidIsoDuration
-derive instance durationErrorEq :: Eq DurationError
-derive instance durationErrorOrd :: Ord DurationError
-derive instance durationErrorGeneric :: Generic DurationError _
-instance durationErrorShow :: Show DurationError where
+derive instance durationErrorEq ∷ Eq DurationError
+derive instance durationErrorOrd ∷ Ord DurationError
+derive instance durationErrorGeneric ∷ Generic DurationError _
+instance durationErrorShow ∷ Show DurationError where
   show = genericShow
 
 type State =
-  { format :: F.Format
-  , duration :: Input
+  { format ∷ F.Format
+  , duration ∷ Input
   }
 
 type Slot = F.Command
@@ -69,10 +69,10 @@ render s = HH.ul [ HP.classes $ pickerClasses s.duration ]
       unit
       (HE.input $ \(NotifyChange n) -> UpdateCommand cmd n)]
 
-getComponent :: F.Command -> IsoDuration -> Number
+getComponent ∷ F.Command -> IsoDuration -> Number
 getComponent cmd d = maybe 0.0 id $ F.toGetter cmd (unIsoDuration d)
 
-overIsoDuration :: (Duration -> Duration) -> IsoDuration -> Maybe IsoDuration
+overIsoDuration ∷ (Duration -> Duration) -> IsoDuration -> Maybe IsoDuration
 overIsoDuration f d = mkIsoDuration $ f $ unIsoDuration d
 
 evalDuration ∷ ∀ m . DurationQuery ~> DSL m
@@ -87,7 +87,7 @@ evalDuration (UpdateCommand cmd val next) = do
   when (nextDuration /= s.duration) $ H.raise (NotifyChange nextDuration)
   pure next
 
-buildDuration :: ∀ m. DSL m (Either Boolean IsoDuration)
+buildDuration ∷ ∀ m. DSL m (Either Boolean IsoDuration)
 buildDuration = do
   {format} <- H.get
   mbEndo <- for (unwrap format) \cmd -> do
@@ -111,8 +111,8 @@ evalPicker (Base (SetValue duration next)) = do
   pure $ next unit
 evalPicker (Base (GetValue next)) = H.gets _.duration <#> next
 
-propagateChange :: ∀ m . F.Format -> Input -> DSL m Unit
+propagateChange ∷ ∀ m . F.Format -> Input -> DSL m Unit
 propagateChange format duration = do
   map (mustBeMounted <<< fold) $ for (unwrap format) \cmd -> do
-    let n = (duration >>= either (const Nothing) (F.toGetter cmd <<< unIsoDuration)) :: Maybe Number
+    let n = (duration >>= either (const Nothing) (F.toGetter cmd <<< unIsoDuration)) ∷ Maybe Number
     H.query cmd $ H.request $ left <<< SetValue n

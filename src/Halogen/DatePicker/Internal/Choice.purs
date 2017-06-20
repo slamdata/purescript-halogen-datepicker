@@ -32,9 +32,9 @@ import Halogen.HTML.Properties as HP
 
 
 type State val =
-  { value:: val
-  , values:: NonEmpty Array val
-  , title:: String
+  { value∷ val
+  , values∷ NonEmpty Array val
+  , title∷ String
   }
 
 data ChoiceError = ValueIsNotInValues
@@ -50,7 +50,7 @@ type HTML val = H.ComponentHTML (ChoiceQuery val)
 picker ∷ ∀ val m
   . Ord val
   => HasChoiceInputVal val
-  -> {title :: String, values :: NonEmpty Array val}
+  -> {title ∷ String, values ∷ NonEmpty Array val}
   -> H.Component HH.HTML (Query val) Unit (Message val) m
 picker hasChoiceInputVal {title, values} = H.component
   { initialState: const {title, values, value: head $ values}
@@ -96,39 +96,39 @@ evalPicker _ (GetValue next) = H.gets _.value <#> next
 
 
 type HasChoiceInputVal a =
-  { fromString :: String -> Maybe a
-  , toValue :: a -> String
-  , toTitle :: a -> String
+  { fromString ∷ String -> Maybe a
+  , toValue ∷ a -> String
+  , toTitle ∷ a -> String
   }
 
-stringHasChoiceInputVal :: HasChoiceInputVal String
+stringHasChoiceInputVal ∷ HasChoiceInputVal String
 stringHasChoiceInputVal =
   { fromString: pure
   , toValue: id
   , toTitle: id
   }
-numberHasChoiceInputVal :: HasChoiceInputVal Number
+numberHasChoiceInputVal ∷ HasChoiceInputVal Number
 numberHasChoiceInputVal =
   { fromString: N.fromString
   , toValue: show
   , toTitle: show
   }
 
-intHasChoiceInputVal :: HasChoiceInputVal Int
+intHasChoiceInputVal ∷ HasChoiceInputVal Int
 intHasChoiceInputVal =
   { fromString: Int.fromString
   , toValue: show
   , toTitle: show
   }
 
-boundedEnumHasChoiceInputVal :: ∀ a. BoundedEnum a => (a -> String) -> HasChoiceInputVal a
+boundedEnumHasChoiceInputVal ∷ ∀ a. BoundedEnum a => (a -> String) -> HasChoiceInputVal a
 boundedEnumHasChoiceInputVal showTitle =
   { fromString: intHasChoiceInputVal.fromString >=> toEnum
   , toValue: fromEnum >>> intHasChoiceInputVal.toValue
   , toTitle: showTitle
   }
 
-maybeIntHasChoiceInputVal :: (Int -> String) -> HasChoiceInputVal (Maybe Int)
+maybeIntHasChoiceInputVal ∷ (Int -> String) -> HasChoiceInputVal (Maybe Int)
 maybeIntHasChoiceInputVal showTitle =
   { fromString: \str -> if str == ""
       then pure Nothing
@@ -137,7 +137,7 @@ maybeIntHasChoiceInputVal showTitle =
   , toTitle: maybe "" showTitle
   }
 
-maybeBoundedEnumHasChoiceInputVal :: ∀ a. BoundedEnum a => (a -> String) -> HasChoiceInputVal (Maybe a)
+maybeBoundedEnumHasChoiceInputVal ∷ ∀ a. BoundedEnum a => (a -> String) -> HasChoiceInputVal (Maybe a)
 maybeBoundedEnumHasChoiceInputVal showTitle =
   { fromString: \str -> if str == ""
       then pure Nothing

@@ -43,23 +43,23 @@ data Command
   | Placeholder String
 
 
-derive instance commandGeneric :: Generic Command _
-derive instance commandEq :: Eq Command
-derive instance commandOrd :: Ord Command
-instance commandShow :: Show Command where
+derive instance commandGeneric ∷ Generic Command _
+derive instance commandEq ∷ Eq Command
+derive instance commandOrd ∷ Ord Command
+instance commandShow ∷ Show Command where
   show = genericShow
 
 
 newtype Format = Format (Array Command)
-derive instance formatNewtype :: Newtype Format _
-derive instance formatGeneric :: Generic Format _
-instance formatShow :: Show Format where
+derive instance formatNewtype ∷ Newtype Format _
+derive instance formatGeneric ∷ Generic Format _
+instance formatShow ∷ Show Format where
   show = genericShow
-derive instance formatEq :: Eq Format
-derive instance formatOrd :: Ord Format
+derive instance formatEq ∷ Eq Format
+derive instance formatOrd ∷ Ord Format
 
 
-toSetter :: Command -> Int -> Time -> Maybe Time
+toSetter ∷ Command -> Int -> Time -> Maybe Time
 toSetter Hours24 n t = toEnum n <#> ( _ `setHour` t)
 toSetter Hours12 n t = toEnum n >>= (_ `setHour12` t)
 toSetter Meridiem n t = toEnum n >>= (_ `setMeridiem` t)
@@ -72,7 +72,7 @@ toSetter MillisecondsTwoDigits n t = toEnum n >>= (_ `setMillisecond2` t)
 toSetter MillisecondsShort n t = toEnum n >>= (_ `setMillisecond1` t)
 toSetter (Placeholder _) _ t = pure t
 
-toGetter :: Command -> Time -> Maybe Int
+toGetter ∷ Command -> Time -> Maybe Int
 toGetter Hours24 t = Just $ fromEnum $ hour t
 toGetter Hours12 t = Just $ fromEnum $ hour12 t
 toGetter Meridiem t = Just $ fromEnum $ meridiem t
@@ -86,10 +86,10 @@ toGetter MillisecondsShort t = Just $ fromEnum $ millisecond1 t
 toGetter (Placeholder _) t = Nothing
 
 
-fromString :: String -> Either String Format
+fromString ∷ String -> Either String Format
 fromString s = FDT.parseFormatString s >>= fromDateTimeFormatter
 
-fromDateTimeFormatter :: FDT.Formatter -> Either String Format
+fromDateTimeFormatter ∷ FDT.Formatter -> Either String Format
 fromDateTimeFormatter fmt = do
   let errs = C.runConstraint formatConstraint fmt
   when (errs /= []) $ Left $ joinWith "; " errs
@@ -97,7 +97,7 @@ fromDateTimeFormatter fmt = do
     Just fmt' -> pure $ Format $ fromFoldable fmt'
     Nothing -> Left "(unreachable) invalid FormatterCommand has leaked while checking constraints"
 
-toCommand :: FDT.FormatterCommand -> Maybe Command
+toCommand ∷ FDT.FormatterCommand -> Maybe Command
 toCommand FDT.Hours24 = Just Hours24
 toCommand FDT.Hours12 = Just Hours12
 toCommand FDT.Meridiem = Just Meridiem
@@ -136,7 +136,7 @@ format fmt = FDT.format (toDateTimeFormatter fmt) <<< toDateTime
   toDateTime = DateTime bottom
 
 
-formatConstraint :: ∀ g. Foldable g => C.Constraint (g FDT.FormatterCommand)
+formatConstraint ∷ ∀ g. Foldable g => C.Constraint (g FDT.FormatterCommand)
 formatConstraint
   =  C.notEmpty
   <> C.allowedValues FDT.printFormatterCommand allowedCommands

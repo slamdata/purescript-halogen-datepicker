@@ -45,8 +45,8 @@ type Query = Coproduct QueryIn DateTimeQuery
 type Message = PickerMessage Input
 
 type State =
-  { format :: F.Format
-  , dateTime :: Input
+  { format ∷ F.Format
+  , dateTime ∷ Input
   }
 
 type ChildQuery = Coproduct2 Date.Query Time.Query
@@ -75,7 +75,7 @@ render s = HH.div [ HP.classes $ pickerClasses s.dateTime ]
   where
   f a = HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderCommand a
 
-renderCommand :: ∀ m. F.Command -> HTML m
+renderCommand ∷ ∀ m. F.Command -> HTML m
 renderCommand cmd@(F.Time fmt) = HH.slot' cpTime unit (Time.picker fmt) unit (HE.input $ Right >>> Update)
 renderCommand cmd@(F.Date fmt) = HH.slot' cpDate unit (Date.picker fmt) unit (HE.input $ Left >>> Update)
 
@@ -104,12 +104,12 @@ evalDateTime (Update msg next) = do
   when (nextDateTime /= s.dateTime) $ H.raise (NotifyChange nextDateTime)
   pure next
 
-resetChildErrorBasedOnMessage :: ∀ m. MessageIn -> DSL m Unit
+resetChildErrorBasedOnMessage ∷ ∀ m. MessageIn -> DSL m Unit
 resetChildErrorBasedOnMessage (Left (NotifyChange (Just (Left _)))) = resetDate
 resetChildErrorBasedOnMessage (Right (NotifyChange (Just (Left _)))) = resetTime
 resetChildErrorBasedOnMessage _ = pure unit
 
-resetChildError :: ∀ m. DSL m Unit
+resetChildError ∷ ∀ m. DSL m Unit
 resetChildError = do
   {format} <- H.get
   for_ (unwrap format) $ case _ of
@@ -117,36 +117,36 @@ resetChildError = do
     F.Date _ -> resetDate
 
 
-timeError :: TimeError -> DateTimeError
+timeError ∷ TimeError -> DateTimeError
 timeError x = Tuple Nothing (Just x)
 
-dateError :: DateError -> DateTimeError
+dateError ∷ DateError -> DateTimeError
 dateError x = Tuple (Just x) Nothing
 
 type StepM = Join (Star (Writer (Maybe (Tuple (Additive Int) DateTimeErrorLast)))) DateTime
-formatToSteps :: ∀ m. F.Format -> DSL m (Array StepM)
+formatToSteps ∷ ∀ m. F.Format -> DSL m (Array StepM)
 formatToSteps format = for (unwrap format) $ case _ of
   F.Time _ -> applyTime <$> queryTime (H.request $ left <<< Base <<< GetValue)
   F.Date _ -> applyDate <$> queryDate (H.request $ left <<< Base <<< GetValue)
   where
-  applyTime :: PickerValue TimeError Time -> StepM
+  applyTime ∷ PickerValue TimeError Time -> StepM
   applyTime val = Join $ Star $ \dt -> case val of
     Just (Right time) -> pure $ setTimeDt time dt
     Just (Left err) -> tell (Just $ Tuple (Additive 1) $ bimap Last Last $ timeError err) *> pure dt
     Nothing -> tell (Just $ Tuple (Additive 0) $ Tuple (Last Nothing) (Last Nothing)) *> pure dt
-  applyDate :: PickerValue DateError Date -> StepM
+  applyDate ∷ PickerValue DateError Date -> StepM
   applyDate val = Join $ Star $ \dt -> case val of
     Just (Right date) -> pure $ setDateDt date dt
     Just (Left err) -> tell (Just $ Tuple (Additive 1) $ bimap Last Last $ dateError err) *> pure dt
     Nothing -> tell (Just $ Tuple (Additive 0) $ Tuple (Last Nothing) (Last Nothing)) *> pure dt
 
-setTimeDt :: Time -> DateTime -> DateTime
+setTimeDt ∷ Time -> DateTime -> DateTime
 setTimeDt x dt = modifyTime (const x) dt
-setDateDt :: Date -> DateTime -> DateTime
+setDateDt ∷ Date -> DateTime -> DateTime
 setDateDt x dt = modifyDate (const x) dt
 
 
-stepsToFunc :: ∀ f. Foldable f => Int -> f StepM -> DateTime -> Either (Tuple Boolean DateTimeError) DateTime
+stepsToFunc ∷ ∀ f. Foldable f => Int -> f StepM -> DateTime -> Either (Tuple Boolean DateTimeError) DateTime
 stepsToFunc childCount steps dt = fold steps # \(Join (Star f)) -> case runWriter $ f dt of
   Tuple res Nothing -> Right res
   Tuple res (Just (Tuple (Additive errCount) err)) -> Left $ Tuple
@@ -154,7 +154,7 @@ stepsToFunc childCount steps dt = fold steps # \(Join (Star f)) -> case runWrite
     (bimap unwrap unwrap err)
 
 
-buildDateTime :: ∀ m. DSL m (Either (Tuple Boolean DateTimeError) DateTime)
+buildDateTime ∷ ∀ m. DSL m (Either (Tuple Boolean DateTimeError) DateTime)
 buildDateTime = do
   {format} <- H.get
   steps <- formatToSteps format
@@ -175,20 +175,20 @@ evalPicker (Base (SetValue dateTime next)) = do
   pure $ next unit
 evalPicker (Base (GetValue next)) = H.gets _.dateTime <#> next
 
-setTime :: ∀ m. PickerValue TimeError Time -> DSL m Unit
+setTime ∷ ∀ m. PickerValue TimeError Time -> DSL m Unit
 setTime val = queryTime $ H.request $ left <<< (Base <<< SetValue val)
 
-setDate :: ∀ m. PickerValue DateError Date -> DSL m Unit
+setDate ∷ ∀ m. PickerValue DateError Date -> DSL m Unit
 setDate val = queryDate $ H.request $ left <<< (Base <<< SetValue val)
 
-resetTime :: ∀ m. DSL m Unit
+resetTime ∷ ∀ m. DSL m Unit
 resetTime = queryTime $ H.action $ left <<< ResetError
 
-resetDate :: ∀ m. DSL m Unit
+resetDate ∷ ∀ m. DSL m Unit
 resetDate = queryDate $ H.action $ left <<< ResetError
 
-queryTime :: ∀ m a. Time.Query a -> DSL m a
+queryTime ∷ ∀ m a. Time.Query a -> DSL m a
 queryTime q = map mustBeMounted $ H.query' cpTime unit $ q
 
-queryDate :: ∀ m a. Date.Query a -> DSL m a
+queryDate ∷ ∀ m a. Date.Query a -> DSL m a
 queryDate q = map mustBeMounted $ H.query' cpDate unit $ q

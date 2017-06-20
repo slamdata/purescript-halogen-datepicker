@@ -17,10 +17,10 @@ data PickerMessage val
 
 type PickerValue e a = Maybe (Either e a)
 
-value :: ∀ e a. PickerValue e a -> Maybe a
+value ∷ ∀ e a. PickerValue e a -> Maybe a
 value (Just (Right x)) = Just x
 value _ = Nothing
 
-error :: ∀ e a. PickerValue e a -> Maybe e
+error ∷ ∀ e a. PickerValue e a -> Maybe e
 error (Just (Left x)) = Just x
 error _ = Nothing

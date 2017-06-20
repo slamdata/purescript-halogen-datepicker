@@ -64,28 +64,28 @@ data MessagePayload
 type ChildQuery = Coproduct.Coproduct5 Time.Query Date.Query DateTime.Query Duration.Query Interval.Query
 
 type State =
-  { times :: Map TimeIdx String
-  , dates :: Map DateIdx String
-  , dateTimes :: Map DateTimeIdx String
-  , durations :: Map DurationIdx String
-  , intervals :: Map IntervalIdx String
+  { times ∷ Map TimeIdx String
+  , dates ∷ Map DateIdx String
+  , dateTimes ∷ Map DateTimeIdx String
+  , durations ∷ Map DurationIdx String
+  , intervals ∷ Map IntervalIdx String
   }
 
 type Slot = Either.Either5 TimeIdx DateIdx DateTimeIdx DurationIdx IntervalIdx
 
-cpTime :: CP.ChildPath Time.Query ChildQuery TimeIdx Slot
+cpTime ∷ CP.ChildPath Time.Query ChildQuery TimeIdx Slot
 cpTime = CP.cp1
 
-cpDate :: CP.ChildPath Date.Query ChildQuery DateIdx Slot
+cpDate ∷ CP.ChildPath Date.Query ChildQuery DateIdx Slot
 cpDate = CP.cp2
 
-cpDateTime :: CP.ChildPath DateTime.Query ChildQuery DateTimeIdx Slot
+cpDateTime ∷ CP.ChildPath DateTime.Query ChildQuery DateTimeIdx Slot
 cpDateTime = CP.cp3
 
-cpDuration :: CP.ChildPath Duration.Query ChildQuery DurationIdx Slot
+cpDuration ∷ CP.ChildPath Duration.Query ChildQuery DurationIdx Slot
 cpDuration = CP.cp4
 
-cpInterval :: CP.ChildPath Interval.Query ChildQuery IntervalIdx Slot
+cpInterval ∷ CP.ChildPath Interval.Query ChildQuery IntervalIdx Slot
 cpInterval = CP.cp5
 
 type HTML m = H.ParentHTML Query ChildQuery Slot m
@@ -190,16 +190,16 @@ example =
         (StartEnd "YYYY:MM:DD" "YYYY:MM:DD")
         (Right $ StartEnd testDateTime testDateTime)
 
-  testDate :: Date
+  testDate ∷ Date
   testDate = canonicalDate (enum 2017) (enum 1) (enum 1)
 
-  testDateTime :: DateTime
+  testDateTime ∷ DateTime
   testDateTime = DateTime testDate (bottom # setHour (enum 2) # setMinute (enum 2))
 
-  testDuration :: IsoDuration
+  testDuration ∷ IsoDuration
   testDuration = unsafePartialBecause "this duration must be valid" fromJust $ I.mkIsoDuration $ I.year 100.0 <> I.month 25.0 <> I.day 245.0 <> I.hour 0.0 <> I.minute 100.0 <> I.second 124.0
 
-  enum :: ∀ a. BoundedEnum a => Int -> a
+  enum ∷ ∀ a. BoundedEnum a => Int -> a
   enum = unsafePartialBecause "ints passed to this func must be in range" fromJust <<< toEnum
 
   renderTime ∷ State -> Int -> String -> Either String Time -> Array (HTML m)
@@ -240,15 +240,15 @@ example =
 
 
 type ExampleConfig fmtInput input fmt query out m =
-  { mkFormat :: fmtInput -> Either String fmt
-  , unformat :: fmt -> String -> Either String input
-  , picker :: fmt -> H.Component HH.HTML query Unit out m
-  , handler :: ∀z. Int -> out -> z -> Query z
-  , setter :: ∀z. Int -> Maybe input -> z -> Query z
-  , cp :: CP.ChildPath query ChildQuery Int Slot
+  { mkFormat ∷ fmtInput -> Either String fmt
+  , unformat ∷ fmt -> String -> Either String input
+  , picker ∷ fmt -> H.Component HH.HTML query Unit out m
+  , handler ∷ ∀z. Int -> out -> z -> Query z
+  , setter ∷ ∀z. Int -> Maybe input -> z -> Query z
+  , cp ∷ CP.ChildPath query ChildQuery Int Slot
   }
 
-renderExample :: ∀ fmtInput input fmt query out m
+renderExample ∷ ∀ fmtInput input fmt query out m
   . ExampleConfig fmtInput input fmt query out m
   -> Map Int String
   -> Int
@@ -268,10 +268,10 @@ renderExample c items idx fmt' value'= unEither $ do
         Just val -> HH.div_ [HH.text $ "value: " <> val]
     ]
   where
-  unEither :: Either String (Array (HTML m)) -> Array (HTML m)
+  unEither ∷ Either String (Array (HTML m)) -> Array (HTML m)
   unEither = either (HH.text >>> pure >>> HH.div_ >>> pure) id
 
-timeConfig :: ∀ m. ExampleConfig String Time TimeF.Format Time.Query Time.Message m
+timeConfig ∷ ∀ m. ExampleConfig String Time TimeF.Format Time.Query Time.Message m
 timeConfig =
   { mkFormat: TimeF.fromString
   , unformat: TimeF.unformat
@@ -281,7 +281,7 @@ timeConfig =
   , cp: cpTime
   }
 
-dateConfig :: ∀ m. ExampleConfig String Date DateF.Format Date.Query Date.Message m
+dateConfig ∷ ∀ m. ExampleConfig String Date DateF.Format Date.Query Date.Message m
 dateConfig =
   { mkFormat: DateF.fromString
   , unformat: DateF.unformat
@@ -291,7 +291,7 @@ dateConfig =
   , cp: cpDate
   }
 
-dateTimeConfig :: ∀ m. ExampleConfig String DateTime DateTimeF.Format DateTime.Query DateTime.Message m
+dateTimeConfig ∷ ∀ m. ExampleConfig String DateTime DateTimeF.Format DateTime.Query DateTime.Message m
 dateTimeConfig =
   { mkFormat: DateTimeF.fromString
   , unformat: DateTimeF.unformat
@@ -301,7 +301,7 @@ dateTimeConfig =
   , cp: cpDateTime
   }
 
-durationConfig :: ∀ m. ExampleConfig (Array DurationF.Command) IsoDuration DurationF.Format Duration.Query Duration.Message m
+durationConfig ∷ ∀ m. ExampleConfig (Array DurationF.Command) IsoDuration DurationF.Format Duration.Query Duration.Message m
 durationConfig =
   { mkFormat: DurationF.mkFormat
   , unformat: const DurationF.unformat
@@ -311,7 +311,7 @@ durationConfig =
   , cp: cpDuration
   }
 
-intervalConfig :: ∀ m. ExampleConfig
+intervalConfig ∷ ∀ m. ExampleConfig
   (Interval (Array DurationF.Command) String)
   (Interval IsoDuration DateTime)
   IntervalF.Format
