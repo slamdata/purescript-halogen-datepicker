@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.Interval where
+module Halogen.Datepicker.Component.Interval where
 
 import Prelude
 
@@ -14,16 +14,16 @@ import Data.Maybe (Maybe(..), isNothing)
 import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.Component.ChildPath as CP
-import Halogen.Datapicker.Component.DateTime (DateTimeError)
-import Halogen.Datapicker.Component.DateTime as DateTime
-import Halogen.Datapicker.Format.DateTime as DateTimeF
-import Halogen.Datapicker.Component.Duration (DurationError)
-import Halogen.Datapicker.Component.Duration as Duration
-import Halogen.Datapicker.Format.Duration as DurationF
-import Halogen.Datapicker.Internal.Elements (textElement)
-import Halogen.Datapicker.Format.Interval as F
-import Halogen.Datapicker.Internal.Utils (steper, pickerClasses, mustBeMounted)
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
+import Halogen.Datepicker.Component.DateTime (DateTimeError)
+import Halogen.Datepicker.Component.DateTime as DateTime
+import Halogen.Datepicker.Format.DateTime as DateTimeF
+import Halogen.Datepicker.Component.Duration (DurationError)
+import Halogen.Datepicker.Component.Duration as Duration
+import Halogen.Datepicker.Format.Duration as DurationF
+import Halogen.Datepicker.Internal.Elements (textElement)
+import Halogen.Datepicker.Format.Interval as F
+import Halogen.Datepicker.Internal.Utils (steper, pickerClasses, mustBeMounted)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP

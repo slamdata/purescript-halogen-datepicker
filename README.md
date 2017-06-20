@@ -1,7 +1,7 @@
-# purescript-halogen-datapicker
+# purescript-halogen-datepicker
 
-[![Latest release](http://img.shields.io/github/release/slamdata/purescript-halogen-datapicker.svg)](https://github.com/slamdata/purescript-halogen-datapicker/releases)
-[![Build status](https://travis-ci.org/slamdata/purescript-halogen-datapicker.svg?branch=master)](https://travis-ci.org/slamdata/purescript-halogen-datapicker)
+[![Latest release](http://img.shields.io/github/release/slamdata/purescript-halogen-datepicker.svg)](https://github.com/slamdata/purescript-halogen-datepicker/releases)
+[![Build status](https://travis-ci.org/slamdata/purescript-halogen-datepicker.svg?branch=master)](https://travis-ci.org/slamdata/purescript-halogen-datepicker)
 
 ## Pickers included:
 

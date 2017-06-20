@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Internal.Constraint where
+module Halogen.Datepicker.Internal.Constraint where
 
 import Prelude
 

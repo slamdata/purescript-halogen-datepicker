@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.Time where
+module Halogen.Datepicker.Component.Time where
 
 import Prelude
 
@@ -23,14 +23,14 @@ import Data.Time (Time)
 import Data.Traversable (for, sequence)
 import Halogen as H
 import Halogen.Component.ChildPath as CP
-import Halogen.Datapicker.Internal.Choice as Choice
-import Halogen.Datapicker.Internal.Elements (textElement)
-import Halogen.Datapicker.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
-import Halogen.Datapicker.Internal.Num as Num
-import Halogen.Datapicker.Internal.Range (Range, bottomTop)
-import Halogen.Datapicker.Internal.Utils (steper', pickerClasses, mustBeMounted)
-import Halogen.Datapicker.Format.Time as F
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
+import Halogen.Datepicker.Internal.Choice as Choice
+import Halogen.Datepicker.Internal.Elements (textElement)
+import Halogen.Datepicker.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
+import Halogen.Datepicker.Internal.Num as Num
+import Halogen.Datepicker.Internal.Range (Range, bottomTop)
+import Halogen.Datepicker.Internal.Utils (steper', pickerClasses, mustBeMounted)
+import Halogen.Datepicker.Format.Time as F
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP

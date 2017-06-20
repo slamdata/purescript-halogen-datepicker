@@ -9,16 +9,16 @@ import Data.Functor.Coproduct.Nested as Coproduct
 import Data.Interval as I
 import Halogen as H
 import Halogen.Component.ChildPath as CP
-import Halogen.Datapicker.Component.Date as Date
-import Halogen.Datapicker.Format.Date as DateF
-import Halogen.Datapicker.Component.DateTime as DateTime
-import Halogen.Datapicker.Format.DateTime as DateTimeF
-import Halogen.Datapicker.Component.Duration as Duration
-import Halogen.Datapicker.Format.Duration as DurationF
-import Halogen.Datapicker.Component.Interval as Interval
-import Halogen.Datapicker.Format.Interval as IntervalF
-import Halogen.Datapicker.Component.Time as Time
-import Halogen.Datapicker.Format.Time as TimeF
+import Halogen.Datepicker.Component.Date as Date
+import Halogen.Datepicker.Format.Date as DateF
+import Halogen.Datepicker.Component.DateTime as DateTime
+import Halogen.Datepicker.Format.DateTime as DateTimeF
+import Halogen.Datepicker.Component.Duration as Duration
+import Halogen.Datepicker.Format.Duration as DurationF
+import Halogen.Datepicker.Component.Interval as Interval
+import Halogen.Datepicker.Format.Interval as IntervalF
+import Halogen.Datepicker.Component.Time as Time
+import Halogen.Datepicker.Format.Time as TimeF
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Data.Bitraversable (bitraverse)
@@ -33,8 +33,8 @@ import Data.Map (Map, lookup, insert)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Monoid (mempty)
 import Data.Time (Time, setHour, setMinute)
-import Halogen.Datapicker.Internal.Utils (mustBeMounted)
-import Halogen.Datapicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..))
+import Halogen.Datepicker.Internal.Utils (mustBeMounted)
+import Halogen.Datepicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..))
 import Partial.Unsafe (unsafePartialBecause)
 
 type TimeIdx = Int

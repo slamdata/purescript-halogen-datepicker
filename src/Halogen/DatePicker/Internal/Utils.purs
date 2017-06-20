@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Internal.Utils where
+module Halogen.Datepicker.Internal.Utils where
 
 import Prelude
 
@@ -9,7 +9,7 @@ import Data.Maybe (Maybe(..), fromJust)
 import Data.Tuple (Tuple(..))
 import Halogen.HTML (ClassName(..))
 import Partial.Unsafe (unsafePartialBecause)
-import Halogen.Datapicker.Component.Types (PickerValue)
+import Halogen.Datepicker.Component.Types (PickerValue)
 
 mustBeMounted ∷ ∀a. Maybe a -> a
 mustBeMounted a = unsafePartialBecause "children must be mounted" (fromJust a)

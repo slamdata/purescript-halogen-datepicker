@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Internal.Enums where
+module Halogen.Datepicker.Internal.Enums where
 
 import Data.Date
   ( Date

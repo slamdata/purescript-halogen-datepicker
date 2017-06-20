@@ -1,9 +1,9 @@
 {
-  "name": "purescript-halogen-datapicker",
+  "name": "purescript-halogen-datepicker",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git://github.com/slamdata/purescript-halogen-datapicker.git"
+    "url": "git://github.com/slamdata/purescript-halogen-datepicker.git"
   },
   "authors": [
     "Irakli Safareli <i.safareli@gmail.com>"

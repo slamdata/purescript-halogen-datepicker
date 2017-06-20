@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Internal.Elements where
+module Halogen.Datepicker.Internal.Elements where
 
 import Halogen as H
 import Halogen.HTML as HH

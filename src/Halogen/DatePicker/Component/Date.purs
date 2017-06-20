@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.Date where
+module Halogen.Datepicker.Component.Date where
 
 import Prelude
 
@@ -21,14 +21,14 @@ import Data.Profunctor.Star (Star(..))
 import Data.Traversable (fold, for, sequence)
 import Halogen as H
 import Halogen.Component.ChildPath as CP
-import Halogen.Datapicker.Format.Date as F
-import Halogen.Datapicker.Internal.Choice as Choice
-import Halogen.Datapicker.Internal.Elements (textElement)
-import Halogen.Datapicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
-import Halogen.Datapicker.Internal.Num as Num
-import Halogen.Datapicker.Internal.Range (Range, bottomTop)
-import Halogen.Datapicker.Internal.Utils (steper', pickerClasses, mustBeMounted)
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
+import Halogen.Datepicker.Format.Date as F
+import Halogen.Datepicker.Internal.Choice as Choice
+import Halogen.Datepicker.Internal.Elements (textElement)
+import Halogen.Datepicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
+import Halogen.Datepicker.Internal.Num as Num
+import Halogen.Datepicker.Internal.Range (Range, bottomTop)
+import Halogen.Datepicker.Internal.Utils (steper', pickerClasses, mustBeMounted)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP

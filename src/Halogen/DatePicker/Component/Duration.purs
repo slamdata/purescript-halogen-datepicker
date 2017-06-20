@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.Duration where
+module Halogen.Datepicker.Component.Duration where
 
 import Prelude
 
@@ -15,11 +15,11 @@ import Data.Monoid.Endo (Endo(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (for, sequence)
 import Halogen as H
-import Halogen.Datapicker.Format.Duration as F
-import Halogen.Datapicker.Internal.Num as N
-import Halogen.Datapicker.Internal.Range (minRange)
-import Halogen.Datapicker.Internal.Utils (steper', pickerClasses, mustBeMounted)
-import Halogen.Datapicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
+import Halogen.Datepicker.Format.Duration as F
+import Halogen.Datepicker.Internal.Num as N
+import Halogen.Datepicker.Internal.Range (minRange)
+import Halogen.Datepicker.Internal.Utils (steper', pickerClasses, mustBeMounted)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP

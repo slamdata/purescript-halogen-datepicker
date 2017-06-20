@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Internal.Choice
+module Halogen.Datepicker.Internal.Choice
   ( picker
   , ChoiceQuery
   , Query
@@ -25,7 +25,7 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.NonEmpty (NonEmpty, fromNonEmpty, head, tail)
 import Data.Number as N
 import Halogen as H
-import Halogen.Datapicker.Component.Types (PickerMessage(..), BasePickerQuery(..))
+import Halogen.Datepicker.Component.Types (PickerMessage(..), BasePickerQuery(..))
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP

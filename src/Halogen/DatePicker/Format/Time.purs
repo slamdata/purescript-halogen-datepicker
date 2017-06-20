@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Format.Time
+module Halogen.Datepicker.Format.Time
   ( Format
   , Command(..)
   , fromString
@@ -26,8 +26,8 @@ import Data.Newtype (class Newtype)
 import Data.String (joinWith)
 import Data.Time (Time, hour, millisecond, minute, second, setHour, setMillisecond, setMinute, setSecond)
 import Data.Traversable (traverse)
-import Halogen.Datapicker.Internal.Constraint as C
-import Halogen.Datapicker.Internal.Enums (hour12, meridiem, millisecond1, millisecond2, setHour12, setMeridiem, setMillisecond1, setMillisecond2)
+import Halogen.Datepicker.Internal.Constraint as C
+import Halogen.Datepicker.Internal.Enums (hour12, meridiem, millisecond1, millisecond2, setHour12, setMeridiem, setMillisecond1, setMillisecond2)
 
 data Command
   = Hours24

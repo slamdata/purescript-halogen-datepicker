@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Component.Types where
+module Halogen.Datepicker.Component.Types where
 
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))

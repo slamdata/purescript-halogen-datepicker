@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Format.Date
+module Halogen.Datepicker.Format.Date
   ( Format
   , Command(..)
   , toSetter
@@ -26,8 +26,8 @@ import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.String (joinWith)
 import Data.Traversable (traverse)
-import Halogen.Datapicker.Internal.Constraint as C
-import Halogen.Datapicker.Internal.Enums (monthShort, setDay, setMonth, setYear, setYear2, setYear4, year2, year4)
+import Halogen.Datepicker.Internal.Constraint as C
+import Halogen.Datepicker.Internal.Enums (monthShort, setDay, setMonth, setYear, setYear2, setYear4, year2, year4)
 
 data Command
   = YearFull

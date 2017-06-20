@@ -1,4 +1,4 @@
-module Halogen.Datapicker.Format.DateTime
+module Halogen.Datepicker.Format.DateTime
   ( Format
   , Command(..)
   , fromString
@@ -24,9 +24,9 @@ import Data.Maybe (Maybe(..), isJust)
 import Data.Newtype (class Newtype)
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
-import Halogen.Datapicker.Format.Date as DateF
-import Halogen.Datapicker.Internal.Constraint as C
-import Halogen.Datapicker.Format.Time as TimeF
+import Halogen.Datepicker.Format.Date as DateF
+import Halogen.Datepicker.Internal.Constraint as C
+import Halogen.Datepicker.Format.Time as TimeF
 
 data Command
   = Date DateF.Format
