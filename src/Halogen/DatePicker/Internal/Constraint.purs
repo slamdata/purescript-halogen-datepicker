@@ -7,23 +7,44 @@ import Data.Foldable (class Foldable, any, null, length, for_)
 import Data.List as List
 import Data.Validation.Semigroup (V, invalid, unV)
 
-type Constraint a = a -> V (Array String) Unit
+
+data Error 
+  = ContainsInvalidValue String
+  | ShouldBeNonEmpty
+  | ShouldBeSorted
+  | UsageCountShouldBeNoneOrOne { count :: Int, alowed:: String }
+  | UsageCountShouldBeNoneOrAll { count :: Int, alowed:: String }
+
+showError :: Error -> String 
+showError = case _ of
+  ContainsInvalidValue val ->
+    "Contains value: " <> val <> " which is not allowed"
+  ShouldBeNonEmpty ->
+    "Input must contain values"
+  ShouldBeSorted ->
+    "Input Must be sorted"
+  UsageCountShouldBeNoneOrOne { count, alowed } ->
+    "Usage count (" <> show count <> ") for allowed elements (" <> alowed <> ") must be 0 or 1"
+  UsageCountShouldBeNoneOrAll { count, alowed } ->
+    "Usage count (" <> show count <> ") for allowed elements (" <> alowed <> ") must be 0 or all"
+
+type Constraint a = a -> V (Array Error) Unit
 
 runConstraint :: ∀ a g. Constraint (g a) -> g a -> Array String
-runConstraint f a = unV id (const []) $ f a
+runConstraint f a = unV (map showError) (const []) $ f a
 
 allowedValues :: ∀ g a. Foldable g => (a -> String) -> Array (EqPred a) -> Constraint (g a)
 allowedValues showVal as as' = for_ as' \a -> unless
   (matchesAny a as) 
-  (invalid ["Contains value: " <> (showVal a) <> " which is not allowed"])
+  (invalid [ContainsInvalidValue $ showVal a])
 
 notEmpty :: ∀ f a. Foldable f => Constraint (f a)
-notEmpty as = when (null as) (invalid ["Input must contain values"])
+notEmpty as = when (null as) (invalid [ShouldBeNonEmpty])
 
 data Sorting = Increasing | Decreasing
 
 sorted :: ∀ f a. Ord a => Foldable f => Sorting -> Constraint (f a)
-sorted sorting as = unless isSorted (invalid ["Input Must be sorted"])
+sorted sorting as = unless isSorted (invalid [ShouldBeSorted])
   where
   isSorted = case sorting of
     Increasing -> List.reverse asList == List.sort asList
@@ -32,14 +53,14 @@ sorted sorting as = unless isSorted (invalid ["Input Must be sorted"])
 
 
 allowNoneOrOne :: ∀ g a. Foldable g => Array (EqPred a) -> Constraint (g a)
-allowNoneOrOne as = f <<< usageCount as
-  where
-  f c = when (c > 1) $ invalid ["Usage count (" <> show c <> ") for allowed elements (" <> (show as) <> ") must be 0 or 1"]
+allowNoneOrOne as = usageCount as >>> \c -> when 
+  (c > 1)
+  (invalid [UsageCountShouldBeNoneOrOne { count: c,  alowed: show as }])
 
 allowNoneOrAll :: ∀ f a. Foldable f => Array (EqPred a) -> Constraint (f a)
-allowNoneOrAll as = f <<< usageCount as
-  where
-  f c  = when (c /= 0 && c /= length as) $ invalid ["Usage count (" <> show c <> ") for allowed elements (" <> (show as) <> ") must be 0 or all"]
+allowNoneOrAll as = usageCount as >>> \c -> when
+  (c /= 0 && c /= length as) 
+  (invalid [UsageCountShouldBeNoneOrOne { count: c,  alowed: show as }])
 
 matchesAny :: ∀ a . a -> Array (EqPred a) -> Boolean
 matchesAny = any <<< equals
