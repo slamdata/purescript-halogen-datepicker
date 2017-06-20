@@ -40,8 +40,7 @@ data Command
   | DayOfMonth
   | Placeholder String
   -- NOTE `DayOfWeek` value is not fully supported in ps-formatters itself
-  -- as it it only has point to use with `week number`.
-  -- once it's supported then we could use it here too.
+  -- as it it only has point to use when we have `week number` in date format.
 
 
 derive instance commandGeneric ∷ Generic Command _
@@ -51,27 +50,29 @@ instance commandShow ∷ Show Command where
   show = genericShow
 
 toSetter ∷ Command → Int → Date → Maybe Date
-toSetter YearFull n d = (toEnum n) >>= (_ `setYear4` d)
-toSetter YearTwoDigits n d = (toEnum n ) >>= (_ `setYear2` d)
-toSetter YearAbsolute n d = (toEnum n) >>= (_ `setYear` d)
-toSetter MonthFull n d = (toEnum n) >>= (_ `setMonth` d)
-toSetter MonthShort n d = (toEnum n) >>= (_ `setMonth` d)
-toSetter MonthTwoDigits n d = (toEnum n) >>= (_ `setMonth` d)
-toSetter DayOfMonthTwoDigits n d = (toEnum n) >>= (_ `setDay` d)
-toSetter DayOfMonth n d = (toEnum n) >>= (_ `setDay` d)
-toSetter (Placeholder _) _ d = pure d
+toSetter cmd n d = case cmd of
+  YearFull → toEnum n >>= (_ `setYear4` d)
+  YearTwoDigits → toEnum n >>= (_ `setYear2` d)
+  YearAbsolute → toEnum n >>= (_ `setYear` d)
+  MonthFull → toEnum n >>= (_ `setMonth` d)
+  MonthShort → toEnum n >>= (_ `setMonth` d)
+  MonthTwoDigits → toEnum n >>= (_ `setMonth` d)
+  DayOfMonthTwoDigits → toEnum n >>= (_ `setDay` d)
+  DayOfMonth → toEnum n >>= (_ `setDay` d)
+  Placeholder _ → pure d
 
 
 toGetter ∷ Command → Date → Maybe Int
-toGetter YearFull d            = Just $ fromEnum $ year4 d
-toGetter YearTwoDigits d       = Just $ fromEnum $ year2 d
-toGetter YearAbsolute d        = Just $ fromEnum $ year d
-toGetter MonthFull d           = Just $ fromEnum $ month d
-toGetter MonthShort d          = Just $ fromEnum $ monthShort d
-toGetter MonthTwoDigits d      = Just $ fromEnum $ month d
-toGetter DayOfMonthTwoDigits d = Just $ fromEnum $ day d
-toGetter DayOfMonth d          = Just $ fromEnum $ day d
-toGetter (Placeholder str) d   = Nothing
+toGetter cmd d = case cmd of
+  YearFull → Just $ fromEnum $ year4 d
+  YearTwoDigits → Just $ fromEnum $ year2 d
+  YearAbsolute → Just $ fromEnum $ year d
+  MonthFull → Just $ fromEnum $ month d
+  MonthShort → Just $ fromEnum $ monthShort d
+  MonthTwoDigits → Just $ fromEnum $ month d
+  DayOfMonthTwoDigits → Just $ fromEnum $ day d
+  DayOfMonth → Just $ fromEnum $ day d
+  Placeholder str → Nothing
 
 
 newtype Format = Format (Array Command)
@@ -94,31 +95,32 @@ fromDateTimeFormatter fmt = do
     Nothing → Left "(unreachable) invalid FormatterCommand has leaked while checking constraints"
 
 toCommand ∷ FDT.FormatterCommand → Maybe Command
-toCommand FDT.YearFull = Just YearFull
-toCommand FDT.YearTwoDigits = Just YearTwoDigits
-toCommand FDT.YearAbsolute = Just YearAbsolute
-toCommand FDT.MonthFull = Just MonthFull
-toCommand FDT.MonthShort = Just MonthShort
-toCommand FDT.MonthTwoDigits = Just MonthTwoDigits
-toCommand FDT.DayOfMonthTwoDigits = Just DayOfMonthTwoDigits
-toCommand FDT.DayOfMonth = Just DayOfMonth
--- toCommand FDT.DayOfWeek = Just DayOfWeek
-toCommand (FDT.Placeholder str)= Just $ Placeholder str
-toCommand _ = Nothing
+toCommand = case _ of
+  FDT.YearFull → Just YearFull
+  FDT.YearTwoDigits → Just YearTwoDigits
+  FDT.YearAbsolute → Just YearAbsolute
+  FDT.MonthFull → Just MonthFull
+  FDT.MonthShort → Just MonthShort
+  FDT.MonthTwoDigits → Just MonthTwoDigits
+  FDT.DayOfMonthTwoDigits → Just DayOfMonthTwoDigits
+  FDT.DayOfMonth → Just DayOfMonth
+  FDT.Placeholder str → Just $ Placeholder str
+  _ → Nothing
 
 toDateTimeFormatter ∷ Format → FDT.Formatter
 toDateTimeFormatter (Format fmt) = foldMap (pure <<< toDTCommand) fmt
-  where
-  toDTCommand YearFull = FDT.YearFull
-  toDTCommand YearTwoDigits = FDT.YearTwoDigits
-  toDTCommand YearAbsolute = FDT.YearAbsolute
-  toDTCommand MonthFull = FDT.MonthFull
-  toDTCommand MonthShort = FDT.MonthShort
-  toDTCommand MonthTwoDigits = FDT.MonthTwoDigits
-  toDTCommand DayOfMonthTwoDigits = FDT.DayOfMonthTwoDigits
-  toDTCommand DayOfMonth = FDT.DayOfMonth
-  -- toDTCommand DayOfWeek = FDT.DayOfWeek
-  toDTCommand (Placeholder str) = FDT.Placeholder str
+
+toDTCommand ∷ Command → FDT.FormatterCommand
+toDTCommand = case _ of
+  YearFull →  FDT.YearFull
+  YearTwoDigits →  FDT.YearTwoDigits
+  YearAbsolute →  FDT.YearAbsolute
+  MonthFull →  FDT.MonthFull
+  MonthShort →  FDT.MonthShort
+  MonthTwoDigits →  FDT.MonthTwoDigits
+  DayOfMonthTwoDigits →  FDT.DayOfMonthTwoDigits
+  DayOfMonth →  FDT.DayOfMonth
+  Placeholder str →  FDT.Placeholder str
 
 unformat ∷ Format → String → Either String Date
 unformat fmt str = FDT.unformat (toDateTimeFormatter fmt) str <#> date

@@ -60,30 +60,32 @@ derive instance formatOrd ∷ Ord Format
 
 
 toSetter ∷ Command → Int → Time → Maybe Time
-toSetter Hours24 n t = toEnum n <#> ( _ `setHour` t)
-toSetter Hours12 n t = toEnum n >>= (_ `setHour12` t)
-toSetter Meridiem n t = toEnum n >>= (_ `setMeridiem` t)
-toSetter MinutesTwoDigits n t = toEnum n <#> ( _ `setMinute` t)
-toSetter Minutes n t = toEnum n <#> ( _ `setMinute` t)
-toSetter SecondsTwoDigits n t = toEnum n <#> ( _ `setSecond` t)
-toSetter Seconds n t = toEnum n <#> ( _ `setSecond` t)
-toSetter Milliseconds n t =toEnum n <#>  (_ `setMillisecond` t)
-toSetter MillisecondsTwoDigits n t = toEnum n >>= (_ `setMillisecond2` t)
-toSetter MillisecondsShort n t = toEnum n >>= (_ `setMillisecond1` t)
-toSetter (Placeholder _) _ t = pure t
+toSetter cmd n t = case cmd of
+  Hours24 → toEnum n <#> ( _ `setHour` t)
+  Hours12 → toEnum n >>= (_ `setHour12` t)
+  Meridiem → toEnum n >>= (_ `setMeridiem` t)
+  MinutesTwoDigits → toEnum n <#> ( _ `setMinute` t)
+  Minutes → toEnum n <#> ( _ `setMinute` t)
+  SecondsTwoDigits → toEnum n <#> ( _ `setSecond` t)
+  Seconds → toEnum n <#> ( _ `setSecond` t)
+  Milliseconds →toEnum n <#>  (_ `setMillisecond` t)
+  MillisecondsTwoDigits → toEnum n >>= (_ `setMillisecond2` t)
+  MillisecondsShort → toEnum n >>= (_ `setMillisecond1` t)
+  Placeholder _ → pure t
 
 toGetter ∷ Command → Time → Maybe Int
-toGetter Hours24 t = Just $ fromEnum $ hour t
-toGetter Hours12 t = Just $ fromEnum $ hour12 t
-toGetter Meridiem t = Just $ fromEnum $ meridiem t
-toGetter MinutesTwoDigits t = Just $ fromEnum $ minute t
-toGetter Minutes t = Just $ fromEnum $ minute t
-toGetter SecondsTwoDigits t = Just $ fromEnum $ second t
-toGetter Seconds t = Just $ fromEnum $ second t
-toGetter Milliseconds t = Just $ fromEnum $ millisecond t
-toGetter MillisecondsTwoDigits t = Just $ fromEnum $ millisecond2 t
-toGetter MillisecondsShort t = Just $ fromEnum $ millisecond1 t
-toGetter (Placeholder _) t = Nothing
+toGetter cmd t = case cmd of
+  Hours24 → Just $ fromEnum $ hour t
+  Hours12 → Just $ fromEnum $ hour12 t
+  Meridiem → Just $ fromEnum $ meridiem t
+  MinutesTwoDigits → Just $ fromEnum $ minute t
+  Minutes → Just $ fromEnum $ minute t
+  SecondsTwoDigits → Just $ fromEnum $ second t
+  Seconds → Just $ fromEnum $ second t
+  Milliseconds → Just $ fromEnum $ millisecond t
+  MillisecondsTwoDigits → Just $ fromEnum $ millisecond2 t
+  MillisecondsShort → Just $ fromEnum $ millisecond1 t
+  Placeholder _ → Nothing
 
 
 fromString ∷ String → Either String Format
@@ -98,33 +100,36 @@ fromDateTimeFormatter fmt = do
     Nothing → Left "(unreachable) invalid FormatterCommand has leaked while checking constraints"
 
 toCommand ∷ FDT.FormatterCommand → Maybe Command
-toCommand FDT.Hours24 = Just Hours24
-toCommand FDT.Hours12 = Just Hours12
-toCommand FDT.Meridiem = Just Meridiem
-toCommand FDT.MinutesTwoDigits = Just MinutesTwoDigits
-toCommand FDT.Minutes = Just Minutes
-toCommand FDT.SecondsTwoDigits = Just SecondsTwoDigits
-toCommand FDT.Seconds = Just Seconds
-toCommand FDT.Milliseconds = Just Milliseconds
-toCommand FDT.MillisecondsTwoDigits = Just MillisecondsTwoDigits
-toCommand FDT.MillisecondsShort = Just MillisecondsShort
-toCommand (FDT.Placeholder str)= Just $ Placeholder str
-toCommand _ = Nothing
+toCommand = case _ of
+  FDT.Hours24 → Just Hours24
+  FDT.Hours12 → Just Hours12
+  FDT.Meridiem → Just Meridiem
+  FDT.MinutesTwoDigits → Just MinutesTwoDigits
+  FDT.Minutes → Just Minutes
+  FDT.SecondsTwoDigits → Just SecondsTwoDigits
+  FDT.Seconds → Just Seconds
+  FDT.Milliseconds → Just Milliseconds
+  FDT.MillisecondsTwoDigits → Just MillisecondsTwoDigits
+  FDT.MillisecondsShort → Just MillisecondsShort
+  FDT.Placeholder str → Just $ Placeholder str
+  _ → Nothing
 
 toDateTimeFormatter ∷ Format → FDT.Formatter
 toDateTimeFormatter (Format fmt) = foldMap (pure <<< toDTCommand) fmt
-  where
-  toDTCommand Hours24 = FDT.Hours24
-  toDTCommand Hours12 = FDT.Hours12
-  toDTCommand Meridiem = FDT.Meridiem
-  toDTCommand MinutesTwoDigits = FDT.MinutesTwoDigits
-  toDTCommand Minutes = FDT.Minutes
-  toDTCommand SecondsTwoDigits = FDT.SecondsTwoDigits
-  toDTCommand Seconds = FDT.Seconds
-  toDTCommand Milliseconds = FDT.Milliseconds
-  toDTCommand MillisecondsTwoDigits = FDT.MillisecondsTwoDigits
-  toDTCommand MillisecondsShort = FDT.MillisecondsShort
-  toDTCommand (Placeholder str) = FDT.Placeholder str
+
+toDTCommand ∷ Command → FDT.FormatterCommand
+toDTCommand = case _ of
+  Hours24 → FDT.Hours24
+  Hours12 → FDT.Hours12
+  Meridiem → FDT.Meridiem
+  MinutesTwoDigits → FDT.MinutesTwoDigits
+  Minutes → FDT.Minutes
+  SecondsTwoDigits → FDT.SecondsTwoDigits
+  Seconds → FDT.Seconds
+  Milliseconds → FDT.Milliseconds
+  MillisecondsTwoDigits → FDT.MillisecondsTwoDigits
+  MillisecondsShort → FDT.MillisecondsShort
+  Placeholder str → FDT.Placeholder str
 
 unformat ∷ Format → String → Either String Time
 unformat fmt str = FDT.unformat (toDateTimeFormatter fmt) str  <#> time
