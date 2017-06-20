@@ -96,7 +96,7 @@ main = HA.runHalogenAff do
   body <- HA.awaitBody
   runUI example unit body
 
-example ∷ forall m. Applicative m => H.Component HH.HTML Query Unit Void m
+example ∷ ∀ m. Applicative m => H.Component HH.HTML Query Unit Void m
 example =
   H.parentComponent
     { initialState: const initialState

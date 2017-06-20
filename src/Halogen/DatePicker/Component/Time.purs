@@ -125,7 +125,7 @@ evalTime (Update update next) = do
   pure next
 
 
-buildTime :: ∀ m. DSL m (Maybe Time)
+buildTime ∷ ∀ m. DSL m (Maybe Time)
 buildTime = do
   {format} <- H.get
   mbKleisliEndo <- for (sort $ unwrap format) mkKleisli

@@ -187,8 +187,8 @@ resetTime = queryTime $ H.action $ left <<< ResetError
 resetDate :: ∀ m. DSL m Unit
 resetDate = queryDate $ H.action $ left <<< ResetError
 
-queryTime :: forall m a. Time.Query a -> DSL m a
+queryTime :: ∀ m a. Time.Query a -> DSL m a
 queryTime q = map mustBeMounted $ H.query' cpTime unit $ q
 
-queryDate :: forall m a. Date.Query a -> DSL m a
+queryDate :: ∀ m a. Date.Query a -> DSL m a
 queryDate q = map mustBeMounted $ H.query' cpDate unit $ q

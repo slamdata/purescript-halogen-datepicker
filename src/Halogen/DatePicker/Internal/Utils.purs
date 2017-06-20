@@ -25,7 +25,7 @@ steper old new = case old, new of
   Nothing, Left (Tuple true err) -> Just (Left err)
   Nothing, Left _ -> Nothing
 
-pickerClasses :: forall e a. PickerValue e a -> Array ClassName
+pickerClasses :: ∀ e a. PickerValue e a -> Array ClassName
 pickerClasses val = [ClassName "Picker"] <> (guard (isInvalid val) $> ClassName "Picker--invalid")
   where
   isInvalid :: PickerValue e a -> Boolean

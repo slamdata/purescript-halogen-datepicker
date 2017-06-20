@@ -153,7 +153,7 @@ maybeLeft (Just (Right a)) = Right a
 maybeLeft (Just (Left a)) = Left $ Just a
 maybeLeft Nothing = Left $ Nothing
 
-collectValues :: forall d a m. Interval d a -> DSL m (Interval Duration.Input DateTime.Input)
+collectValues :: ∀ d a m. Interval d a -> DSL m (Interval Duration.Input DateTime.Input)
 collectValues format = case format of
   StartEnd a b -> StartEnd <$> getDateTime false <*> getDateTime true
   DurationEnd d a -> DurationEnd <$> getDuration <*> getDateTime false
@@ -176,7 +176,7 @@ resetChildError = do
   {format} <- H.get
   onFormat resetDateTime resetDuration format
 
-onFormat :: forall m a d. Apply m => (Boolean -> m Unit) -> m Unit -> Interval d a -> m Unit
+onFormat :: ∀ m a d. Apply m => (Boolean -> m Unit) -> m Unit -> Interval d a -> m Unit
 onFormat onDateTime onDuration format = case format of
   StartEnd a b -> onDateTime false *> onDateTime true
   DurationEnd d a -> onDuration *> onDateTime false
@@ -228,8 +228,8 @@ resetDuration = queryDuration $ H.action $ left <<< ResetError
 resetDateTime :: ∀ m. Boolean -> DSL m Unit
 resetDateTime idx = queryDateTime idx $ H.action $ left <<< ResetError
 
-queryDuration :: forall m a. Duration.Query a -> DSL m a
+queryDuration :: ∀ m a. Duration.Query a -> DSL m a
 queryDuration q = map mustBeMounted $ H.query' cpDuration unit $ q
 
-queryDateTime :: forall m a. Boolean -> DateTime.Query a -> DSL m a
+queryDateTime :: ∀ m a. Boolean -> DateTime.Query a -> DSL m a
 queryDateTime idx q = map mustBeMounted $ H.query' cpDateTime idx $ q
