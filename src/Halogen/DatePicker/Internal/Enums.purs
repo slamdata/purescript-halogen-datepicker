@@ -19,7 +19,7 @@ setMeridiem ∷ Meridiem → Time → Maybe Time
 setMeridiem m t = newHour <#> (_ `setHour` t)
   where
   h = fromEnum (hour t)
-  newHour = toEnum $ case m of
+  newHour = toEnum case m of
     AM → if h > 12 then h - 12 else h
     PM → if h < 12 then h + 12 else h
 

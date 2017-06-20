@@ -220,7 +220,7 @@ example =
 
   eval ∷ Query ~> DSL m
   eval (Set payload next) = do
-    map mustBeMounted $ case payload of
+    map mustBeMounted case payload of
       SetTime     idx val → H.query' timeConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
       SetDate     idx val → H.query' dateConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
       SetDateTime idx val → H.query' dateTimeConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)

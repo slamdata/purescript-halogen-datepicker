@@ -122,7 +122,7 @@ renderCommand cmd = case cmd of
 evalDate ∷ ∀ m . DateQuery ~> DSL m
 evalDate (Update update next) = do
   s <- H.get
-  nextDate <- map (steper' s.date InvalidDate) $ case s.date of
+  nextDate <- map (steper' s.date InvalidDate) case s.date of
     Just (Right date) → pure $ maybe (Left false) Right $ update date
     _  → buildDate
   H.modify _{ date = nextDate }
@@ -142,7 +142,7 @@ buildDate = do
       num <- H.query' cpChoice cmd $ H.request (left <<< GetValue)
       pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     }
-  pure $ case map fold (sequence mbKleisliEndo) of
+  pure case map fold (sequence mbKleisliEndo) of
     Just (Join (Star f)) → maybe (Left true) Right $  (toEnum 0) >>= (_ `setYear` bottom) >>= f
     Nothing → Left false
 

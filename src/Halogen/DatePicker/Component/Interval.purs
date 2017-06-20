@@ -65,7 +65,7 @@ picker format = H.parentComponent
   }
 
 render ∷ ∀ m. State → HTML m
-render s = HH.div [HP.classes $ pickerClasses s.interval] $ case s.format of
+render s = HH.div [HP.classes $ pickerClasses s.interval] case s.format of
   StartEnd fmtStart fmtEnd → map elem
     [ renderDateTime fmtStart false
     , textElement { text: "/" }
@@ -95,7 +95,7 @@ renderDateTime fmt idx = HH.slot' cpDateTime idx (DateTime.picker fmt) unit (HE.
 evalInterval ∷ ∀ m . IntervalQuery ~> DSL m
 evalInterval (Update msg next) = do
   s <- H.get
-  nextInterval <- map (steper s.interval) $ case s.interval of
+  nextInterval <- map (steper s.interval) case s.interval of
     Nothing  → do
       interval <- buildInterval
       case interval of
@@ -103,7 +103,7 @@ evalInterval (Update msg next) = do
         _ → pure unit
       pure interval
     Just (Left err) → buildInterval
-    Just (Right interval) → pure $ lmap (Tuple false) $ case msg of
+    Just (Right interval) → pure $ lmap (Tuple false) case msg of
       Left (NotifyChange newDuration) → case newDuration of
         Just (Left x) → Left $ bimap (const $ Just x) (const Nothing) s.format
         Nothing → Left $ bimap (const Nothing) (const Nothing) s.format -- [1]
@@ -111,7 +111,7 @@ evalInterval (Update msg next) = do
       Right (Tuple idx (NotifyChange newDateTime)) → case newDateTime of
         Just (Left x) → Left $ bimap (const Nothing) (const $ Just x) s.format
         Nothing → Left $ bimap (const Nothing) (const Nothing) s.format -- [1]
-        Just (Right dateTime) → Right $ case interval of
+        Just (Right dateTime) → Right case interval of
           StartEnd a b → case idx of
             true → StartEnd dateTime b
             false → StartEnd a dateTime

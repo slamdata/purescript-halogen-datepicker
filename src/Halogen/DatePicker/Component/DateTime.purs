@@ -83,7 +83,7 @@ renderCommand cmd = case cmd of
 evalDateTime ∷ ∀ m . DateTimeQuery ~> DSL m
 evalDateTime (Update msg next) = do
   s <- H.get
-  nextDateTime <- map (steper s.dateTime) $ case s.dateTime of
+  nextDateTime <- map (steper s.dateTime) case s.dateTime of
     Nothing → do
       dt <- buildDateTime
       case dt of
@@ -91,7 +91,7 @@ evalDateTime (Update msg next) = do
         _ → pure unit
       pure dt
     Just (Left err)  → buildDateTime
-    Just (Right dt) → pure $ lmap (Tuple false) $ case msg of
+    Just (Right dt) → pure $ lmap (Tuple false) case msg of
       Left  (NotifyChange newDate) → case newDate of
         Just (Right date) → Right $ setDateDt date dt
         Just (Left x) → Left $ dateError x
@@ -112,7 +112,7 @@ resetChildErrorBasedOnMessage _ = pure unit
 resetChildError ∷ ∀ m. DSL m Unit
 resetChildError = do
   {format} <- H.get
-  for_ (unwrap format) $ case _ of
+  for_ (unwrap format) case _ of
     F.Time _ → resetTime
     F.Date _ → resetDate
 
@@ -125,7 +125,7 @@ dateError x = Tuple (Just x) Nothing
 
 type StepM = Join (Star (Writer (Maybe (Tuple (Additive Int) DateTimeErrorLast)))) DateTime
 formatToSteps ∷ ∀ m. F.Format → DSL m (Array StepM)
-formatToSteps format = for (unwrap format) $ case _ of
+formatToSteps format = for (unwrap format) case _ of
   F.Time _ → applyTime <$> queryTime (H.request $ left <<< Base <<< GetValue)
   F.Date _ → applyDate <$> queryDate (H.request $ left <<< Base <<< GetValue)
   where
@@ -169,7 +169,7 @@ evalPicker (ResetError next) = do
 evalPicker (Base (SetValue dateTime next)) = do
   H.modify _{ dateTime = dateTime }
   {format} <- H.get
-  for_ (unwrap format) $ case _ of
+  for_ (unwrap format) case _ of
     F.Time _ → setTime $ value dateTime <#> (time >>> Right)
     F.Date _ → setDate $ value dateTime <#> (date >>> Right)
   pure $ next unit

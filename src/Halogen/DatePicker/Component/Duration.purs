@@ -78,7 +78,7 @@ overIsoDuration f d = mkIsoDuration $ f $ unIsoDuration d
 evalDuration ∷ ∀ m . DurationQuery ~> DSL m
 evalDuration (UpdateCommand cmd val next) = do
   s <- H.get
-  nextDuration <- map (steper' s.duration InvalidIsoDuration) $ case s.duration of
+  nextDuration <- map (steper' s.duration InvalidIsoDuration) case s.duration of
     Just (Right duration) → pure
       $ maybe (Left false) Right
       $ val >>= \n → overIsoDuration (F.toSetter cmd n) duration
