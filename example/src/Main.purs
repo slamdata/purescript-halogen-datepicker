@@ -49,18 +49,18 @@ data Query a
   | HandleMessage MessagePayload a
 
 data SetPayload
-  = SetTime Int (Maybe Time)
-  | SetDate Int (Maybe Date)
-  | SetDateTime Int (Maybe DateTime)
-  | SetDuration Int (Maybe IsoDuration)
-  | SetInterval Int (Maybe (Interval IsoDuration DateTime))
+  = SetTime TimeIdx (Maybe Time)
+  | SetDate DateIdx (Maybe Date)
+  | SetDateTime DateTimeIdx (Maybe DateTime)
+  | SetDuration DurationIdx (Maybe IsoDuration)
+  | SetInterval IntervalIdx (Maybe (Interval IsoDuration DateTime))
 
 data MessagePayload
-  = MsgTime Int Time.Message
-  | MsgDate Int Date.Message
-  | MsgDateTime Int DateTime.Message
-  | MsgDuration Int Duration.Message
-  | MsgInterval Int Interval.Message
+  = MsgTime TimeIdx Time.Message
+  | MsgDate DateIdx Date.Message
+  | MsgDateTime DateTimeIdx DateTime.Message
+  | MsgDuration DurationIdx Duration.Message
+  | MsgInterval IntervalIdx Interval.Message
 
 type ChildQuery = Coproduct.Coproduct5 Time.Query Date.Query DateTime.Query Duration.Query Interval.Query
 
