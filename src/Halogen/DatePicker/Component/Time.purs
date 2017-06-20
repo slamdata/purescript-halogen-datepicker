@@ -101,17 +101,28 @@ renderCommandChoice cmd conf = HH.slot' cpChoice cmd
 
 renderCommand ∷ ∀ m. F.Command -> HTML m
 renderCommand cmd = case cmd of
-  F.Placeholder str       -> textElement { text: str}
-  F.Meridiem              -> renderCommandChoice cmd { title: "Meridiem", values: upFromIncluding (bottom ∷ Maybe Meridiem) }
-  F.Hours24               -> renderCommandEnum cmd { title: "Hours", range: (bottomTop ∷ Range Hour) <#> fromEnum }
-  F.Hours12               -> renderCommandEnum cmd { title: "Hours", range: (bottomTop ∷ Range Hour12) <#> fromEnum }
-  F.MinutesTwoDigits      -> renderCommandEnum cmd { title: "Minutes", range: (bottomTop ∷ Range Minute) <#> fromEnum }
-  F.Minutes               -> renderCommandEnum cmd { title: "Minutes", range: (bottomTop ∷ Range Minute) <#> fromEnum }
-  F.SecondsTwoDigits      -> renderCommandEnum cmd { title: "Seconds", range: (bottomTop ∷ Range Second) <#> fromEnum }
-  F.Seconds               -> renderCommandEnum cmd { title: "Seconds", range: (bottomTop ∷ Range Second) <#> fromEnum }
-  F.Milliseconds          -> renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop ∷ Range Millisecond) <#> fromEnum }
-  F.MillisecondsTwoDigits -> renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop ∷ Range Millisecond2) <#> fromEnum }
-  F.MillisecondsShort     -> renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop ∷ Range Millisecond1) <#> fromEnum }
+  F.Placeholder str ->
+    textElement { text: str}
+  F.Meridiem ->
+    renderCommandChoice cmd { title: "Meridiem", values: upFromIncluding (bottom ∷ Maybe Meridiem) }
+  F.Hours24 ->
+    renderCommandEnum cmd { title: "Hours", range: (bottomTop ∷ Range Hour) <#> fromEnum }
+  F.Hours12 ->
+    renderCommandEnum cmd { title: "Hours", range: (bottomTop ∷ Range Hour12) <#> fromEnum }
+  F.MinutesTwoDigits ->
+    renderCommandEnum cmd { title: "Minutes", range: (bottomTop ∷ Range Minute) <#> fromEnum }
+  F.Minutes ->
+    renderCommandEnum cmd { title: "Minutes", range: (bottomTop ∷ Range Minute) <#> fromEnum }
+  F.SecondsTwoDigits ->
+    renderCommandEnum cmd { title: "Seconds", range: (bottomTop ∷ Range Second) <#> fromEnum }
+  F.Seconds ->
+    renderCommandEnum cmd { title: "Seconds", range: (bottomTop ∷ Range Second) <#> fromEnum }
+  F.Milliseconds ->
+    renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop ∷ Range Millisecond) <#> fromEnum }
+  F.MillisecondsTwoDigits ->
+    renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop ∷ Range Millisecond2) <#> fromEnum }
+  F.MillisecondsShort ->
+    renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop ∷ Range Millisecond1) <#> fromEnum }
 
 evalTime ∷ ∀ m . TimeQuery ~> DSL m
 evalTime (Update update next) = do

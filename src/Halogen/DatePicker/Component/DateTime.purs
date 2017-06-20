@@ -75,8 +75,9 @@ render s = HH.div [ HP.classes $ pickerClasses s.dateTime ]
   f a = HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderCommand a
 
 renderCommand ∷ ∀ m. F.Command -> HTML m
-renderCommand cmd@(F.Time fmt) = HH.slot' cpTime unit (Time.picker fmt) unit (HE.input $ Right >>> Update)
-renderCommand cmd@(F.Date fmt) = HH.slot' cpDate unit (Date.picker fmt) unit (HE.input $ Left >>> Update)
+renderCommand cmd = case cmd of 
+  F.Time fmt -> HH.slot' cpTime unit (Time.picker fmt) unit (HE.input $ Right >>> Update)
+  F.Date fmt -> HH.slot' cpDate unit (Date.picker fmt) unit (HE.input $ Left >>> Update)
 
 
 evalDateTime ∷ ∀ m . DateTimeQuery ~> DSL m

@@ -100,15 +100,24 @@ renderCommandChoice cmd conf = HH.slot' cpChoice cmd
 
 renderCommand ∷ ∀ m. F.Command -> HTML m
 renderCommand cmd = case cmd of
-  F.Placeholder str     -> textElement { text: str}
-  F.YearFull            -> renderCommandEnum cmd { title: "Year", range: (bottomTop ∷ Range Year4) <#> fromEnum }
-  F.YearTwoDigits       -> renderCommandEnum cmd { title: "Year", range: (bottomTop ∷ Range Year2) <#> fromEnum }
-  F.YearAbsolute        -> renderCommandEnum cmd { title: "Year", range: (bottomTop ∷ Range Year) <#> fromEnum }
-  F.MonthFull           -> renderCommandChoice cmd { title: "Month", values: upFromIncluding (bottom ∷ Maybe Month) }
-  F.MonthShort          -> renderCommandChoice cmd { title: "Month", values: upFromIncluding (bottom ∷ Maybe MonthShort) }
-  F.MonthTwoDigits      -> renderCommandEnum cmd { title: "Month", range: (bottomTop ∷ Range Month) <#> fromEnum }
-  F.DayOfMonthTwoDigits -> renderCommandEnum cmd { title: "Day", range: (bottomTop ∷ Range Day) <#> fromEnum }
-  F.DayOfMonth          -> renderCommandEnum cmd { title: "Day", range: (bottomTop ∷ Range Day) <#> fromEnum }
+  F.Placeholder str ->
+    textElement { text: str}
+  F.YearFull ->
+    renderCommandEnum cmd { title: "Year", range: (bottomTop ∷ Range Year4) <#> fromEnum }
+  F.YearTwoDigits ->
+    renderCommandEnum cmd { title: "Year", range: (bottomTop ∷ Range Year2) <#> fromEnum }
+  F.YearAbsolute ->
+    renderCommandEnum cmd { title: "Year", range: (bottomTop ∷ Range Year) <#> fromEnum }
+  F.MonthFull ->
+    renderCommandChoice cmd { title: "Month", values: upFromIncluding (bottom ∷ Maybe Month) }
+  F.MonthShort ->
+    renderCommandChoice cmd { title: "Month", values: upFromIncluding (bottom ∷ Maybe MonthShort) }
+  F.MonthTwoDigits ->
+    renderCommandEnum cmd { title: "Month", range: (bottomTop ∷ Range Month) <#> fromEnum }
+  F.DayOfMonthTwoDigits ->
+    renderCommandEnum cmd { title: "Day", range: (bottomTop ∷ Range Day) <#> fromEnum }
+  F.DayOfMonth ->
+    renderCommandEnum cmd { title: "Day", range: (bottomTop ∷ Range Day) <#> fromEnum }
 
 evalDate ∷ ∀ m . DateQuery ~> DSL m
 evalDate (Update update next) = do
