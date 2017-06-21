@@ -92,9 +92,7 @@ buildDuration = do
   {format} <- H.get
   mbEndo <- for (unwrap format) \cmd → do
     num <- H.query cmd $ H.request (left <<< GetValue)
-    pure case num of
-      Just (Just n) → Just $ Endo $ F.toSetter cmd n
-      _ → Nothing
+    pure $ join num <#> F.toSetter cmd >>> Endo
   pure case map fold $ sequence mbEndo of
    Just (Endo f) → maybe (Left true) Right $ mkIsoDuration $ f mempty
    _ → Left false
