@@ -133,7 +133,7 @@ setDateDt ∷ Date → DateTime → DateTime
 setDateDt x dt = modifyDate (const x) dt
 
 
-stepsToFunc ∷ ∀ f. Foldable f => Int → f StepM → DateTime → Either (Tuple Boolean DateTimeError) DateTime
+stepsToFunc ∷ ∀ f. Foldable f ⇒ Int → f StepM → DateTime → Either (Tuple Boolean DateTimeError) DateTime
 stepsToFunc childCount steps dt = fold steps # \(Join (Star f)) → case runWriter $ f dt of
   Tuple res Nothing → Right res
   Tuple res (Just (Tuple (Additive errCount) err)) → Left $ Tuple

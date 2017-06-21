@@ -167,7 +167,7 @@ resetChildError ∷ ∀ m. F.Format → DSL m Unit
 resetChildError format = do
   onFormat resetDateTime resetDuration format
 
-onFormat ∷ ∀ m a d. Apply m => (Boolean → m Unit) → m Unit → Interval d a → m Unit
+onFormat ∷ ∀ m a d. Apply m ⇒ (Boolean → m Unit) → m Unit → Interval d a → m Unit
 onFormat onDateTime onDuration format = case format of
   StartEnd a b → onDateTime false *> onDateTime true
   DurationEnd d a → onDuration *> onDateTime false

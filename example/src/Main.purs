@@ -97,7 +97,7 @@ main = HA.runHalogenAff do
   body <- HA.awaitBody
   runUI example unit body
 
-example ∷ ∀ m. Applicative m => H.Component HH.HTML Query Unit Void m
+example ∷ ∀ m. Applicative m ⇒ H.Component HH.HTML Query Unit Void m
 example =
   H.parentComponent
     { initialState: const initialState
@@ -200,7 +200,7 @@ example =
   testDuration ∷ IsoDuration
   testDuration = unsafePartialBecause "this duration must be valid" fromJust $ I.mkIsoDuration $ I.year 100.0 <> I.month 25.0 <> I.day 245.0 <> I.hour 0.0 <> I.minute 100.0 <> I.second 124.0
 
-  enum ∷ ∀ a. BoundedEnum a => Int → a
+  enum ∷ ∀ a. BoundedEnum a ⇒ Int → a
   enum = unsafePartialBecause "ints passed to this func must be in range" fromJust <<< toEnum
 
   renderTime ∷ State → Int → String → Either String Time → Array (HTML m)

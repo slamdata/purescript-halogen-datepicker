@@ -56,7 +56,7 @@ type HTML val = H.ComponentHTML (NumQuery val)
 
 picker ∷ ∀ val m
   . Ord val
-  => HasNumberInputVal val
+  ⇒ HasNumberInputVal val
   → {title ∷ String, range ∷ Range val}
   → H.Component HH.HTML (Query val) Unit (Message val) m
 picker hasNumberInputVal {title, range} = H.component
@@ -66,10 +66,10 @@ picker hasNumberInputVal {title, range} = H.component
   , receiver: const Nothing
   }
 
-render ∷ ∀ val. Ord val => HasNumberInputVal val → State val → HTML val
+render ∷ ∀ val. Ord val ⇒ HasNumberInputVal val → State val → HTML val
 render hasNumberInputVal s = numberElement hasNumberInputVal Update { title:s.title, range: s.range} s.number
 
-evalNumber ∷ ∀ val m . Eq val => NumQuery val ~> DSL val m
+evalNumber ∷ ∀ val m . Eq val ⇒ NumQuery val ~> DSL val m
 evalNumber (Update number next) = do
   s <- H.get
   H.modify _{number = number}
@@ -114,7 +114,7 @@ showNum n = let str = show n
 
 numberElement ∷ ∀ val query
   . Ord val
-  => HasNumberInputVal val
+  ⇒ HasNumberInputVal val
   → (∀ b. InputValue val → b → query b)
   → {title ∷ String, range ∷ Range val}
   → InputValue val
@@ -158,10 +158,10 @@ numberElement hasNumberInputVal query {title, range} value = HH.input $
 
 -- We need to validate if value is in range manually as for example,
 -- if `min = 0`, user still can enter `-1` in chrome.
-isInputInRange ∷ ∀ a. Ord a => Range a → InputValue a → InputValue a
+isInputInRange ∷ ∀ a. Ord a ⇒ Range a → InputValue a → InputValue a
 isInputInRange range val = lmap (_ >>= boolToAltPredicate (isInRange range)) val
 
-boolToAltPredicate ∷ ∀ a f. Alternative f => (a → Boolean) → a → f a
+boolToAltPredicate ∷ ∀ a f. Alternative f ⇒ (a → Boolean) → a → f a
 boolToAltPredicate f a =  if f a then pure a else empty
 
 inputValueFromEvent ∷ Event → InputValue String
@@ -191,14 +191,14 @@ numberHasNumberInputVal =
 
 intHasNumberInputVal ∷ HasNumberInputVal Int
 intHasNumberInputVal =
-  { fromString: numberHasNumberInputVal.fromString >=> Int.fromNumber
+  { fromString: numberHasNumberInputVal.fromString >⇒ Int.fromNumber
   , toValue: show
   , toNumber: Int.toNumber
   }
 
-boundedEnumHasNumberInputVal ∷ ∀ a. BoundedEnum a => HasNumberInputVal a
+boundedEnumHasNumberInputVal ∷ ∀ a. BoundedEnum a ⇒ HasNumberInputVal a
 boundedEnumHasNumberInputVal =
-  { fromString: intHasNumberInputVal.fromString >=> toEnum
+  { fromString: intHasNumberInputVal.fromString >⇒ toEnum
   , toValue: fromEnum >>> intHasNumberInputVal.toValue
   , toNumber: fromEnum >>> intHasNumberInputVal.toNumber
   }

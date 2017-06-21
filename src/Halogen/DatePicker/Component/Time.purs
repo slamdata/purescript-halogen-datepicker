@@ -81,7 +81,7 @@ renderCommandEnum cmd conf' = let conf = conf'{range = conf'.range} in
     (Num.picker Num.intHasNumberInputVal conf) unit
     (HE.input $ \(NotifyChange n) → Update $ \t → n >>= (_ `F.toSetter cmd` t))
 
-renderCommandChoice ∷ ∀ m a. BoundedEnum a => Show a => F.Command → { title ∷ String , values ∷ NonEmpty Array (Maybe a) } → HTML m
+renderCommandChoice ∷ ∀ m a. BoundedEnum a ⇒ Show a ⇒ F.Command → { title ∷ String , values ∷ NonEmpty Array (Maybe a) } → HTML m
 renderCommandChoice cmd conf = HH.slot' cpChoice cmd
     (Choice.picker
       (Choice.maybeIntHasChoiceInputVal \n → (toEnum n ∷ Maybe a) # maybe "" show)

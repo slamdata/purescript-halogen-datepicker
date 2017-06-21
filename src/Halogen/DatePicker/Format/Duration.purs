@@ -43,7 +43,7 @@ toSetter cmd n d = over I.Duration (insert cmd n) d
 toGetter ∷ Command → I.Duration → Maybe Number
 toGetter cmd = unwrap >>> lookup cmd
 
-mkFormat ∷ ∀ f. Foldable f => f Command → Either String Format
+mkFormat ∷ ∀ f. Foldable f ⇒ f Command → Either String Format
 mkFormat cmds = if (errs /= [])
   then Left $ joinWith "; " errs
   else pure $ Format fmt
@@ -61,5 +61,5 @@ format ∷ I.IsoDuration → String
 format = formatInterval <<< I.JustDuration
 
 
-formatConstraint ∷ ∀ g. Foldable g => C.Constraint (g Command)
+formatConstraint ∷ ∀ g. Foldable g ⇒ C.Constraint (g Command)
 formatConstraint = C.notEmpty <> C.sorted C.Decreasing

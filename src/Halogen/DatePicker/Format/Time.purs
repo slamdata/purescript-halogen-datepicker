@@ -141,7 +141,7 @@ format fmt = FDT.format (toDateTimeFormatter fmt) <<< toDateTime
   toDateTime = DateTime bottom
 
 
-formatConstraint ∷ ∀ g. Foldable g => C.Constraint (g FDT.FormatterCommand)
+formatConstraint ∷ ∀ g. Foldable g ⇒ C.Constraint (g FDT.FormatterCommand)
 formatConstraint
   =  C.notEmpty
   <> C.allowedValues FDT.printFormatterCommand allowedCommands

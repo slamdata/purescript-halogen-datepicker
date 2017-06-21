@@ -31,12 +31,12 @@ rangeMax (MinMax _ m) = Just m
 rangeMax (Max m) = Just m
 rangeMax _ = Nothing
 
-isInRange ∷ ∀ a. Ord a => Range a → a → Boolean
+isInRange ∷ ∀ a. Ord a ⇒ Range a → a → Boolean
 isInRange range n = case range of
   (Min min) → min <= n
   (Max max) → max >= n
   (MinMax min max) → min <= n && n <= max
 
 
-bottomTop ∷ ∀ a. BoundedEnum a => Range a
+bottomTop ∷ ∀ a. BoundedEnum a ⇒ Range a
 bottomTop = minmaxRange bottom top
