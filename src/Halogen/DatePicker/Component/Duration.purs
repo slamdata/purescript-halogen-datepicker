@@ -4,7 +4,7 @@ import Prelude
 
 import Data.Array (fold)
 import Data.Bifunctor (bimap)
-import Data.Either (Either(..), either)
+import Data.Either (Either(..))
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
@@ -19,7 +19,7 @@ import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..
 import Halogen.Datepicker.Format.Duration as F
 import Halogen.Datepicker.Internal.Num as N
 import Halogen.Datepicker.Internal.Range (minRange)
-import Halogen.Datepicker.Internal.Utils (steper', pickerClasses, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (asRight, mustBeMounted, pickerClasses, steper')
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -114,5 +114,5 @@ evalPicker (Base (GetValue next)) = H.gets _.duration <#> next
 propagateChange ∷ ∀ m . F.Format → Input → DSL m Unit
 propagateChange format duration = do
   map (mustBeMounted <<< fold) $ for (unwrap format) \cmd → do
-    let n = (duration >>= either (const Nothing) (F.toGetter cmd <<< unIsoDuration)) ∷ Maybe Number
+    let n = duration >>= asRight >>= (F.toGetter cmd <<< unIsoDuration)
     H.query cmd $ H.request $ left <<< SetValue n

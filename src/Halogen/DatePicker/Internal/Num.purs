@@ -20,7 +20,6 @@ import Control.Monad.Except (runExcept)
 import Control.MonadPlus (guard)
 import DOM.Event.Event (Event)
 import Data.Bifunctor (lmap)
-import Data.Either (Either(..))
 import Data.Enum (class BoundedEnum, fromEnum, toEnum)
 import Data.Foreign (readBoolean, readString, toForeign)
 import Data.Foreign.Index (readProp)
@@ -33,6 +32,7 @@ import Data.Tuple (Tuple(..), fst)
 import Halogen as H
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..))
 import Halogen.Datepicker.Internal.Range (Range(..), isInRange, rangeMax, rangeMin)
+import Halogen.Datepicker.Internal.Utils (asRight)
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
@@ -169,17 +169,12 @@ inputValueFromEvent event = let val = validValueFromEvent event
   in Tuple val val
 
 validValueFromEvent ∷ Event → Maybe String
-validValueFromEvent event = unF $ do
+validValueFromEvent event = join $ asRight $ runExcept $ do
   target <- readProp "target" $ toForeign event
   validity <- readProp "validity" target
   badInput <- readProp "badInput" validity >>= readBoolean
   value <- readProp "value" target >>= readString
   pure (if badInput then Nothing else Just value)
-  where
-  unF e = case runExcept e of
-    Left _ → Nothing
-    Right x → x
-
 
 type HasNumberInputVal a  =
   { fromString ∷ String → Maybe a

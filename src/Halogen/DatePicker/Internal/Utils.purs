@@ -4,7 +4,7 @@ import Prelude
 
 import Control.MonadPlus (guard)
 import Data.Bifunctor (lmap)
-import Data.Either (Either(..))
+import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Tuple (Tuple(..))
 import Halogen.Datepicker.Component.Types (PickerValue)
@@ -31,3 +31,6 @@ pickerClasses val = [ClassName "Picker"] <> (guard (isInvalid val) $> ClassName 
   isInvalid ∷ PickerValue e a → Boolean
   isInvalid (Just (Left _)) = true
   isInvalid _ = false
+
+asRight ∷ ∀ e. Either e ~> Maybe
+asRight = either (const Nothing) Just
