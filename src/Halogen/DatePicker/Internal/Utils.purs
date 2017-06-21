@@ -2,6 +2,7 @@ module Halogen.Datepicker.Internal.Utils where
 
 import Prelude
 
+import Control.Alternative (class Alternative, empty)
 import Control.MonadPlus (guard)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..), either)
@@ -32,5 +33,8 @@ pickerClasses val = [ClassName "Picker"] <> (guard (isInvalid val) $> ClassName 
   isInvalid (Just (Left _)) = true
   isInvalid _ = false
 
-asRight ∷ ∀ e. Either e ~> Maybe
-asRight = either (const Nothing) Just
+asRight ∷ ∀ e a f. Alternative f => Either e a → f a
+asRight = either (const empty) pure
+
+asLeft ∷ ∀ e a f. Alternative f => Either e a → f e
+asLeft = either pure (const empty)

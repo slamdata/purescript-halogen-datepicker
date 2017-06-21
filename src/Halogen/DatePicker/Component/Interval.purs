@@ -23,7 +23,7 @@ import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Format.Duration as DurationF
 import Halogen.Datepicker.Format.Interval as F
 import Halogen.Datepicker.Internal.Elements (textElement)
-import Halogen.Datepicker.Internal.Utils (steper, pickerClasses, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (asLeft, mustBeMounted, pickerClasses, steper)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -146,7 +146,7 @@ unVals vals = case bimap maybeLeft maybeLeft vals of
   interval → Left $ bimap toError toError interval
 
 toError ∷ ∀ e a. Either (Maybe e) a → Maybe e
-toError = either id (const Nothing)
+toError = asLeft >>> join
 
 maybeLeft ∷ ∀ e a. Maybe (Either e a) → Either (Maybe e) a
 maybeLeft (Just (Right a)) = Right a
