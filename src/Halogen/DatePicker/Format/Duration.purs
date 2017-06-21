@@ -11,7 +11,7 @@ module Halogen.Datepicker.Format.Duration
 
 import Prelude
 
-import Data.Array (fromFoldable)
+import Data.Array (fromFoldable, null)
 import Data.Either (Either(..))
 import Data.Foldable (class Foldable)
 import Data.Formatter.Interval (unformatInterval, formatInterval)
@@ -44,7 +44,7 @@ toGetter ∷ Command → I.Duration → Maybe Number
 toGetter cmd = unwrap >>> lookup cmd
 
 mkFormat ∷ ∀ f. Foldable f ⇒ f Command → Either String Format
-mkFormat cmds = if (errs /= [])
+mkFormat cmds = if (not $ null errs)
   then Left $ joinWith "; " errs
   else pure $ Format fmt
   where

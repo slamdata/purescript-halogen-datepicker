@@ -53,7 +53,8 @@ hour12 ∷ Time → Hour12
 hour12 = hour >>> fromEnum >>> (\h → if h >= 12 then h - 12 else h) >>> Hour12
 
 setHour12 ∷ Hour12 → Time → Maybe Time
-setHour12 (Hour12 h) t = toEnum (if (fromEnum $ hour t) < 12 then h else h + 12) <#> (_ `setHour` t)
+setHour12 (Hour12 h) t = (_ `setHour` t) <$>
+  toEnum (if (fromEnum $ hour t) < 12 then h else h + 12)
 
 
 newtype Hour12 = Hour12 Int
@@ -172,7 +173,7 @@ year2 ∷ Date → Year2
 year2 = year >>> fromEnum >>> \y → Year2 $ y - (y `unPrecise` 100)
 
 setYear2 ∷ Year2 → Date → Maybe Date
-setYear2 (Year2 n) d = (toEnum $ ((fromEnum $ year d) `unPrecise` 100) + n) >>= (_ `setYear` d)
+setYear2 (Year2 n) d = toEnum (((fromEnum $ year d) `unPrecise` 100) + n) >>= (_ `setYear` d)
 
 newtype Year2 = Year2 Int
 derive instance year2Newtype ∷ Newtype Year2 _

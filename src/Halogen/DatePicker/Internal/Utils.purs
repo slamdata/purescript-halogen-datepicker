@@ -43,7 +43,8 @@ transitionState' ∷ forall f g p m val err
 transitionState' err f = transitionState (f >>>  (map $ lmap (_ `Tuple` err)))
 
 
-type TransitionM f g p m err val = HalogenM (PickerValue err val) f g p (PickerMessage (PickerValue err val)) m
+type TransitionM f g p m err val =
+  HalogenM (PickerValue err val) f g p (PickerMessage (PickerValue err val)) m
 
 transitionState ∷ forall f g p m val err
   . Eq err

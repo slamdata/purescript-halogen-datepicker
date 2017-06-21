@@ -13,7 +13,7 @@ module Halogen.Datepicker.Format.Time
 
 import Prelude
 
-import Data.Array (fromFoldable)
+import Data.Array (fromFoldable, null)
 import Data.DateTime (DateTime(..), time)
 import Data.Either (Either(..))
 import Data.Enum (fromEnum, toEnum)
@@ -94,7 +94,7 @@ fromString s = FDT.parseFormatString s >>= fromDateTimeFormatter
 fromDateTimeFormatter ∷ FDT.Formatter → Either String Format
 fromDateTimeFormatter fmt = do
   let errs = C.runConstraint formatConstraint fmt
-  when (errs /= []) $ Left $ joinWith "; " errs
+  unless (null errs) $ Left $ joinWith "; " errs
   case traverse toCommand fmt of
     Just fmt' → pure $ Format $ fromFoldable fmt'
     Nothing → Left "(unreachable) invalid FormatterCommand has leaked while checking constraints"

@@ -74,22 +74,6 @@ picker format = H.parentComponent
 render ∷ ∀ m. F.Format → State → HTML m
 render format time = HH.ul (pickerProps time) (unwrap format <#> renderCommand)
 
-
-renderCommandEnum ∷ ∀ m. F.Command → { title ∷ String , range  ∷ Range Int } → HTML m
-renderCommandEnum cmd conf' = let conf = conf'{range = conf'.range} in
-  HH.slot' cpNum cmd
-    (Num.picker Num.intHasNumberInputVal conf) unit
-    (HE.input $ \(NotifyChange n) → Update $ \t → n >>= (_ `F.toSetter cmd` t))
-
-renderCommandChoice ∷ ∀ m a. BoundedEnum a ⇒ Show a ⇒ F.Command → { title ∷ String , values ∷ NonEmpty Array (Maybe a) } → HTML m
-renderCommandChoice cmd conf = HH.slot' cpChoice cmd
-    (Choice.picker
-      (Choice.maybeIntHasChoiceInputVal \n → (toEnum n ∷ Maybe a) # maybe "" show)
-      (conf{values = conf.values <#> map fromEnum})
-    )
-    unit
-    (HE.input $ \(NotifyChange n) → Update $ \t → n >>= (_ `F.toSetter cmd` t))
-
 renderCommand ∷ ∀ m. F.Command → HTML m
 renderCommand cmd = HH.li componentProps $ pure case cmd of
   F.Placeholder str →
@@ -114,6 +98,29 @@ renderCommand cmd = HH.li componentProps $ pure case cmd of
     renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop ∷ Range Millisecond2) <#> fromEnum }
   F.MillisecondsShort →
     renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop ∷ Range Millisecond1) <#> fromEnum }
+
+renderCommandEnum ∷ ∀ m
+  . F.Command
+  → { title ∷ String , range  ∷ Range Int }
+  → HTML m
+renderCommandEnum cmd conf' = let conf = conf'{range = conf'.range} in
+  HH.slot' cpNum cmd
+    (Num.picker Num.intHasNumberInputVal conf) unit
+    (HE.input $ \(NotifyChange n) → Update $ \t → n >>= (_ `F.toSetter cmd` t))
+
+renderCommandChoice ∷ ∀ m a
+  . BoundedEnum a
+  ⇒ Show a
+  ⇒ F.Command
+  → { title ∷ String , values ∷ NonEmpty Array (Maybe a) }
+  → HTML m
+renderCommandChoice cmd conf = HH.slot' cpChoice cmd
+    (Choice.picker
+      (Choice.maybeIntHasChoiceInputVal \n → (toEnum n ∷ Maybe a) # maybe "" show)
+      (conf{values = conf.values <#> map fromEnum})
+    )
+    unit
+    (HE.input $ \(NotifyChange n) → Update $ \t → n >>= (_ `F.toSetter cmd` t))
 
 evalTime ∷ ∀ m . F.Format → TimeQuery ~> DSL m
 evalTime format (Update update next) = do

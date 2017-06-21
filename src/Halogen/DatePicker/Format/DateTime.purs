@@ -60,28 +60,44 @@ fromString s = FDT.parseFormatString s >>= fromDateTimeFormatter
 fromDateTimeFormatter ∷ FDT.Formatter → Either String Format
 fromDateTimeFormatter fmt = run $ go Nil
   where
-  run ∷ StateT FDT.Formatter (Either String) (List Command) → Either String Format
+  run
+    ∷ StateT FDT.Formatter (Either String) (List Command)
+    → Either String Format
   run s = do
     resFmt ← evalStateT s fmt
     let errs = C.runConstraint formatConstraint resFmt
     when (errs /= []) $ Left $ joinWith "; " errs
     pure $ Format $ fromFoldable resFmt --- TODO make sure List used here is fine
 
-go ∷ List Command → StateT FDT.Formatter (Either String) (List Command)
+go
+  ∷ List Command
+  → StateT FDT.Formatter (Either String) (List Command)
 go currFmt = get >>= \a → case (takeDate a <|> takeTime a) of
   Just (Left err)  → lift $ Left err
-  Just (Right (Tuple restRes restFmt)) → let res = put restFmt *> pure (currFmt <> restRes) in
-    if null restFmt then res else res >>= go
-  Nothing → get >>= \restFmt → lift $ Left $ "left unconsumed format: " <> show restFmt
+  Just (Right (Tuple restRes restFmt)) →
+    let
+      res = do
+        put restFmt
+        pure $ currFmt <> restRes
+    in
+      if null restFmt
+        then res
+        else res >>= go
+  Nothing → get >>= \restFmt → lift $
+  Left $ "left unconsumed format: " <> show restFmt
 
-takeDate ∷ FDT.Formatter → Maybe (Either String (Tuple (List Command) FDT.Formatter))
+takeDate
+  ∷ FDT.Formatter
+  → Maybe (Either String (Tuple (List Command) FDT.Formatter))
 takeDate = consumeWhile
   (DateF.toCommand >>> isJust)
   (DateF.fromDateTimeFormatter >>> bimap
     ("Date Format error: " <> _ )
     (Date >>> pure))
 
-takeTime ∷ FDT.Formatter → Maybe (Either String (Tuple (List Command) FDT.Formatter))
+takeTime
+  ∷ FDT.Formatter
+  → Maybe (Either String (Tuple (List Command) FDT.Formatter))
 takeTime = consumeWhile
   (TimeF.toCommand >>> isJust)
   (TimeF.fromDateTimeFormatter >>> bimap
