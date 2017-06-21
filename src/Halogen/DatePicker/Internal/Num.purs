@@ -82,7 +82,7 @@ toMbString hasNumberInputVal number = (Just $ maybe "" hasNumberInputVal.toValue
 evalPicker ∷ ∀ val m . HasNumberInputVal val → QueryIn val ~> DSL val m
 evalPicker hasNumberInputVal (SetValue number next) = do
   H.modify _{number = Tuple number (toMbString hasNumberInputVal number)}
-  pure $ next unit
+  pure $ reply unit
 evalPicker _ (GetValue next) = H.gets _.number <#> (fst >>> next)
 
 

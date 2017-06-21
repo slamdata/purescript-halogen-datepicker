@@ -89,9 +89,9 @@ evalPicker hasChoiceInputVal (SetValue value next) = do
   if (value == head values || elem value (tail values))
     then do
       H.modify _{value = value}
-      pure $ next Nothing
+      pure $ reply Nothing
     else do
-      pure $ next (Just ValueIsNotInValues)
+      pure $ reply (Just ValueIsNotInValues)
 evalPicker _ (GetValue next) = H.gets _.value <#> next
 
 

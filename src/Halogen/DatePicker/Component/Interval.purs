@@ -145,7 +145,9 @@ maybeLeft (Just (Right a)) = Right a
 maybeLeft (Just (Left a)) = Left $ Just a
 maybeLeft Nothing = Left $ Nothing
 
-collectValues ∷ ∀ d a m. Interval d a → DSL m (Interval Duration.State DateTime.State)
+collectValues ∷ ∀ d a m
+  . Interval d a
+  → DSL m (Interval Duration.State DateTime.State)
 collectValues format = case format of
   StartEnd a b → StartEnd <$> getDateTime false <*> getDateTime true
   DurationEnd d a → DurationEnd <$> getDuration <*> getDateTime false
@@ -155,7 +157,9 @@ collectValues format = case format of
 getDuration ∷ ∀ m. DSL m (PickerValue DurationError IsoDuration)
 getDuration = queryDuration $ H.request $ left <<< Base <<< GetValue
 
-getDateTime ∷ ∀ m. Boolean → DSL m (PickerValue DateTimeError DateTime)
+getDateTime ∷ ∀ m
+  . Boolean
+  → DSL m (PickerValue DateTimeError DateTime)
 getDateTime idx  = queryDateTime idx $ H.request $ left <<< Base <<< GetValue
 
 resetChildErrorBasedOnMessage ∷ ∀ m. MessageIn → DSL m Unit
@@ -167,7 +171,12 @@ resetChildError ∷ ∀ m. F.Format → DSL m Unit
 resetChildError format = do
   onFormat resetDateTime resetDuration format
 
-onFormat ∷ ∀ m a d. Apply m ⇒ (Boolean → m Unit) → m Unit → Interval d a → m Unit
+onFormat ∷ ∀ m a d
+  . Apply m
+  ⇒ (Boolean → m Unit)
+  → m Unit
+  → Interval d a
+  → m Unit
 onFormat onDateTime onDuration format = case format of
   StartEnd a b → onDateTime false *> onDateTime true
   DurationEnd d a → onDuration *> onDateTime false
@@ -179,15 +188,16 @@ evalPicker format (ResetError next) = do
   H.put Nothing
   resetChildError format
   pure next
-evalPicker format (Base (SetValue interval next)) = do
+evalPicker format (Base (SetValue interval reply)) = do
   res ← case viewInterval format interval <#> setInterval of
     Just x → x $> Nothing
     Nothing → pure $ Just IntervalIsNotInShapeOfFormat
   when (isNothing res) $ H.put interval
-  pure $ next res
-evalPicker _ (Base (GetValue next)) = H.get <#> next
+  pure $ reply res
+evalPicker _ (Base (GetValue reply)) = H.get <#> reply
 
-type ChildStates = Interval (Maybe Duration.State) (Maybe DateTime.State)
+type ChildStates
+  = Interval (Maybe Duration.State) (Maybe DateTime.State)
 
 setInterval ∷ ∀ m. ChildStates → DSL m Unit
 setInterval = case _ of
@@ -203,7 +213,7 @@ setInterval = case _ of
   JustDuration d → do
     for_ d setDuration
 
-viewInterval ∷ F.Format → State → Maybe (ChildStates)
+viewInterval ∷ F.Format → State → Maybe ChildStates
 viewInterval format input = case format, mapedState input of
   StartEnd _ _ , Just interval@(StartEnd _ _) → Just $ interval
   DurationEnd _ _ , Just interval@(DurationEnd _ _) → Just $ interval
@@ -212,7 +222,7 @@ viewInterval format input = case format, mapedState input of
   _, Nothing → Just $ bimap (const $ Just Nothing) (const $ Just Nothing) format
   _ , _ → Nothing
   where
-  mapedState ∷ State → Maybe (ChildStates)
+  mapedState ∷ State → Maybe ChildStates
   mapedState = map $ either (bimap mkErr mkErr) (bimap mkVal mkVal)
   mkVal ∷ ∀ e a. a → Maybe (PickerValue e a)
   mkVal = Just <<< Just <<< Right

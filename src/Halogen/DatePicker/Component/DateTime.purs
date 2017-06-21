@@ -13,6 +13,7 @@ import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Maybe (Maybe(..))
 import Data.Maybe.Last (Last(..))
+import Data.Monoid (mempty)
 import Data.Monoid.Additive (Additive(..))
 import Data.Newtype (unwrap)
 import Data.Profunctor.Join (Join(..))
@@ -118,14 +119,22 @@ formatToSteps format = for (unwrap format) case _ of
   where
   applyTime ∷ PickerValue TimeError Time → StepM
   applyTime val = Join $ Star $ \dt → case val of
-    Just (Right time) → pure $ setTimeDt time dt
-    Just (Left err) → tell (Just $ Tuple (Additive 1) $ bimap Last Last $ timeError err) *> pure dt
-    Nothing → tell (Just $ Tuple (Additive 0) $ Tuple (Last Nothing) (Last Nothing)) *> pure dt
+    Just (Right time) →
+      pure $ setTimeDt time dt
+    Just (Left err) →
+      writeErr dt (Additive 1) (biLast $ timeError err)
+    Nothing →
+      writeErr dt (Additive 0) mempty
   applyDate ∷ PickerValue DateError Date → StepM
   applyDate val = Join $ Star $ \dt → case val of
-    Just (Right date) → pure $ setDateDt date dt
-    Just (Left err) → tell (Just $ Tuple (Additive 1) $ bimap Last Last $ dateError err) *> pure dt
-    Nothing → tell (Just $ Tuple (Additive 0) $ Tuple (Last Nothing) (Last Nothing)) *> pure dt
+    Just (Right date) →
+      pure $ setDateDt date dt
+    Just (Left err) →
+      writeErr dt (Additive 1) (biLast $ dateError err)
+    Nothing →
+      writeErr dt (Additive 0) mempty
+  writeErr dt a b = tell (Just $ Tuple a b) *> pure dt
+  biLast = bimap Last Last
 
 setTimeDt ∷ Time → DateTime → DateTime
 setTimeDt x dt = modifyTime (const x) dt
@@ -133,7 +142,12 @@ setDateDt ∷ Date → DateTime → DateTime
 setDateDt x dt = modifyDate (const x) dt
 
 
-stepsToFunc ∷ ∀ f. Foldable f ⇒ Int → f StepM → DateTime → Either (Tuple Boolean DateTimeError) DateTime
+stepsToFunc ∷ ∀ f
+  . Foldable f
+  ⇒ Int
+  → f StepM
+  → DateTime
+  → Either (Tuple Boolean DateTimeError) DateTime
 stepsToFunc childCount steps dt = fold steps # \(Join (Star f)) → case runWriter $ f dt of
   Tuple res Nothing → Right res
   Tuple res (Just (Tuple (Additive errCount) err)) → Left $ Tuple
@@ -141,7 +155,9 @@ stepsToFunc childCount steps dt = fold steps # \(Join (Star f)) → case runWrit
     (bimap unwrap unwrap err)
 
 
-buildDateTime ∷ ∀ m. F.Format → DSL m (Either (Tuple Boolean DateTimeError) DateTime)
+buildDateTime ∷ ∀ m
+  . F.Format
+  → DSL m (Either (Tuple Boolean DateTimeError) DateTime)
 buildDateTime format = do
   steps ← formatToSteps format
   pure $ stepsToFunc (length $ unwrap format) steps bottom
@@ -152,13 +168,13 @@ evalPicker format (ResetError next) = do
   H.put Nothing
   resetChildError format
   pure next
-evalPicker format (Base (SetValue dateTime next)) = do
+evalPicker format (Base (SetValue dateTime reply)) = do
   H.put dateTime
   for_ (unwrap format) case _ of
     F.Time _ → setTime $ value dateTime <#> (time >>> Right)
     F.Date _ → setDate $ value dateTime <#> (date >>> Right)
-  pure $ next unit
-evalPicker _ (Base (GetValue next)) = H.get <#> next
+  pure $ reply unit
+evalPicker _ (Base (GetValue reply)) = H.get <#> reply
 
 setTime ∷ ∀ m. PickerValue TimeError Time → DSL m Unit
 setTime val = queryTime $ H.request $ left <<< (Base <<< SetValue val)

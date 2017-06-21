@@ -9,6 +9,7 @@ import Data.DateTime (DateTime(..))
 import Data.Either (Either(..), either)
 import Data.Either.Nested as Either
 import Data.Enum (class BoundedEnum, toEnum)
+import Data.Foldable (fold)
 import Data.Formatter.Interval (unformatInterval)
 import Data.Functor.Coproduct (left)
 import Data.Functor.Coproduct.Nested as Coproduct
@@ -62,7 +63,13 @@ data MessagePayload
   | MsgDuration DurationIdx Duration.Message
   | MsgInterval IntervalIdx Interval.Message
 
-type ChildQuery = Coproduct.Coproduct5 Time.Query Date.Query DateTime.Query Duration.Query Interval.Query
+type ChildQuery
+  = Coproduct.Coproduct5
+    Time.Query
+    Date.Query
+    DateTime.Query
+    Duration.Query
+    Interval.Query
 
 type State =
   { times ∷ Map TimeIdx String
@@ -96,6 +103,8 @@ main ∷ Eff (HA.HalogenEffects ()) Unit
 main = HA.runHalogenAff do
   body ← HA.awaitBody
   runUI example unit body
+
+type StrOr = Either String
 
 example ∷ ∀ m. Applicative m ⇒ H.Component HH.HTML Query Unit Void m
 example =
@@ -198,63 +207,102 @@ example =
   testDateTime = DateTime testDate (bottom # setHour (enum 2) # setMinute (enum 2))
 
   testDuration ∷ IsoDuration
-  testDuration = unsafePartialBecause "this duration must be valid" fromJust $ I.mkIsoDuration $ I.year 100.0 <> I.month 25.0 <> I.day 245.0 <> I.hour 0.0 <> I.minute 100.0 <> I.second 124.0
+  testDuration = unsafePartialBecause "this duration must be valid" fromJust
+    $ I.mkIsoDuration
+    $ fold
+      [ I.year 100.0
+      , I.month 25.0
+      , I.day 245.0
+      , I.hour 0.0
+      , I.minute 100.0
+      , I.second 124.0
+      ]
 
+  -- TODO refactor this
   enum ∷ ∀ a. BoundedEnum a ⇒ Int → a
   enum = unsafePartialBecause "ints passed to this func must be in range" fromJust <<< toEnum
 
-  renderTime ∷ State → Int → String → Either String Time → Array (HTML m)
+  renderTime ∷ State → Int → String → StrOr Time → Array (HTML m)
   renderTime s = renderExample timeConfig s.times
 
-  renderDate ∷ State → Int → String → Either String Date → Array (HTML m)
+  renderDate ∷ State → Int → String → StrOr Date → Array (HTML m)
   renderDate s = renderExample dateConfig s.dates
 
-  renderDuration ∷ State → Int → Array DurationF.Command → Either String IsoDuration → Array (HTML m)
+  renderDuration
+    ∷ State
+    → Int
+    → Array DurationF.Command
+    → StrOr IsoDuration
+    → Array (HTML m)
   renderDuration s = renderExample durationConfig s.durations
 
-  renderInterval ∷ State → Int → Interval (Array DurationF.Command) String → Either String (Interval IsoDuration DateTime) → Array (HTML m)
+  renderInterval
+    ∷ State
+    → Int
+    → Interval (Array DurationF.Command) String
+    → StrOr (Interval IsoDuration DateTime)
+    → Array (HTML m)
   renderInterval s = renderExample intervalConfig s.intervals
 
-  renderDateTime ∷ State → Int → String → Either String DateTime → Array (HTML m)
+  renderDateTime
+    ∷ State
+    → Int
+    → String
+    → StrOr DateTime
+    → Array (HTML m)
   renderDateTime s = renderExample dateTimeConfig s.dateTimes
 
   eval ∷ Query ~> DSL m
   eval (Set payload next) = do
     map mustBeMounted case payload of
-      SetTime     idx val → H.query' timeConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
-      SetDate     idx val → H.query' dateConfig.cp     idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
-      SetDateTime idx val → H.query' dateTimeConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
-      SetDuration idx val → H.query' durationConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+      SetTime idx val →
+        H.query' timeConfig.cp idx
+          $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+      SetDate idx val →
+        H.query' dateConfig.cp idx
+          $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+      SetDateTime idx val →
+        H.query' dateTimeConfig.cp idx
+          $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+      SetDuration idx val →
+        H.query' durationConfig.cp idx
+          $ H.request $ left <<< Base <<< (SetValue $ map Right val)
       SetInterval idx val → do
-        res ← H.query' intervalConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
-        pure $ void res -- <#> (\error →  D.traceAny {message:"can't update interval", error})
+        map void $ H.query' intervalConfig.cp idx
+          $ H.request $ left <<< Base <<< (SetValue $ map Right val)
     pure next
   eval (HandleMessage payload next) = do
     case payload of
-      MsgTime     idx (NotifyChange val) → H.modify \s → s {times     = insert idx (show val) s.times}
-      MsgDate     idx (NotifyChange val) → H.modify \s → s {dates     = insert idx (show val) s.dates}
-      MsgDateTime idx (NotifyChange val) → H.modify \s → s {dateTimes = insert idx (show val) s.dateTimes}
-      MsgDuration idx (NotifyChange val) → H.modify \s → s {durations = insert idx (show val) s.durations}
-      MsgInterval idx (NotifyChange val) → H.modify \s → s {intervals = insert idx (show val) s.intervals}
+      MsgTime idx (NotifyChange val) →
+        H.modify \s → s{ times = insert idx (show val) s.times }
+      MsgDate idx (NotifyChange val) →
+        H.modify \s → s{ dates = insert idx (show val) s.dates }
+      MsgDateTime idx (NotifyChange val) →
+        H.modify \s → s{ dateTimes = insert idx (show val) s.dateTimes }
+      MsgDuration idx (NotifyChange val) →
+        H.modify \s → s{ durations = insert idx (show val) s.durations }
+      MsgInterval idx (NotifyChange val) →
+        H.modify \s → s{ intervals = insert idx (show val) s.intervals }
     pure next
 
 
 
 type ExampleConfig fmtInput input fmt query out m =
-  { mkFormat ∷ fmtInput → Either String fmt
-  , unformat ∷ fmt → String → Either String input
+  { mkFormat ∷ fmtInput → StrOr fmt
+  , unformat ∷ fmt → String → StrOr input
   , picker ∷ fmt → H.Component HH.HTML query Unit out m
   , handler ∷ ∀ z. Int → out → z → Query z
   , setter ∷ ∀ z. Int → Maybe input → z → Query z
   , cp ∷ CP.ChildPath query ChildQuery Int Slot
   }
 
-renderExample ∷ ∀ fmtInput input fmt query out m
+renderExample
+  ∷ ∀ fmtInput input fmt query out m
   . ExampleConfig fmtInput input fmt query out m
   → Map Int String
   → Int
   → fmtInput
-  → Either String input
+  → StrOr input
   → Array (HTML m)
 renderExample c items idx fmt' value'= unEither $ do
   fmt ← c.mkFormat fmt'
@@ -262,17 +310,27 @@ renderExample c items idx fmt' value'= unEither $ do
   let cmp = c.picker fmt
   pure
     [ HH.slot' c.cp idx cmp unit (HE.input (c.handler idx))
-    , HH.button [ HE.onClick $ HE.input_ $ c.setter idx (Just value)] [ HH.text "reset"]
-    , HH.button [ HE.onClick $ HE.input_ $ c.setter idx Nothing] [ HH.text "clear"]
+    , btn (Just value) "reset"
+    , btn Nothing "clear"
     , case lookup idx items of
         Nothing → HH.div_ [HH.text "no value is set"]
         Just val → HH.div_ [HH.text $ "value: " <> val]
     ]
   where
-  unEither ∷ Either String (Array (HTML m)) → Array (HTML m)
+  btn :: Maybe input → String → HTML m
+  btn val txt = HH.button
+    [ HE.onClick $ HE.input_ $ c.setter idx val]
+    [ HH.text txt]
+  unEither ∷ StrOr (Array (HTML m)) → Array (HTML m)
   unEither = either (HH.text >>> pure >>> HH.div_ >>> pure) id
 
-timeConfig ∷ ∀ m. ExampleConfig String Time TimeF.Format Time.Query Time.Message m
+timeConfig ∷ ∀ m. ExampleConfig
+  String
+  Time
+  TimeF.Format
+  Time.Query
+  Time.Message
+  m
 timeConfig =
   { mkFormat: TimeF.fromString
   , unformat: TimeF.unformat
@@ -282,7 +340,13 @@ timeConfig =
   , cp: cpTime
   }
 
-dateConfig ∷ ∀ m. ExampleConfig String Date DateF.Format Date.Query Date.Message m
+dateConfig ∷ ∀ m. ExampleConfig
+  String
+  Date
+  DateF.Format
+  Date.Query
+  Date.Message
+  m
 dateConfig =
   { mkFormat: DateF.fromString
   , unformat: DateF.unformat
@@ -292,7 +356,13 @@ dateConfig =
   , cp: cpDate
   }
 
-dateTimeConfig ∷ ∀ m. ExampleConfig String DateTime DateTimeF.Format DateTime.Query DateTime.Message m
+dateTimeConfig ∷ ∀ m. ExampleConfig
+  String
+  DateTime
+  DateTimeF.Format
+  DateTime.Query
+  DateTime.Message
+  m
 dateTimeConfig =
   { mkFormat: DateTimeF.fromString
   , unformat: DateTimeF.unformat
@@ -302,7 +372,13 @@ dateTimeConfig =
   , cp: cpDateTime
   }
 
-durationConfig ∷ ∀ m. ExampleConfig (Array DurationF.Command) IsoDuration DurationF.Format Duration.Query Duration.Message m
+durationConfig ∷ ∀ m. ExampleConfig
+  (Array DurationF.Command)
+  IsoDuration
+  DurationF.Format
+  Duration.Query
+  Duration.Message
+  m
 durationConfig =
   { mkFormat: DurationF.mkFormat
   , unformat: const DurationF.unformat

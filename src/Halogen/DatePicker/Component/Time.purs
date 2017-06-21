@@ -148,11 +148,11 @@ evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m
 evalPicker _ (ResetError next) = do
   H.put Nothing
   pure next
-evalPicker format (Base (SetValue time next)) = do
+evalPicker format (Base (SetValue time reply)) = do
   propagateChange format time
   H.put time
-  pure $ next unit
-evalPicker _ (Base (GetValue next)) = H.get <#> next
+  pure $ reply unit
+evalPicker _ (Base (GetValue reply)) = H.get <#> reply
 
 propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
 propagateChange format time = do

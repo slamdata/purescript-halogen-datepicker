@@ -131,11 +131,11 @@ buildDate format = do
   mbKleisliEndo ← for (sort $ unwrap format) $ commandCata
     { text: \cmd → pure $ Just $ mempty
     , enum: \cmd → do
-      num ← H.query' cpNum cmd $ H.request (left <<< GetValue)
-      pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
+        num ← H.query' cpNum cmd $ H.request (left <<< GetValue)
+        pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     , choice: \cmd → do
-      num ← H.query' cpChoice cmd $ H.request (left <<< GetValue)
-      pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
+        num ← H.query' cpChoice cmd $ H.request (left <<< GetValue)
+        pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     }
   pure case map fold (sequence mbKleisliEndo) of
     Just (Join (Star f)) → maybe (Left true) Right $  (toEnum 0) >>= (_ `setYear` bottom) >>= f
@@ -146,11 +146,11 @@ evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m
 evalPicker _ (ResetError next) = do
   H.put Nothing
   pure next
-evalPicker format (Base (SetValue date next)) = do
+evalPicker format (Base (SetValue date reply)) = do
   propagateChange format date
   H.put date
-  pure $ next unit
-evalPicker _ (Base (GetValue next)) = H.get <#> next
+  pure $ reply unit
+evalPicker _ (Base (GetValue reply)) = H.get <#> reply
 
 propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
 propagateChange format date = do
