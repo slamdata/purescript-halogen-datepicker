@@ -190,17 +190,30 @@ evalPicker (ResetError next) = do
   pure next
 evalPicker (Base (SetValue interval next)) = do
   {format} <- H.get
-  res <- case viewInterval format interval of
-    Just (StartEnd a b) → for_ a (setDateTime false) *> for_ b (setDateTime true) $> Nothing
-    Just (DurationEnd d a) → for_ d setDuration *> for_ a (setDateTime false) $> Nothing
-    Just (StartDuration a d) → for_ a (setDateTime false) *> for_ d setDuration $> Nothing
-    Just (JustDuration d) → for_ d setDuration $> Nothing
+  res <- case viewInterval format interval <#> setInterval of
+    Just x → x $> Nothing
     Nothing → pure $ Just IntervalIsNotInShapeOfFormat
   when (isNothing res) $ H.modify _{ interval = interval }
   pure $ next res
 evalPicker (Base (GetValue next)) = H.gets _.interval <#> next
 
-viewInterval ∷ F.Format → Input → Maybe (Interval (Maybe Duration.Input) (Maybe DateTime.Input))
+type ChildInputs = Interval (Maybe Duration.Input) (Maybe DateTime.Input)
+
+setInterval ∷ ∀ m. ChildInputs -> DSL m Unit
+setInterval = case _ of
+  StartEnd a b → do
+    for_ a $ setDateTime false
+    for_ b $ setDateTime true
+  DurationEnd d a → do
+    for_ d setDuration
+    for_ a $ setDateTime false
+  StartDuration a d → do
+    for_ a $ setDateTime false
+    for_ d setDuration
+  JustDuration d → do
+    for_ d setDuration
+
+viewInterval ∷ F.Format → Input → Maybe (ChildInputs)
 viewInterval format input = case format, mapedInput input of
   StartEnd _ _ , Just interval@(StartEnd _ _) → Just $ interval
   DurationEnd _ _ , Just interval@(DurationEnd _ _) → Just $ interval
@@ -209,7 +222,7 @@ viewInterval format input = case format, mapedInput input of
   _, Nothing → Just $ bimap (const $ Just Nothing) (const $ Just Nothing) format
   _ , _ → Nothing
   where
-  mapedInput ∷ Input → Maybe (Interval (Maybe Duration.Input) (Maybe DateTime.Input))
+  mapedInput ∷ Input → Maybe (ChildInputs)
   mapedInput = map $ either (bimap mkErr mkErr) (bimap mkVal mkVal)
   mkVal ∷ ∀ e a. a → Maybe (PickerValue e a)
   mkVal = Just <<< Just <<< Right
