@@ -94,7 +94,7 @@ type DSL m = H.ParentDSL State Query ChildQuery Slot Void m
 
 main ∷ Eff (HA.HalogenEffects ()) Unit
 main = HA.runHalogenAff do
-  body <- HA.awaitBody
+  body ← HA.awaitBody
   runUI example unit body
 
 example ∷ ∀ m. Applicative m ⇒ H.Component HH.HTML Query Unit Void m
@@ -226,7 +226,7 @@ example =
       SetDateTime idx val → H.query' dateTimeConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
       SetDuration idx val → H.query' durationConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
       SetInterval idx val → do
-        res <- H.query' intervalConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+        res ← H.query' intervalConfig.cp idx $ H.request $ left <<< Base <<< (SetValue $ map Right val)
         pure $ void res -- <#> (\error →  D.traceAny {message:"can't update interval", error})
     pure next
   eval (HandleMessage payload next) = do
@@ -257,8 +257,8 @@ renderExample ∷ ∀ fmtInput input fmt query out m
   → Either String input
   → Array (HTML m)
 renderExample c items idx fmt' value'= unEither $ do
-  fmt <- c.mkFormat fmt'
-  value <- either (c.unformat fmt) Right value'
+  fmt ← c.mkFormat fmt'
+  value ← either (c.unformat fmt) Right value'
   let cmp = c.picker fmt
   pure
     [ HH.slot' c.cp idx cmp unit (HE.input (c.handler idx))

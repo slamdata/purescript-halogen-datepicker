@@ -75,7 +75,7 @@ render hasChoiceInputVal {title, values, value}  = HH.select
 
 evalChoice ∷ ∀ val m . Eq val ⇒ ChoiceQuery val ~> DSL val m
 evalChoice (Update value next) = do
-  s <- H.get
+  s ← H.get
   -- there wouldn't be case when value is Nothing so it's fine to do `for_`
   for_ value \value' → do
     H.modify _{value = value'}
@@ -85,7 +85,7 @@ evalChoice (Update value next) = do
 
 evalPicker ∷ ∀ val m . Eq val ⇒ HasChoiceInputVal val → QueryIn val ~> DSL val m
 evalPicker hasChoiceInputVal (SetValue value next) = do
-  {values} <- H.get
+  {values} ← H.get
   if (value == head values || elem value (tail values))
     then do
       H.modify _{value = value}

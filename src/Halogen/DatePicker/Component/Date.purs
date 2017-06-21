@@ -120,13 +120,13 @@ evalDate format (Update update next) = do
 
 buildDate ∷ ∀ m. F.Format → DSL m (Either Boolean Date)
 buildDate format = do
-  mbKleisliEndo <- for (sort $ unwrap format) $ commandCata
+  mbKleisliEndo ← for (sort $ unwrap format) $ commandCata
     { text: \cmd → pure $ Just $ mempty
     , enum: \cmd → do
-      num <- H.query' cpNum cmd $ H.request (left <<< GetValue)
+      num ← H.query' cpNum cmd $ H.request (left <<< GetValue)
       pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     , choice: \cmd → do
-      num <- H.query' cpChoice cmd $ H.request (left <<< GetValue)
+      num ← H.query' cpChoice cmd $ H.request (left <<< GetValue)
       pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     }
   pure case map fold (sequence mbKleisliEndo) of
@@ -153,7 +153,7 @@ propagateChange format date = do
       H.query' cpNum cmd $ H.request $ left <<< SetValue val
     , choice: \cmd → do
       let val = value date >>= F.toGetter cmd
-      res <- H.query' cpChoice cmd $ H.request $ left <<< SetValue val
+      res ← H.query' cpChoice cmd $ H.request $ left <<< SetValue val
       pure $ res >>= case _ of
         Just Choice.ValueIsNotInValues → Nothing
         Nothing → Just unit

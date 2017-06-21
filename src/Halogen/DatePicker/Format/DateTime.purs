@@ -62,7 +62,7 @@ fromDateTimeFormatter fmt = run $ go Nil
   where
   run ∷ StateT FDT.Formatter (Either String) (List Command) → Either String Format
   run s = do
-    resFmt <- evalStateT s fmt
+    resFmt ← evalStateT s fmt
     let errs = C.runConstraint formatConstraint resFmt
     when (errs /= []) $ Left $ joinWith "; " errs
     pure $ Format $ fromFoldable resFmt --- TODO make sure List used here is fine

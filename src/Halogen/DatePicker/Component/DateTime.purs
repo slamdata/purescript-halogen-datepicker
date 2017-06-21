@@ -75,7 +75,7 @@ evalDateTime ∷ ∀ m . F.Format → DateTimeQuery ~> DSL m
 evalDateTime format (Update msg next) = do
   transitionState case _ of
     Nothing → do
-      dt <- buildDateTime format
+      dt ← buildDateTime format
       case dt of
         Left (Tuple false _) → resetChildErrorBasedOnMessage msg
         _ → pure unit
@@ -143,7 +143,7 @@ stepsToFunc childCount steps dt = fold steps # \(Join (Star f)) → case runWrit
 
 buildDateTime ∷ ∀ m. F.Format → DSL m (Either (Tuple Boolean DateTimeError) DateTime)
 buildDateTime format = do
-  steps <- formatToSteps format
+  steps ← formatToSteps format
   pure $ stepsToFunc (length $ unwrap format) steps bottom
 
 

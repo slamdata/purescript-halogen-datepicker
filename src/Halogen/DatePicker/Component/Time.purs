@@ -125,15 +125,15 @@ evalTime format (Update update next) = do
 
 buildTime ∷ ∀ m. F.Format → DSL m (Maybe Time)
 buildTime format = do
-  mbKleisliEndo <- for (sort $ unwrap format) mkKleisli
+  mbKleisliEndo ← for (sort $ unwrap format) mkKleisli
   pure $ map fold (sequence mbKleisliEndo) >>= \(Join (Star f)) → f bottom
   where
   mkKleisli (F.Placeholder _) = pure $ Just $ mempty
   mkKleisli cmd@F.Meridiem = do
-    num <- H.query' cpChoice cmd $ H.request (left <<< GetValue)
+    num ← H.query' cpChoice cmd $ H.request (left <<< GetValue)
     pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
   mkKleisli cmd = do
-    num <- H.query' cpNum cmd $ H.request (left <<< GetValue)
+    num ← H.query' cpNum cmd $ H.request (left <<< GetValue)
     pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
 
 
@@ -154,7 +154,7 @@ propagateChange format time = do
   change ∷ F.Command → DSL m (Maybe Unit)
   change (F.Placeholder _ ) = pure (Just unit)
   change cmd@F.Meridiem = do
-    res <- H.query' cpChoice cmd $ H.request $ left <<< SetValue m
+    res ← H.query' cpChoice cmd $ H.request $ left <<< SetValue m
     pure $ res >>= case _ of
       Just Choice.ValueIsNotInValues → Nothing
       Nothing → Just unit

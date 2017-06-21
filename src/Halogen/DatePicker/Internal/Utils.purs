@@ -53,8 +53,8 @@ transitionState ∷ forall f g p m val err
     )
   → TransitionM f g p m err val Unit
 transitionState f = do
-  val <- H.get
-  nextVal <- map (steper val) (f val)
+  val ← H.get
+  nextVal ← map (steper val) (f val)
   val `moveStateTo` nextVal
   where
   moveStateTo :: forall a. Eq a ⇒ a -> a -> HalogenM a f g p (PickerMessage a) m Unit

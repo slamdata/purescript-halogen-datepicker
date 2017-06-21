@@ -80,8 +80,8 @@ evalDuration format (UpdateCommand cmd val next) = do
 
 buildDuration ∷ ∀ m. F.Format → DSL m (Either Boolean IsoDuration)
 buildDuration format = do
-  mbEndo <- for (unwrap format) \cmd → do
-    num <- H.query cmd $ H.request (left <<< GetValue)
+  mbEndo ← for (unwrap format) \cmd → do
+    num ← H.query cmd $ H.request (left <<< GetValue)
     pure $ join num <#> F.toSetter cmd >>> Endo
   pure case map fold $ sequence mbEndo of
    Just (Endo f) → maybe (Left true) Right $ mkIsoDuration $ f mempty

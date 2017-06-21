@@ -71,7 +71,7 @@ render hasNumberInputVal s = numberElement hasNumberInputVal Update { title:s.ti
 
 evalNumber ∷ ∀ val m . Eq val ⇒ NumQuery val ~> DSL val m
 evalNumber (Update number next) = do
-  s <- H.get
+  s ← H.get
   H.modify _{number = number}
   unless (number == s.number) $ H.raise (NotifyChange $ fst number)
   pure next
@@ -143,7 +143,7 @@ numberElement hasNumberInputVal query {title, range} value = HH.input $
   --  * if user types `1e1` we will parse it as `10`
   parseValidInput ∷ InputValue String → InputValue val
   parseValidInput = lmap $ (=<<) \str → do
-    val <- hasNumberInputVal.fromString str
+    val ← hasNumberInputVal.fromString str
     guard (hasNumberInputVal.toValue val == str)
     pure val
 
@@ -170,10 +170,10 @@ inputValueFromEvent event = let val = validValueFromEvent event
 
 validValueFromEvent ∷ Event → Maybe String
 validValueFromEvent event = join $ asRight $ runExcept $ do
-  target <- readProp "target" $ toForeign event
-  validity <- readProp "validity" target
-  badInput <- readProp "badInput" validity >>= readBoolean
-  value <- readProp "value" target >>= readString
+  target ← readProp "target" $ toForeign event
+  validity ← readProp "validity" target
+  badInput ← readProp "badInput" validity >>= readBoolean
+  value ← readProp "value" target >>= readString
   pure (if badInput then Nothing else Just value)
 
 type HasNumberInputVal a  =

@@ -92,7 +92,7 @@ evalInterval ∷ ∀ m . F.Format → IntervalQuery ~> DSL m
 evalInterval format (Update msg next) = do
   transitionState case _ of
     Nothing  → do
-      newInterval <- buildInterval format
+      newInterval ← buildInterval format
       case newInterval of
         Left (Tuple false _) → resetChildErrorBasedOnMessage msg
         _ → pure unit
@@ -118,7 +118,7 @@ evalInterval format (Update msg next) = do
 
 buildInterval ∷ ∀ m. F.Format → DSL m (Either (Tuple Boolean IntervalError) IsoInterval)
 buildInterval format = do
-  vals <- collectValues format
+  vals ← collectValues format
   pure $ lmap addForce $ unVals vals
 
 addForce ∷ IntervalError → Tuple Boolean IntervalError
@@ -180,7 +180,7 @@ evalPicker format (ResetError next) = do
   resetChildError format
   pure next
 evalPicker format (Base (SetValue interval next)) = do
-  res <- case viewInterval format interval <#> setInterval of
+  res ← case viewInterval format interval <#> setInterval of
     Just x → x $> Nothing
     Nothing → pure $ Just IntervalIsNotInShapeOfFormat
   when (isNothing res) $ H.put interval
