@@ -30,7 +30,7 @@ import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (componentProps, moveStateTo, steper', pickerProps, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (componentProps, transitionState', pickerProps, mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -117,14 +117,11 @@ renderCommand cmd = HH.li componentProps $ pure case cmd of
 
 evalTime ∷ ∀ m . F.Format → TimeQuery ~> DSL m
 evalTime format (Update update next) = do
-  time <- H.get
-  nextTime <- map (steper' time InvalidTime <<< maybe (Left false) Right) $
+  transitionState' InvalidTime \time → map (maybe (Left false) Right) $
     case time of
       Just (Right prevTime) → pure $ update prevTime
       _  → buildTime format
-  time `moveStateTo` nextTime
   pure next
-
 
 buildTime ∷ ∀ m. F.Format → DSL m (Maybe Time)
 buildTime format = do

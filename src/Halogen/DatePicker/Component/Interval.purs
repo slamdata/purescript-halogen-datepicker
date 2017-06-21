@@ -23,7 +23,7 @@ import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Format.Duration as DurationF
 import Halogen.Datepicker.Format.Interval as F
 import Halogen.Datepicker.Internal.Elements (textElement)
-import Halogen.Datepicker.Internal.Utils (componentProps, moveStateTo, asLeft, mustBeMounted, pickerProps, steper)
+import Halogen.Datepicker.Internal.Utils (componentProps, transitionState, asLeft, mustBeMounted, pickerProps)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -90,8 +90,7 @@ renderDateTime fmt idx = HH.slot' cpDateTime idx (DateTime.picker fmt) unit (HE.
 --       if any of it's child is `Nothing` so return nonsence value
 evalInterval ∷ ∀ m . F.Format → IntervalQuery ~> DSL m
 evalInterval format (Update msg next) = do
-  interval <- H.get
-  nextInterval <- map (steper interval) case interval of
+  transitionState case _ of
     Nothing  → do
       newInterval <- buildInterval format
       case newInterval of
@@ -114,11 +113,10 @@ evalInterval format (Update msg next) = do
           DurationEnd d a → DurationEnd d dateTime
           StartDuration a d → StartDuration dateTime d
           JustDuration d → JustDuration d
-  interval `moveStateTo` nextInterval
   pure next
 
 
-buildInterval ∷ ∀ m. F.Format -> DSL m (Either (Tuple Boolean IntervalError) IsoInterval)
+buildInterval ∷ ∀ m. F.Format → DSL m (Either (Tuple Boolean IntervalError) IsoInterval)
 buildInterval format = do
   vals <- collectValues format
   pure $ lmap addForce $ unVals vals
@@ -191,7 +189,7 @@ evalPicker _ (Base (GetValue next)) = H.get <#> next
 
 type ChildStates = Interval (Maybe Duration.State) (Maybe DateTime.State)
 
-setInterval ∷ ∀ m. ChildStates -> DSL m Unit
+setInterval ∷ ∀ m. ChildStates → DSL m Unit
 setInterval = case _ of
   StartEnd a b → do
     for_ a $ setDateTime false

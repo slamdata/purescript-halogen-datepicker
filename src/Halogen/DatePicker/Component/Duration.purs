@@ -19,7 +19,7 @@ import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..
 import Halogen.Datepicker.Format.Duration as F
 import Halogen.Datepicker.Internal.Num as N
 import Halogen.Datepicker.Internal.Range (minRange)
-import Halogen.Datepicker.Internal.Utils (componentProps, moveStateTo, asRight, mustBeMounted, pickerProps, steper')
+import Halogen.Datepicker.Internal.Utils (componentProps, transitionState', asRight, mustBeMounted, pickerProps)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -71,13 +71,11 @@ overIsoDuration f d = mkIsoDuration $ f $ unIsoDuration d
 
 evalDuration ∷ ∀ m. F.Format → DurationQuery ~> DSL m
 evalDuration format (UpdateCommand cmd val next) = do
-  duration <- H.get
-  nextDuration <- map (steper' duration InvalidIsoDuration) case duration of
+  transitionState' InvalidIsoDuration case _ of
     Just (Right prevDuration) → pure
       $ maybe (Left false) Right
       $ val >>= \n → overIsoDuration (F.toSetter cmd n) prevDuration
     _  → buildDuration format
-  duration `moveStateTo` nextDuration
   pure next
 
 buildDuration ∷ ∀ m. F.Format → DSL m (Either Boolean IsoDuration)

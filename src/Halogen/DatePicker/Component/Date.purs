@@ -28,7 +28,7 @@ import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (componentProps, moveStateTo, steper', pickerProps, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (componentProps, transitionState', pickerProps, mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -112,11 +112,9 @@ renderCommand cmd = HH.li componentProps $ pure case cmd of
 
 evalDate ∷ ∀ m . F.Format → DateQuery ~> DSL m
 evalDate format (Update update next) = do
-  date <- H.get
-  nextDate <- map (steper' date InvalidDate) case date of
+  transitionState' InvalidDate case _ of
     Just (Right prevDate) → pure $ maybe (Left false) Right $ update prevDate
     _ → buildDate format
-  date `moveStateTo` nextDate
   pure next
 
 
@@ -136,7 +134,7 @@ buildDate format = do
     Nothing → Left false
 
 
-evalPicker ∷ ∀ m. F.Format -> QueryIn ~> DSL m
+evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m
 evalPicker _ (ResetError next) = do
   H.put Nothing
   pure next

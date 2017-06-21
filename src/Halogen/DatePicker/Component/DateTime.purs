@@ -28,7 +28,7 @@ import Halogen.Datepicker.Component.Time (TimeError)
 import Halogen.Datepicker.Component.Time as Time
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
 import Halogen.Datepicker.Format.DateTime as F
-import Halogen.Datepicker.Internal.Utils (componentProps, moveStateTo, steper, pickerProps, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (componentProps, transitionState, pickerProps, mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -73,8 +73,7 @@ renderCommand cmd = HH.div componentProps $ pure case cmd of
 
 evalDateTime ∷ ∀ m . F.Format → DateTimeQuery ~> DSL m
 evalDateTime format (Update msg next) = do
-  dateTime <- H.get
-  nextDateTime <- map (steper dateTime) case dateTime of
+  transitionState case _ of
     Nothing → do
       dt <- buildDateTime format
       case dt of
@@ -91,7 +90,6 @@ evalDateTime format (Update msg next) = do
         Just (Right time) → Right $ setTimeDt time dt
         Just (Left x) → Left $ timeError x
         Nothing → Left $ Tuple Nothing Nothing
-  dateTime `moveStateTo` nextDateTime
   pure next
 
 resetChildErrorBasedOnMessage ∷ ∀ m. MessageIn → DSL m Unit
