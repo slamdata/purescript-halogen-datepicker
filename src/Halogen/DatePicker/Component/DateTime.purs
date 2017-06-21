@@ -28,25 +28,19 @@ import Halogen.Datepicker.Component.Time (TimeError)
 import Halogen.Datepicker.Component.Time as Time
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
 import Halogen.Datepicker.Format.DateTime as F
-import Halogen.Datepicker.Internal.Utils (steper, pickerClasses, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (componentProps, steper, pickerProps, mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 
 type MessageIn = Either Date.Message Time.Message
 data DateTimeQuery a = Update MessageIn a
 
 type DateTimeError = Tuple (Maybe DateError) (Maybe TimeError)
 type DateTimeErrorLast = Tuple (Last DateError) (Last TimeError)
-type Input = PickerValue DateTimeError DateTime
-type QueryIn = PickerQuery Unit Input
+type State = PickerValue DateTimeError DateTime
+type QueryIn = PickerQuery Unit State
 type Query = Coproduct QueryIn DateTimeQuery
-type Message = PickerMessage Input
-
-type State =
-  { format ∷ F.Format
-  , dateTime ∷ Input
-  }
+type Message = PickerMessage State
 
 type ChildQuery = Coproduct2 Date.Query Time.Query
 type Slot = Either2 Unit Unit
@@ -62,35 +56,32 @@ type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
 picker format = H.parentComponent
-  { initialState: const $ {format, dateTime: Nothing}
-  , render: render >>> bimap (map right) right
-  , eval: coproduct evalPicker evalDateTime
+  { initialState: const Nothing
+  , render: render format >>> bimap (map right) right
+  , eval: coproduct (evalPicker format) (evalDateTime format)
   , receiver: const Nothing
   }
 
-render ∷ ∀ m. State → HTML m
-render s = HH.div [ HP.classes $ pickerClasses s.dateTime ]
-  (f <$> unwrap s.format)
-  where
-  f a = HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ renderCommand a
+render ∷ ∀ m. F.Format → State → HTML m
+render format dateTime = HH.div (pickerProps dateTime) (unwrap format <#> renderCommand)
 
 renderCommand ∷ ∀ m. F.Command → HTML m
-renderCommand cmd = case cmd of 
+renderCommand cmd = HH.div componentProps $ pure case cmd of
   F.Time fmt → HH.slot' cpTime unit (Time.picker fmt) unit (HE.input $ Right >>> Update)
   F.Date fmt → HH.slot' cpDate unit (Date.picker fmt) unit (HE.input $ Left >>> Update)
 
 
-evalDateTime ∷ ∀ m . DateTimeQuery ~> DSL m
-evalDateTime (Update msg next) = do
-  s <- H.get
-  nextDateTime <- map (steper s.dateTime) case s.dateTime of
+evalDateTime ∷ ∀ m . F.Format → DateTimeQuery ~> DSL m
+evalDateTime format (Update msg next) = do
+  dateTime <- H.get
+  nextDateTime <- map (steper dateTime) case dateTime of
     Nothing → do
-      dt <- buildDateTime
+      dt <- buildDateTime format
       case dt of
         Left (Tuple false _) → resetChildErrorBasedOnMessage msg
         _ → pure unit
       pure dt
-    Just (Left err)  → buildDateTime
+    Just (Left err) → buildDateTime format
     Just (Right dt) → pure $ lmap (Tuple false) case msg of
       Left  (NotifyChange newDate) → case newDate of
         Just (Right date) → Right $ setDateDt date dt
@@ -100,8 +91,8 @@ evalDateTime (Update msg next) = do
         Just (Right time) → Right $ setTimeDt time dt
         Just (Left x) → Left $ timeError x
         Nothing → Left $ Tuple Nothing Nothing
-  H.modify _{ dateTime = nextDateTime }
-  unless (nextDateTime == s.dateTime) $ H.raise (NotifyChange nextDateTime)
+  H.put nextDateTime
+  unless (nextDateTime == dateTime) $ H.raise (NotifyChange nextDateTime)
   pure next
 
 resetChildErrorBasedOnMessage ∷ ∀ m. MessageIn → DSL m Unit
@@ -109,9 +100,8 @@ resetChildErrorBasedOnMessage (Left (NotifyChange (Just (Left _)))) = resetDate
 resetChildErrorBasedOnMessage (Right (NotifyChange (Just (Left _)))) = resetTime
 resetChildErrorBasedOnMessage _ = pure unit
 
-resetChildError ∷ ∀ m. DSL m Unit
-resetChildError = do
-  {format} <- H.get
+resetChildError ∷ ∀ m. F.Format → DSL m Unit
+resetChildError format = do
   for_ (unwrap format) case _ of
     F.Time _ → resetTime
     F.Date _ → resetDate
@@ -154,26 +144,24 @@ stepsToFunc childCount steps dt = fold steps # \(Join (Star f)) → case runWrit
     (bimap unwrap unwrap err)
 
 
-buildDateTime ∷ ∀ m. DSL m (Either (Tuple Boolean DateTimeError) DateTime)
-buildDateTime = do
-  {format} <- H.get
+buildDateTime ∷ ∀ m. F.Format → DSL m (Either (Tuple Boolean DateTimeError) DateTime)
+buildDateTime format = do
   steps <- formatToSteps format
   pure $ stepsToFunc (length $ unwrap format) steps bottom
 
 
-evalPicker ∷ ∀ m . QueryIn ~> DSL m
-evalPicker (ResetError next) = do
-  H.modify _{ dateTime = Nothing }
-  resetChildError
+evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m
+evalPicker format (ResetError next) = do
+  H.put Nothing
+  resetChildError format
   pure next
-evalPicker (Base (SetValue dateTime next)) = do
-  H.modify _{ dateTime = dateTime }
-  {format} <- H.get
+evalPicker format (Base (SetValue dateTime next)) = do
+  H.put dateTime
   for_ (unwrap format) case _ of
     F.Time _ → setTime $ value dateTime <#> (time >>> Right)
     F.Date _ → setDate $ value dateTime <#> (date >>> Right)
   pure $ next unit
-evalPicker (Base (GetValue next)) = H.gets _.dateTime <#> next
+evalPicker _ (Base (GetValue next)) = H.get <#> next
 
 setTime ∷ ∀ m. PickerValue TimeError Time → DSL m Unit
 setTime val = queryTime $ H.request $ left <<< (Base <<< SetValue val)

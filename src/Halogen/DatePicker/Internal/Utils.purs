@@ -8,8 +8,9 @@ import Data.Bifunctor (lmap)
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Tuple (Tuple(..))
-import Halogen.Datepicker.Component.Types (PickerValue)
+import Halogen.Datepicker.Component.Types (PickerValue, isInvalid)
 import Halogen.HTML (ClassName(..))
+import Halogen.HTML.Properties as HP
 import Partial.Unsafe (unsafePartialBecause)
 
 mustBeMounted ∷ ∀ a. Maybe a → a
@@ -26,12 +27,14 @@ steper old new = case old, new of
   Nothing, Left (Tuple true err) → Just (Left err)
   Nothing, Left _ → Nothing
 
-pickerClasses ∷ ∀ e a. PickerValue e a → Array ClassName
-pickerClasses val = [ClassName "Picker"] <> (guard (isInvalid val) $> ClassName "Picker--invalid")
+
+pickerProps :: ∀ e a r z. PickerValue e a → Array (HP.IProp ( "class" :: String | z ) r )
+pickerProps val = [HP.classes classes]
   where
-  isInvalid ∷ PickerValue e a → Boolean
-  isInvalid (Just (Left _)) = true
-  isInvalid _ = false
+  classes = [ClassName "Picker"] <> (guard (isInvalid val) $> ClassName "Picker--invalid")
+
+componentProps :: forall r z. Array (HP.IProp ( "class" :: String | z ) r )
+componentProps = [HP.classes [ClassName "Picker-component"]]
 
 asRight ∷ ∀ e a f. Alternative f => Either e a → f a
 asRight = either (const empty) pure

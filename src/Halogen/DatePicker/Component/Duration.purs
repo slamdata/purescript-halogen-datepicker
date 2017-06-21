@@ -19,17 +19,16 @@ import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..
 import Halogen.Datepicker.Format.Duration as F
 import Halogen.Datepicker.Internal.Num as N
 import Halogen.Datepicker.Internal.Range (minRange)
-import Halogen.Datepicker.Internal.Utils (asRight, mustBeMounted, pickerClasses, steper')
+import Halogen.Datepicker.Internal.Utils (componentProps, asRight, mustBeMounted, pickerProps, steper')
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 
 
 data DurationQuery a = UpdateCommand F.Command (Maybe Number) a
-type Input = PickerValue DurationError IsoDuration
-type QueryIn = PickerQuery Unit Input
+type State = PickerValue DurationError IsoDuration
+type QueryIn = PickerQuery Unit State
 type Query = Coproduct QueryIn DurationQuery
-type Message = PickerMessage Input
+type Message = PickerMessage State
 
 data DurationError = InvalidIsoDuration
 derive instance durationErrorEq ∷ Eq DurationError
@@ -37,11 +36,6 @@ derive instance durationErrorOrd ∷ Ord DurationError
 derive instance durationErrorGeneric ∷ Generic DurationError _
 instance durationErrorShow ∷ Show DurationError where
   show = genericShow
-
-type State =
-  { format ∷ F.Format
-  , duration ∷ Input
-  }
 
 type Slot = F.Command
 
@@ -52,22 +46,22 @@ type DSL m = H.ParentDSL State Query (N.Query Number) Slot Message m
 
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
 picker format = H.parentComponent
-  { initialState: const $ {format, duration: Nothing}
-  , render: render >>> bimap (map right) right
-  , eval: coproduct evalPicker evalDuration
+  { initialState: const Nothing
+  , render: render format >>> bimap (map right) right
+  , eval: coproduct (evalPicker format) (evalDuration format)
   , receiver: const Nothing
   }
 
-render ∷  ∀ m. State → HTML m
-render s = HH.ul [ HP.classes $ pickerClasses s.duration ]
-    (f <$> unwrap s.format)
-  where
-  f cmd = HH.li [ HP.classes [ HH.ClassName "Picker-component" ] ]
-    [ HH.slot
-      cmd
-      (N.picker N.numberHasNumberInputVal { title: show cmd, range: minRange 0.0 })
-      unit
-      (HE.input $ \(NotifyChange n) → UpdateCommand cmd n)]
+render ∷  ∀ m. F.Format → State → HTML m
+render format duration = HH.ul (pickerProps duration) (unwrap format <#> renderCommand)
+
+renderCommand ∷ ∀ m. F.Command → HTML m
+renderCommand cmd = HH.li componentProps
+  [ HH.slot
+    cmd
+    (N.picker N.numberHasNumberInputVal { title: show cmd, range: minRange 0.0 })
+    unit
+    (HE.input $ \(NotifyChange n) → UpdateCommand cmd n)]
 
 getComponent ∷ F.Command → IsoDuration → Number
 getComponent cmd d = maybe 0.0 id $ F.toGetter cmd (unIsoDuration d)
@@ -75,21 +69,20 @@ getComponent cmd d = maybe 0.0 id $ F.toGetter cmd (unIsoDuration d)
 overIsoDuration ∷ (Duration → Duration) → IsoDuration → Maybe IsoDuration
 overIsoDuration f d = mkIsoDuration $ f $ unIsoDuration d
 
-evalDuration ∷ ∀ m . DurationQuery ~> DSL m
-evalDuration (UpdateCommand cmd val next) = do
-  s <- H.get
-  nextDuration <- map (steper' s.duration InvalidIsoDuration) case s.duration of
-    Just (Right duration) → pure
+evalDuration ∷ ∀ m. F.Format → DurationQuery ~> DSL m
+evalDuration format (UpdateCommand cmd val next) = do
+  duration <- H.get
+  nextDuration <- map (steper' duration InvalidIsoDuration) case duration of
+    Just (Right prevDuration) → pure
       $ maybe (Left false) Right
-      $ val >>= \n → overIsoDuration (F.toSetter cmd n) duration
-    _  → buildDuration
-  H.modify (_{ duration = nextDuration })
-  unless (nextDuration == s.duration) $ H.raise (NotifyChange nextDuration)
+      $ val >>= \n → overIsoDuration (F.toSetter cmd n) prevDuration
+    _  → buildDuration format
+  H.put nextDuration
+  unless (nextDuration == duration) $ H.raise (NotifyChange nextDuration)
   pure next
 
-buildDuration ∷ ∀ m. DSL m (Either Boolean IsoDuration)
-buildDuration = do
-  {format} <- H.get
+buildDuration ∷ ∀ m. F.Format → DSL m (Either Boolean IsoDuration)
+buildDuration format = do
   mbEndo <- for (unwrap format) \cmd → do
     num <- H.query cmd $ H.request (left <<< GetValue)
     pure $ join num <#> F.toSetter cmd >>> Endo
@@ -98,18 +91,17 @@ buildDuration = do
    _ → Left false
 
 
-evalPicker ∷ ∀ m . QueryIn ~> DSL m
-evalPicker (ResetError next) = do
-  H.modify _{ duration = Nothing }
+evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m
+evalPicker _ (ResetError next) = do
+  H.put Nothing
   pure next
-evalPicker (Base (SetValue duration next)) = do
-  {format} <- H.get
+evalPicker format (Base (SetValue duration next)) = do
   propagateChange format duration
-  H.modify \s → s{duration = duration}
+  H.put duration
   pure $ next unit
-evalPicker (Base (GetValue next)) = H.gets _.duration <#> next
+evalPicker _ (Base (GetValue next)) = H.get <#> next
 
-propagateChange ∷ ∀ m . F.Format → Input → DSL m Unit
+propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
 propagateChange format duration = do
   map (mustBeMounted <<< fold) $ for (unwrap format) \cmd → do
     let n = duration >>= asRight >>= (F.toGetter cmd <<< unIsoDuration)

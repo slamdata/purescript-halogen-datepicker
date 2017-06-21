@@ -28,16 +28,15 @@ import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (steper', pickerClasses, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (componentProps, steper', pickerProps, mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 
 data DateQuery a = Update (Date → Maybe Date) a
-type Input = PickerValue DateError Date
-type QueryIn = PickerQuery Unit Input
+type State = PickerValue DateError Date
+type QueryIn = PickerQuery Unit State
 type Query = Coproduct QueryIn DateQuery
-type Message = PickerMessage Input
+type Message = PickerMessage State
 
 data DateError = InvalidDate
 derive instance dateErrorEq ∷ Eq DateError
@@ -45,11 +44,6 @@ derive instance dateErrorOrd ∷ Ord DateError
 derive instance dateErrorGeneric ∷ Generic DateError _
 instance dateErrorShow ∷ Show DateError where
   show = genericShow
-
-type State =
-  { format ∷ F.Format
-  , date ∷ Input
-  }
 
 type NumQuery = Num.Query Int
 type ChoiceQuery = Choice.Query (Maybe Int)
@@ -69,17 +63,14 @@ type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
 picker format = H.parentComponent
-  { initialState: const {format, date: Nothing}
-  , render: render >>> bimap (map right) right
-  , eval: coproduct evalPicker evalDate
+  { initialState: const Nothing
+  , render: render format >>> bimap (map right) right
+  , eval: coproduct (evalPicker format) (evalDate format)
   , receiver: const Nothing
   }
 
-render ∷ ∀ m. State → HTML m
-render s = HH.ul [ HP.classes $ pickerClasses s.date ]
-  (f <$> unwrap s.format)
-  where
-  f cmd = HH.li [HP.classes [HH.ClassName "Picker-component"]] [renderCommand cmd]
+render ∷ ∀ m. F.Format → State → HTML m
+render format date = HH.ul (pickerProps date) (unwrap format <#> renderCommand)
 
 
 renderCommandEnum ∷ ∀ m. F.Command → { title ∷ String , range  ∷ Range Int } → HTML m
@@ -99,7 +90,7 @@ renderCommandChoice cmd conf = HH.slot' cpChoice cmd
 
 
 renderCommand ∷ ∀ m. F.Command → HTML m
-renderCommand cmd = case cmd of
+renderCommand cmd = HH.li componentProps $ pure case cmd of
   F.Placeholder str →
     textElement { text: str}
   F.YearFull →
@@ -119,20 +110,19 @@ renderCommand cmd = case cmd of
   F.DayOfMonth →
     renderCommandEnum cmd { title: "Day", range: (bottomTop ∷ Range Day) <#> fromEnum }
 
-evalDate ∷ ∀ m . DateQuery ~> DSL m
-evalDate (Update update next) = do
-  s <- H.get
-  nextDate <- map (steper' s.date InvalidDate) case s.date of
-    Just (Right date) → pure $ maybe (Left false) Right $ update date
-    _  → buildDate
-  H.modify _{ date = nextDate }
-  unless (nextDate == s.date) $ H.raise (NotifyChange nextDate)
+evalDate ∷ ∀ m . F.Format → DateQuery ~> DSL m
+evalDate format (Update update next) = do
+  date <- H.get
+  nextDate <- map (steper' date InvalidDate) case date of
+    Just (Right prevDate) → pure $ maybe (Left false) Right $ update prevDate
+    _ → buildDate format
+  H.put nextDate
+  unless (nextDate == date) $ H.raise (NotifyChange nextDate)
   pure next
 
 
-buildDate ∷ ∀ m. DSL m (Either Boolean Date)
-buildDate = do
-  {format} <- H.get
+buildDate ∷ ∀ m. F.Format → DSL m (Either Boolean Date)
+buildDate format = do
   mbKleisliEndo <- for (sort $ unwrap format) $ commandCata
     { text: \cmd → pure $ Just $ mempty
     , enum: \cmd → do
@@ -147,18 +137,17 @@ buildDate = do
     Nothing → Left false
 
 
-evalPicker ∷ ∀ m . QueryIn ~> DSL m
-evalPicker (ResetError next) = do
-  H.modify _{ date = Nothing }
+evalPicker ∷ ∀ m. F.Format -> QueryIn ~> DSL m
+evalPicker _ (ResetError next) = do
+  H.put Nothing
   pure next
-evalPicker (Base (SetValue date next)) = do
-  {format} <- H.get
+evalPicker format (Base (SetValue date next)) = do
   propagateChange format date
-  H.modify _{ date = date }
+  H.put date
   pure $ next unit
-evalPicker (Base (GetValue next)) = H.gets _.date <#> next
+evalPicker _ (Base (GetValue next)) = H.get <#> next
 
-propagateChange ∷ ∀ m . F.Format → Input → DSL m Unit
+propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
 propagateChange format date = do
   map (mustBeMounted <<< fold) $ for (unwrap format) $ commandCata
     { text: \cmd → pure (Just unit)

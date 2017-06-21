@@ -1,7 +1,9 @@
 module Halogen.Datepicker.Component.Types where
 
+import Prelude
+
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isJust)
 
 data PickerQuery err val next
   = ResetError next
@@ -24,3 +26,10 @@ value _ = Nothing
 error ∷ ∀ e a. PickerValue e a → Maybe e
 error (Just (Left x)) = Just x
 error _ = Nothing
+
+
+isInvalid ∷ ∀ e a. PickerValue e a → Boolean
+isInvalid = error >>> isJust
+
+isValid ∷ ∀ e a. PickerValue e a → Boolean
+isValid = value >>> isJust

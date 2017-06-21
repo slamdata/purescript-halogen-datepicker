@@ -30,16 +30,15 @@ import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (steper', pickerClasses, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (componentProps, steper', pickerProps, mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 
 data TimeQuery a = Update (Time → Maybe Time) a
-type Input = PickerValue TimeError Time
-type QueryIn = PickerQuery Unit Input
+type State = PickerValue TimeError Time
+type QueryIn = PickerQuery Unit State
 type Query = Coproduct QueryIn TimeQuery
-type Message = PickerMessage Input
+type Message = PickerMessage State
 
 data TimeError = InvalidTime
 derive instance timeErrorEq ∷ Eq TimeError
@@ -48,11 +47,6 @@ derive instance timeErrorGeneric ∷ Generic TimeError _
 instance timeErrorShow ∷ Show TimeError where
   show = genericShow
 
-
-type State =
-  { format ∷ F.Format
-  , time ∷ Input
-  }
 
 type NumQuery = Num.Query Int
 type ChoiceQuery = Choice.Query (Maybe Int)
@@ -71,17 +65,14 @@ type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
 picker format = H.parentComponent
-  { initialState: const $ {format, time: Nothing}
-  , render: render >>> bimap (map right) right
-  , eval: coproduct evalPicker evalTime
+  { initialState: const Nothing
+  , render: render format >>> bimap (map right) right
+  , eval: coproduct (evalPicker format) (evalTime format)
   , receiver: const Nothing
   }
 
-render ∷ ∀ m. State → HTML m
-render s = HH.ul [ HP.classes $ pickerClasses s.time ]
-    (f <$> unwrap s.format)
-  where
-  f cmd = HH.li [HP.classes [HH.ClassName "Picker-component"]] $ [renderCommand cmd]
+render ∷ ∀ m. F.Format → State → HTML m
+render format time = HH.ul (pickerProps time) (unwrap format <#> renderCommand)
 
 
 renderCommandEnum ∷ ∀ m. F.Command → { title ∷ String , range  ∷ Range Int } → HTML m
@@ -100,7 +91,7 @@ renderCommandChoice cmd conf = HH.slot' cpChoice cmd
     (HE.input $ \(NotifyChange n) → Update $ \t → n >>= (_ `F.toSetter cmd` t))
 
 renderCommand ∷ ∀ m. F.Command → HTML m
-renderCommand cmd = case cmd of
+renderCommand cmd = HH.li componentProps $ pure case cmd of
   F.Placeholder str →
     textElement { text: str}
   F.Meridiem →
@@ -124,21 +115,20 @@ renderCommand cmd = case cmd of
   F.MillisecondsShort →
     renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop ∷ Range Millisecond1) <#> fromEnum }
 
-evalTime ∷ ∀ m . TimeQuery ~> DSL m
-evalTime (Update update next) = do
-  s <- H.get
-  nextTime <- map (steper' s.time InvalidTime <<< maybe (Left false) Right) $
-    case s.time of
-      Just (Right time) → pure $ update time
-      _  → buildTime
-  H.modify _{ time = nextTime }
-  unless (nextTime == s.time) $ H.raise (NotifyChange nextTime)
+evalTime ∷ ∀ m . F.Format → TimeQuery ~> DSL m
+evalTime format (Update update next) = do
+  time <- H.get
+  nextTime <- map (steper' time InvalidTime <<< maybe (Left false) Right) $
+    case time of
+      Just (Right prevTime) → pure $ update prevTime
+      _  → buildTime format
+  H.put nextTime
+  unless (nextTime == time) $ H.raise (NotifyChange nextTime)
   pure next
 
 
-buildTime ∷ ∀ m. DSL m (Maybe Time)
-buildTime = do
-  {format} <- H.get
+buildTime ∷ ∀ m. F.Format → DSL m (Maybe Time)
+buildTime format = do
   mbKleisliEndo <- for (sort $ unwrap format) mkKleisli
   pure $ map fold (sequence mbKleisliEndo) >>= \(Join (Star f)) → f bottom
   where
@@ -151,18 +141,17 @@ buildTime = do
     pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
 
 
-evalPicker ∷ ∀ m . QueryIn ~> DSL m
-evalPicker (ResetError next) = do
-  H.modify _{ time = Nothing }
+evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m
+evalPicker _ (ResetError next) = do
+  H.put Nothing
   pure next
-evalPicker (Base (SetValue time next)) = do
-  {format} <- H.get
+evalPicker format (Base (SetValue time next)) = do
   propagateChange format time
-  H.modify _{ time = time }
+  H.put time
   pure $ next unit
-evalPicker (Base (GetValue next)) = H.gets _.time <#> next
+evalPicker _ (Base (GetValue next)) = H.get <#> next
 
-propagateChange ∷ ∀ m . F.Format → Input → DSL m Unit
+propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
 propagateChange format time = do
   map (mustBeMounted <<< fold) $ for (unwrap format) change
   where

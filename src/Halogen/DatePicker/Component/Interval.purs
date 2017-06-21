@@ -23,25 +23,20 @@ import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Format.Duration as DurationF
 import Halogen.Datepicker.Format.Interval as F
 import Halogen.Datepicker.Internal.Elements (textElement)
-import Halogen.Datepicker.Internal.Utils (asLeft, mustBeMounted, pickerClasses, steper)
+import Halogen.Datepicker.Internal.Utils (componentProps, asLeft, mustBeMounted, pickerProps, steper)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 
 type IntervalError = Interval (Maybe DurationError) (Maybe DateTimeError)
 type IsoInterval = Interval IsoDuration DateTime
-type Input = PickerValue IntervalError IsoInterval
+type State = PickerValue IntervalError IsoInterval
 data SetIntervalError = IntervalIsNotInShapeOfFormat
 
 type MessageIn = Either Duration.Message (Tuple Boolean DateTime.Message)
 data IntervalQuery a = Update MessageIn  a
 
-type Query = Coproduct (PickerQuery (Maybe SetIntervalError) Input) IntervalQuery
-type Message = PickerMessage Input
-type State =
-  { format ∷ F.Format
-  , interval ∷ Input
-  }
+type Query = Coproduct (PickerQuery (Maybe SetIntervalError) State) IntervalQuery
+type Message = PickerMessage State
 
 type ChildQuery = Coproduct2 Duration.Query DateTime.Query
 type Slot = Either2 Unit Boolean
@@ -58,30 +53,31 @@ type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
 picker format = H.parentComponent
-  { initialState: const $ {format, interval: Nothing}
-  , render: render >>> bimap (map right) right
-  , eval: coproduct evalPicker evalInterval
+  { initialState: const Nothing
+  , render: render format >>> bimap (map right) right
+  , eval: coproduct (evalPicker format) (evalInterval format)
   , receiver: const Nothing
   }
 
-render ∷ ∀ m. State → HTML m
-render s = HH.div [HP.classes $ pickerClasses s.interval] case s.format of
-  StartEnd fmtStart fmtEnd → map elem
+render ∷ ∀ m. F.Format → State → HTML m
+render format interval = HH.div (pickerProps interval) (renderCommand format)
+
+renderCommand ∷ ∀ m. F.Format → Array (HTML m)
+renderCommand format = map (HH.div componentProps <<< pure) case format of
+  StartEnd fmtStart fmtEnd →
     [ renderDateTime fmtStart false
     , textElement { text: "/" }
     , renderDateTime fmtEnd true ]
-  DurationEnd fmtDuration fmtEnd → map elem
+  DurationEnd fmtDuration fmtEnd →
     [ renderDuration fmtDuration
     , textElement { text: "/" }
     , renderDateTime fmtEnd false ]
-  StartDuration fmtStart fmtDuration → map elem
+  StartDuration fmtStart fmtDuration →
     [ renderDateTime fmtStart false
     , textElement { text: "/" }
     , renderDuration fmtDuration ]
-  JustDuration fmtDuration → map elem
+  JustDuration fmtDuration →
     [ renderDuration fmtDuration ]
-  where
-  elem a = HH.div [HP.classes [HH.ClassName "Picker-component"]] $ pure $ a
 
 renderDuration ∷ ∀ m. DurationF.Format → HTML m
 renderDuration fmt = HH.slot' cpDuration unit (Duration.picker fmt) unit (HE.input $ Update <<< Left)
@@ -92,40 +88,39 @@ renderDateTime fmt idx = HH.slot' cpDateTime idx (DateTime.picker fmt) unit (HE.
 
 -- [1] - this case will not happen as interval will not be `Just Right`
 --       if any of it's child is `Nothing` so return nonsence value
-evalInterval ∷ ∀ m . IntervalQuery ~> DSL m
-evalInterval (Update msg next) = do
-  s <- H.get
-  nextInterval <- map (steper s.interval) case s.interval of
+evalInterval ∷ ∀ m . F.Format → IntervalQuery ~> DSL m
+evalInterval format (Update msg next) = do
+  interval <- H.get
+  nextInterval <- map (steper interval) case interval of
     Nothing  → do
-      interval <- buildInterval
-      case interval of
+      newInterval <- buildInterval format
+      case newInterval of
         Left (Tuple false _) → resetChildErrorBasedOnMessage msg
         _ → pure unit
-      pure interval
-    Just (Left err) → buildInterval
-    Just (Right interval) → pure $ lmap (Tuple false) case msg of
+      pure newInterval
+    Just (Left err) → buildInterval format
+    Just (Right prevInterval) → pure $ lmap (Tuple false) case msg of
       Left (NotifyChange newDuration) → case newDuration of
-        Just (Left x) → Left $ bimap (const $ Just x) (const Nothing) s.format
-        Nothing → Left $ bimap (const Nothing) (const Nothing) s.format -- [1]
-        Just (Right duration) → Right $ lmap (const duration) interval
+        Just (Left x) → Left $ bimap (const $ Just x) (const Nothing) format
+        Nothing → Left $ bimap (const Nothing) (const Nothing) format -- [1]
+        Just (Right duration) → Right $ lmap (const duration) prevInterval
       Right (Tuple idx (NotifyChange newDateTime)) → case newDateTime of
-        Just (Left x) → Left $ bimap (const Nothing) (const $ Just x) s.format
-        Nothing → Left $ bimap (const Nothing) (const Nothing) s.format -- [1]
-        Just (Right dateTime) → Right case interval of
+        Just (Left x) → Left $ bimap (const Nothing) (const $ Just x) format
+        Nothing → Left $ bimap (const Nothing) (const Nothing) format -- [1]
+        Just (Right dateTime) → Right case prevInterval of
           StartEnd a b → case idx of
             true → StartEnd dateTime b
             false → StartEnd a dateTime
           DurationEnd d a → DurationEnd d dateTime
           StartDuration a d → StartDuration dateTime d
           JustDuration d → JustDuration d
-  H.modify _{ interval = nextInterval }
-  unless (nextInterval == s.interval) $ H.raise (NotifyChange nextInterval)
+  H.put nextInterval
+  unless (nextInterval == interval) $ H.raise (NotifyChange nextInterval)
   pure next
 
 
-buildInterval ∷ ∀ m. DSL m (Either (Tuple Boolean IntervalError) IsoInterval)
-buildInterval = do
-  {format} <- H.get
+buildInterval ∷ ∀ m. F.Format -> DSL m (Either (Tuple Boolean IntervalError) IsoInterval)
+buildInterval format = do
   vals <- collectValues format
   pure $ lmap addForce $ unVals vals
 
@@ -137,7 +132,7 @@ addForce err = case err of
   JustDuration Nothing → Tuple false err
   _ → Tuple true err
 
-unVals ∷ Interval Duration.Input DateTime.Input → Either IntervalError IsoInterval
+unVals ∷ Interval Duration.State DateTime.State → Either IntervalError IsoInterval
 unVals vals = case bimap maybeLeft maybeLeft vals of
   StartEnd (Right dtStart) (Right dtEnd) → Right $ StartEnd dtStart dtEnd
   DurationEnd (Right dur) (Right dt) → Right $ DurationEnd dur dt
@@ -153,7 +148,7 @@ maybeLeft (Just (Right a)) = Right a
 maybeLeft (Just (Left a)) = Left $ Just a
 maybeLeft Nothing = Left $ Nothing
 
-collectValues ∷ ∀ d a m. Interval d a → DSL m (Interval Duration.Input DateTime.Input)
+collectValues ∷ ∀ d a m. Interval d a → DSL m (Interval Duration.State DateTime.State)
 collectValues format = case format of
   StartEnd a b → StartEnd <$> getDateTime false <*> getDateTime true
   DurationEnd d a → DurationEnd <$> getDuration <*> getDateTime false
@@ -171,9 +166,8 @@ resetChildErrorBasedOnMessage (Left (NotifyChange (Just (Left _)))) = resetDurat
 resetChildErrorBasedOnMessage (Right (Tuple idx (NotifyChange (Just (Left _))))) = resetDateTime idx
 resetChildErrorBasedOnMessage _ = pure unit
 
-resetChildError ∷ ∀ m. DSL m Unit
-resetChildError = do
-  {format} <- H.get
+resetChildError ∷ ∀ m. F.Format → DSL m Unit
+resetChildError format = do
   onFormat resetDateTime resetDuration format
 
 onFormat ∷ ∀ m a d. Apply m => (Boolean → m Unit) → m Unit → Interval d a → m Unit
@@ -183,23 +177,22 @@ onFormat onDateTime onDuration format = case format of
   StartDuration a d → onDateTime false *> onDuration
   JustDuration d → onDuration
 
-evalPicker ∷ ∀ m . (PickerQuery (Maybe SetIntervalError) Input) ~> DSL m
-evalPicker (ResetError next) = do
-  H.modify _{ interval = Nothing }
-  resetChildError
+evalPicker ∷ ∀ m. F.Format → (PickerQuery (Maybe SetIntervalError) State) ~> DSL m
+evalPicker format (ResetError next) = do
+  H.put Nothing
+  resetChildError format
   pure next
-evalPicker (Base (SetValue interval next)) = do
-  {format} <- H.get
+evalPicker format (Base (SetValue interval next)) = do
   res <- case viewInterval format interval <#> setInterval of
     Just x → x $> Nothing
     Nothing → pure $ Just IntervalIsNotInShapeOfFormat
-  when (isNothing res) $ H.modify _{ interval = interval }
+  when (isNothing res) $ H.put interval
   pure $ next res
-evalPicker (Base (GetValue next)) = H.gets _.interval <#> next
+evalPicker _ (Base (GetValue next)) = H.get <#> next
 
-type ChildInputs = Interval (Maybe Duration.Input) (Maybe DateTime.Input)
+type ChildStates = Interval (Maybe Duration.State) (Maybe DateTime.State)
 
-setInterval ∷ ∀ m. ChildInputs -> DSL m Unit
+setInterval ∷ ∀ m. ChildStates -> DSL m Unit
 setInterval = case _ of
   StartEnd a b → do
     for_ a $ setDateTime false
@@ -213,8 +206,8 @@ setInterval = case _ of
   JustDuration d → do
     for_ d setDuration
 
-viewInterval ∷ F.Format → Input → Maybe (ChildInputs)
-viewInterval format input = case format, mapedInput input of
+viewInterval ∷ F.Format → State → Maybe (ChildStates)
+viewInterval format input = case format, mapedState input of
   StartEnd _ _ , Just interval@(StartEnd _ _) → Just $ interval
   DurationEnd _ _ , Just interval@(DurationEnd _ _) → Just $ interval
   StartDuration _ _ , Just interval@(StartDuration _ _) → Just $ interval
@@ -222,8 +215,8 @@ viewInterval format input = case format, mapedInput input of
   _, Nothing → Just $ bimap (const $ Just Nothing) (const $ Just Nothing) format
   _ , _ → Nothing
   where
-  mapedInput ∷ Input → Maybe (ChildInputs)
-  mapedInput = map $ either (bimap mkErr mkErr) (bimap mkVal mkVal)
+  mapedState ∷ State → Maybe (ChildStates)
+  mapedState = map $ either (bimap mkErr mkErr) (bimap mkVal mkVal)
   mkVal ∷ ∀ e a. a → Maybe (PickerValue e a)
   mkVal = Just <<< Just <<< Right
   mkErr ∷ ∀ e a. Maybe e → Maybe (PickerValue e a)
