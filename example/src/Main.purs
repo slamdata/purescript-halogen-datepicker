@@ -317,7 +317,7 @@ renderExample c items idx fmt' value'= unEither $ do
         Just val → HH.div_ [HH.text $ "value: " <> val]
     ]
   where
-  btn :: Maybe input → String → HTML m
+  btn ∷ Maybe input → String → HTML m
   btn val txt = HH.button
     [ HE.onClick $ HE.input_ $ c.setter idx val]
     [ HH.text txt]
