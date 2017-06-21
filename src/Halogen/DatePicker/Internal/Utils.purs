@@ -8,9 +8,11 @@ import Data.Bifunctor (lmap)
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Tuple (Tuple(..))
-import Halogen.Datepicker.Component.Types (PickerValue, isInvalid)
+import Halogen as H
+import Halogen.Datepicker.Component.Types (PickerMessage(..), PickerValue, isInvalid)
 import Halogen.HTML (ClassName(..))
 import Halogen.HTML.Properties as HP
+import Halogen.Query.HalogenM (HalogenM)
 import Partial.Unsafe (unsafePartialBecause)
 
 mustBeMounted ∷ ∀ a. Maybe a → a
@@ -41,3 +43,6 @@ asRight = either (const empty) pure
 
 asLeft ∷ ∀ e a f. Alternative f => Either e a → f e
 asLeft = either pure (const empty)
+
+moveStateTo :: forall m o p f a. Eq a => a -> a -> HalogenM a f p o (PickerMessage a) m Unit
+moveStateTo old new = H.put new *> unless (new == old) (H.raise $ NotifyChange new)

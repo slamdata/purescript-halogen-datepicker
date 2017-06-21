@@ -28,7 +28,7 @@ import Halogen.Datepicker.Component.Time (TimeError)
 import Halogen.Datepicker.Component.Time as Time
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
 import Halogen.Datepicker.Format.DateTime as F
-import Halogen.Datepicker.Internal.Utils (componentProps, steper, pickerProps, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (componentProps, moveStateTo, steper, pickerProps, mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -91,8 +91,7 @@ evalDateTime format (Update msg next) = do
         Just (Right time) → Right $ setTimeDt time dt
         Just (Left x) → Left $ timeError x
         Nothing → Left $ Tuple Nothing Nothing
-  H.put nextDateTime
-  unless (nextDateTime == dateTime) $ H.raise (NotifyChange nextDateTime)
+  dateTime `moveStateTo` nextDateTime
   pure next
 
 resetChildErrorBasedOnMessage ∷ ∀ m. MessageIn → DSL m Unit

@@ -23,7 +23,7 @@ import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Format.Duration as DurationF
 import Halogen.Datepicker.Format.Interval as F
 import Halogen.Datepicker.Internal.Elements (textElement)
-import Halogen.Datepicker.Internal.Utils (componentProps, asLeft, mustBeMounted, pickerProps, steper)
+import Halogen.Datepicker.Internal.Utils (componentProps, moveStateTo, asLeft, mustBeMounted, pickerProps, steper)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -114,8 +114,7 @@ evalInterval format (Update msg next) = do
           DurationEnd d a → DurationEnd d dateTime
           StartDuration a d → StartDuration dateTime d
           JustDuration d → JustDuration d
-  H.put nextInterval
-  unless (nextInterval == interval) $ H.raise (NotifyChange nextInterval)
+  interval `moveStateTo` nextInterval
   pure next
 
 

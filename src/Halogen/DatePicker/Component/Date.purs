@@ -28,7 +28,7 @@ import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (componentProps, steper', pickerProps, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (componentProps, moveStateTo, steper', pickerProps, mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -116,8 +116,7 @@ evalDate format (Update update next) = do
   nextDate <- map (steper' date InvalidDate) case date of
     Just (Right prevDate) → pure $ maybe (Left false) Right $ update prevDate
     _ → buildDate format
-  H.put nextDate
-  unless (nextDate == date) $ H.raise (NotifyChange nextDate)
+  date `moveStateTo` nextDate
   pure next
 
 

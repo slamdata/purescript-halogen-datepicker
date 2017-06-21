@@ -30,7 +30,7 @@ import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (componentProps, steper', pickerProps, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (componentProps, moveStateTo, steper', pickerProps, mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -122,8 +122,7 @@ evalTime format (Update update next) = do
     case time of
       Just (Right prevTime) → pure $ update prevTime
       _  → buildTime format
-  H.put nextTime
-  unless (nextTime == time) $ H.raise (NotifyChange nextTime)
+  time `moveStateTo` nextTime
   pure next
 
 
