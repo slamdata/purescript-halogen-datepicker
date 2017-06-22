@@ -89,9 +89,9 @@ evalPicker hasChoiceInputVal (SetValue value next) = do
   if (value == head values || elem value (tail values))
     then do
       H.modify _{value = value}
-      pure $ reply Nothing
+      pure $ next Nothing
     else do
-      pure $ reply (Just ValueIsNotInValues)
+      pure $ next (Just ValueIsNotInValues)
 evalPicker _ (GetValue next) = H.gets _.value <#> next
 
 
@@ -123,7 +123,7 @@ intHasChoiceInputVal =
 
 boundedEnumHasChoiceInputVal ∷ ∀ a. BoundedEnum a ⇒ (a → String) → HasChoiceInputVal a
 boundedEnumHasChoiceInputVal showTitle =
-  { fromString: intHasChoiceInputVal.fromString >⇒ toEnum
+  { fromString: intHasChoiceInputVal.fromString >=> toEnum
   , toValue: fromEnum >>> intHasChoiceInputVal.toValue
   , toTitle: showTitle
   }

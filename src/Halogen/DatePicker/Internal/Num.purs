@@ -82,7 +82,7 @@ toMbString hasNumberInputVal number = (Just $ maybe "" hasNumberInputVal.toValue
 evalPicker ∷ ∀ val m . HasNumberInputVal val → QueryIn val ~> DSL val m
 evalPicker hasNumberInputVal (SetValue number next) = do
   H.modify _{number = Tuple number (toMbString hasNumberInputVal number)}
-  pure $ reply unit
+  pure $ next unit
 evalPicker _ (GetValue next) = H.gets _.number <#> (fst >>> next)
 
 
@@ -191,14 +191,14 @@ numberHasNumberInputVal =
 
 intHasNumberInputVal ∷ HasNumberInputVal Int
 intHasNumberInputVal =
-  { fromString: numberHasNumberInputVal.fromString >⇒ Int.fromNumber
+  { fromString: numberHasNumberInputVal.fromString >=> Int.fromNumber
   , toValue: show
   , toNumber: Int.toNumber
   }
 
 boundedEnumHasNumberInputVal ∷ ∀ a. BoundedEnum a ⇒ HasNumberInputVal a
 boundedEnumHasNumberInputVal =
-  { fromString: intHasNumberInputVal.fromString >⇒ toEnum
+  { fromString: intHasNumberInputVal.fromString >=> toEnum
   , toValue: fromEnum >>> intHasNumberInputVal.toValue
   , toNumber: fromEnum >>> intHasNumberInputVal.toNumber
   }
