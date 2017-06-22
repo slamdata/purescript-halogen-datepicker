@@ -9,10 +9,10 @@ import Data.Date (Date)
 import Data.DateTime (DateTime, date, modifyDate, modifyTime, time)
 import Data.Either (Either(..))
 import Data.Either.Nested (Either2)
-import Data.Foldable (class Foldable, fold, length)
-import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
+import Data.Foldable (length)
+import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Data.Functor.Coproduct.Nested (Coproduct2)
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Maybe.Last (Last(..))
 import Data.Monoid (mempty)
 import Data.Monoid.Additive (Additive(..))
@@ -28,7 +28,7 @@ import Halogen.Datepicker.Component.Date (DateError)
 import Halogen.Datepicker.Component.Date as Date
 import Halogen.Datepicker.Component.Time (TimeError)
 import Halogen.Datepicker.Component.Time as Time
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value, getValue, setValue, resetError)
 import Halogen.Datepicker.Format.DateTime as F
 import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
@@ -150,11 +150,11 @@ buildDateTime format = do
   mkBuildStep ∷ F.Command → DSL m BuildStep
   mkBuildStep = case _ of
     F.Time _ → do
-      val ← H.query' cpTime unit (H.request $ left <<< Base <<< GetValue)
-      pure $ val >>= applyValue setTimeDt timeError
+      val ← queryTime $ getValue
+      pure $ applyValue setTimeDt timeError val
     F.Date _ → do
-      val ← H.query' cpDate unit (H.request $ left <<< Base <<< GetValue)
-      pure $ val >>= applyValue setDateDt dateError
+      val ← queryDate $ getValue
+      pure $ applyValue setDateDt dateError val
   applyValue ∷ ∀ val err
     . (val → DateTime → DateTime)
     → (err → DateTimeError)
@@ -174,27 +174,30 @@ evalPicker format (ResetError next) = do
   resetChildError format
   pure next
 evalPicker format (Base (SetValue dateTime reply)) = do
+  propagateChange format dateTime
   H.put dateTime
-  for_ (unwrap format) case _ of
-    F.Time _ → setTime $ value dateTime <#> (time >>> Right)
-    F.Date _ → setDate $ value dateTime <#> (date >>> Right)
   pure $ reply unit
 evalPicker _ (Base (GetValue reply)) = H.get <#> reply
 
+propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
+propagateChange format dateTime = for_ (unwrap format) case _ of
+  F.Time _ → setTime $ value dateTime <#> (time >>> Right)
+  F.Date _ → setDate $ value dateTime <#> (date >>> Right)
+
 setTime ∷ ∀ m. PickerValue TimeError Time → DSL m Unit
-setTime val = queryTime $ H.request $ left <<< (Base <<< SetValue val)
+setTime val = queryTime $ setValue val
 
 setDate ∷ ∀ m. PickerValue DateError Date → DSL m Unit
-setDate val = queryDate $ H.request $ left <<< (Base <<< SetValue val)
+setDate val = queryDate $ setValue val
 
 resetTime ∷ ∀ m. DSL m Unit
-resetTime = queryTime $ H.action $ left <<< ResetError
+resetTime = queryTime $ resetError
 
 resetDate ∷ ∀ m. DSL m Unit
-resetDate = queryDate $ H.action $ left <<< ResetError
+resetDate = queryDate $ resetError
 
 queryTime ∷ ∀ m a. Time.Query a → DSL m a
-queryTime q = map mustBeMounted $ H.query' cpTime unit $ q
+queryTime q = H.query' cpTime unit q >>= mustBeMounted
 
 queryDate ∷ ∀ m a. Date.Query a → DSL m a
-queryDate q = map mustBeMounted $ H.query' cpDate unit $ q
+queryDate q = H.query' cpDate unit q >>= mustBeMounted

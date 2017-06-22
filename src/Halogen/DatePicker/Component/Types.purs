@@ -3,7 +3,9 @@ module Halogen.Datepicker.Component.Types where
 import Prelude
 
 import Data.Either (Either(..))
+import Data.Functor.Coproduct (Coproduct, left)
 import Data.Maybe (Maybe(..), isJust)
+import Halogen (request, action)
 
 data PickerQuery err val next
   = ResetError next
@@ -18,6 +20,15 @@ data PickerMessage val
 
 
 type PickerValue e a = Maybe (Either e a)
+
+getValue ∷ ∀ val err r. Coproduct (PickerQuery err val) r val
+getValue = request $ left <<< Base <<< GetValue
+
+setValue ∷ ∀ val err r. val -> Coproduct (PickerQuery err val) r err
+setValue val = request $ left <<< (Base <<< SetValue val)
+
+resetError ∷ ∀ val err r. Coproduct (PickerQuery err val) r Unit
+resetError = action $ left <<< ResetError
 
 value ∷ ∀ e a. PickerValue e a → Maybe a
 value (Just (Right x)) = Just x

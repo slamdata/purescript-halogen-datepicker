@@ -8,7 +8,7 @@ import Data.DateTime (Hour, Millisecond, Minute, Second)
 import Data.Either (Either(..))
 import Data.Either.Nested (Either2)
 import Data.Enum (class BoundedEnum, fromEnum, toEnum, upFromIncluding)
-import Data.Foldable (fold)
+import Data.Foldable (for_)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Generic.Rep (class Generic)
@@ -52,7 +52,9 @@ type NumQuery = Num.Query Int
 type ChoiceQuery = Choice.Query (Maybe Int)
 type ChildQuery = Coproduct2 NumQuery ChoiceQuery
 
-type Slot = Either2 F.Command F.Command
+type ChoiceSlot = F.Command
+type NumSlot = F.Command
+type Slot = Either2 ChoiceSlot NumSlot
 
 cpNum ∷ CP.ChildPath NumQuery ChildQuery F.Command Slot
 cpNum = CP.cp1
@@ -140,13 +142,14 @@ buildTime format = do
   runStep step = step >>= \(Join (Star f)) → f bottom
   mkBuildStep ∷ F.Command → DSL m BuildStep
   mkBuildStep cmd = case cmd of
-    F.Placeholder _ → pure $ Just $ mempty
+    F.Placeholder _ → do
+      pure $ Just $ mempty
     F.Meridiem → do
-      num ← H.query' cpChoice cmd $ H.request (left <<< GetValue)
-      pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
+      num ← queryChoice cmd $ H.request (left <<< GetValue)
+      pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     _ → do
-      num ← H.query' cpNum cmd $ H.request (left <<< GetValue)
-      pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
+      num ← queryNum cmd $ H.request (left <<< GetValue)
+      pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
 
 
 evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m
@@ -160,19 +163,18 @@ evalPicker format (Base (SetValue time reply)) = do
 evalPicker _ (Base (GetValue reply)) = H.get <#> reply
 
 propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
-propagateChange format time = do
-  map (mustBeMounted <<< fold) $ for (unwrap format) change
-  where
-  change ∷ F.Command → DSL m (Maybe Unit)
-  change (F.Placeholder _ ) = pure (Just unit)
-  change cmd@F.Meridiem = do
-    res ← H.query' cpChoice cmd $ H.request $ left <<< SetValue m
-    pure $ res >>= case _ of
-      Just Choice.ValueIsNotInValues → Nothing
-      Nothing → Just unit
-    where
-    m ∷ Maybe Int
-    m = value time >>= F.toGetter F.Meridiem
-  change cmd = do
-    let n = value time >>= F.toGetter cmd
-    H.query' cpNum cmd $ H.request $ left <<< SetValue n
+propagateChange format time = for_ (unwrap format) \cmd → case cmd of
+  F.Placeholder _ → pure unit
+  F.Meridiem → do
+    let val = value time >>= F.toGetter F.Meridiem
+    res ← queryChoice cmd $ H.request $ left <<< SetValue val
+    Choice.valueMustBeInValues res
+  _ → do
+    let val = value time >>= F.toGetter cmd
+    queryNum cmd $ H.request $ left <<< SetValue val
+
+queryChoice ∷ ∀ m. ChoiceSlot → ChoiceQuery ~> DSL m
+queryChoice s q = H.query' cpChoice s q >>= mustBeMounted
+
+queryNum ∷ ∀ m. NumSlot → NumQuery ~> DSL m
+queryNum s q = H.query' cpNum s q >>= mustBeMounted

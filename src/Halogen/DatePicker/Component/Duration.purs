@@ -38,9 +38,9 @@ instance durationErrorShow ∷ Show DurationError where
   show = genericShow
 
 type Slot = F.Command
-
-type HTML m = H.ParentHTML DurationQuery (N.Query Number) Slot m
-type DSL m = H.ParentDSL State Query (N.Query Number) Slot Message m
+type ChildQuery = N.Query Number
+type HTML m = H.ParentHTML DurationQuery ChildQuery Slot m
+type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
 
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
@@ -88,8 +88,8 @@ buildDuration format = do
   where
   mkBuildStep ∷ F.Command → DSL m BuildStep
   mkBuildStep cmd = do
-    num ← H.query cmd $ H.request (left <<< GetValue)
-    pure $ join num <#> F.toSetter cmd >>> Endo
+    num ← query cmd $ H.request (left <<< GetValue)
+    pure $ num <#> F.toSetter cmd >>> Endo
   runStep ∷ BuildStep -> Maybe (Maybe IsoDuration)
   runStep step = step <#> \(Endo f) -> mkIsoDuration $ f mempty
 
@@ -106,6 +106,9 @@ evalPicker _ (Base (GetValue reply)) = H.get <#> reply
 
 propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
 propagateChange format duration = do
-  map (mustBeMounted <<< fold) $ for (unwrap format) \cmd → do
+  map fold $ for (unwrap format) \cmd → do
     let n = duration >>= asRight >>= unIsoDuration >>> F.toGetter cmd
-    H.query cmd $ H.request $ left <<< SetValue n
+    query cmd $ H.request $ left <<< SetValue n
+
+query ∷ ∀ m. Slot → ChildQuery ~> DSL m
+query cmd q = H.query cmd q >>= mustBeMounted

@@ -11,7 +11,6 @@ import Data.Either.Nested as Either
 import Data.Enum (class BoundedEnum, toEnum)
 import Data.Foldable (fold)
 import Data.Formatter.Interval (unformatInterval)
-import Data.Functor.Coproduct (left)
 import Data.Functor.Coproduct.Nested as Coproduct
 import Data.Interval (Interval(..), IsoDuration)
 import Data.Interval as I
@@ -27,7 +26,7 @@ import Halogen.Datepicker.Component.DateTime as DateTime
 import Halogen.Datepicker.Component.Duration as Duration
 import Halogen.Datepicker.Component.Interval as Interval
 import Halogen.Datepicker.Component.Time as Time
-import Halogen.Datepicker.Component.Types (PickerMessage(..), PickerQuery(..), BasePickerQuery(..))
+import Halogen.Datepicker.Component.Types (PickerMessage(..), setValue)
 import Halogen.Datepicker.Format.Date as DateF
 import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Format.Duration as DurationF
@@ -37,7 +36,7 @@ import Halogen.Datepicker.Internal.Utils (mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.VDom.Driver (runUI)
-import Partial.Unsafe (unsafePartialBecause)
+import Partial.Unsafe (unsafePartial)
 
 type TimeIdx = Int
 type DateIdx = Int
@@ -207,7 +206,7 @@ example =
   testDateTime = DateTime testDate (bottom # setHour (enum 2) # setMinute (enum 2))
 
   testDuration ∷ IsoDuration
-  testDuration = unsafePartialBecause "this duration must be valid" fromJust
+  testDuration = unsafePartial fromJust -- this duration must be valid
     $ I.mkIsoDuration
     $ fold
       [ I.year 100.0
@@ -219,7 +218,7 @@ example =
       ]
 
   enum ∷ ∀ a. BoundedEnum a ⇒ Int → a
-  enum = unsafePartialBecause "ints passed to this func must be in range" fromJust <<< toEnum
+  enum = unsafePartial fromJust <<< toEnum -- Ints passed to this func must be in range
 
   renderTime ∷ State → Int → String → StrOr Time → Array (HTML m)
   renderTime s = renderExample timeConfig s.times
@@ -253,22 +252,17 @@ example =
 
   eval ∷ Query ~> DSL m
   eval (Set payload next) = do
-    map mustBeMounted case payload of
+    mustBeMounted =<< case payload of
       SetTime idx val →
-        H.query' timeConfig.cp idx
-          $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+        H.query' timeConfig.cp idx $ setValue $ map Right val
       SetDate idx val →
-        H.query' dateConfig.cp idx
-          $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+        H.query' dateConfig.cp idx $ setValue $ map Right val
       SetDateTime idx val →
-        H.query' dateTimeConfig.cp idx
-          $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+        H.query' dateTimeConfig.cp idx $ setValue $ map Right val
       SetDuration idx val →
-        H.query' durationConfig.cp idx
-          $ H.request $ left <<< Base <<< (SetValue $ map Right val)
-      SetInterval idx val → do
-        map void $ H.query' intervalConfig.cp idx
-          $ H.request $ left <<< Base <<< (SetValue $ map Right val)
+        H.query' durationConfig.cp idx $ setValue $ map Right val
+      SetInterval idx val →
+        map void $ H.query' intervalConfig.cp idx $ setValue $ map Right val
     pure next
   eval (HandleMessage payload next) = do
     case payload of

@@ -7,7 +7,7 @@ import Data.DateTime (DateTime)
 import Data.Either (Either(..), either)
 import Data.Either.Nested (Either2)
 import Data.Foldable (for_)
-import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
+import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Interval (Interval(..), IsoDuration)
 import Data.Maybe (Maybe(..), isNothing)
@@ -18,7 +18,7 @@ import Halogen.Datepicker.Component.DateTime (DateTimeError)
 import Halogen.Datepicker.Component.DateTime as DateTime
 import Halogen.Datepicker.Component.Duration (DurationError)
 import Halogen.Datepicker.Component.Duration as Duration
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, getValue, setValue, resetError)
 import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Format.Duration as DurationF
 import Halogen.Datepicker.Format.Interval as F
@@ -155,12 +155,12 @@ collectValues format = case format of
   JustDuration d → JustDuration <$> getDuration
 
 getDuration ∷ ∀ m. DSL m (PickerValue DurationError IsoDuration)
-getDuration = queryDuration $ H.request $ left <<< Base <<< GetValue
+getDuration = queryDuration $ getValue
 
 getDateTime ∷ ∀ m
   . Boolean
   → DSL m (PickerValue DateTimeError DateTime)
-getDateTime idx  = queryDateTime idx $ H.request $ left <<< Base <<< GetValue
+getDateTime idx  = queryDateTime idx $ getValue
 
 resetChildErrorBasedOnMessage ∷ ∀ m. MessageIn → DSL m Unit
 resetChildErrorBasedOnMessage (Left (NotifyChange (Just (Left _)))) = resetDuration
@@ -230,19 +230,19 @@ viewInterval format input = case format, mapedState input of
   mkErr = map (Just <<< Left)
 
 setDuration ∷ ∀ m. PickerValue DurationError IsoDuration → DSL m Unit
-setDuration val = queryDuration $ H.request $ left <<< (Base <<< SetValue val)
+setDuration val = queryDuration $ setValue val
 
 setDateTime ∷ ∀ m. Boolean → PickerValue DateTimeError DateTime → DSL m Unit
-setDateTime idx val = queryDateTime idx $ H.request $ left <<< (Base <<< SetValue val)
+setDateTime idx val = queryDateTime idx $ setValue val
 
 resetDuration ∷ ∀ m. DSL m Unit
-resetDuration = queryDuration $ H.action $ left <<< ResetError
+resetDuration = queryDuration $ resetError
 
 resetDateTime ∷ ∀ m. Boolean → DSL m Unit
-resetDateTime idx = queryDateTime idx $ H.action $ left <<< ResetError
+resetDateTime idx = queryDateTime idx $ resetError
 
 queryDuration ∷ ∀ m a. Duration.Query a → DSL m a
-queryDuration q = map mustBeMounted $ H.query' cpDuration unit $ q
+queryDuration q = H.query' cpDuration unit q >>= mustBeMounted
 
 queryDateTime ∷ ∀ m a. Boolean → DateTime.Query a → DSL m a
-queryDateTime idx q = map mustBeMounted $ H.query' cpDateTime idx $ q
+queryDateTime idx q = H.query' cpDateTime idx q >>= mustBeMounted

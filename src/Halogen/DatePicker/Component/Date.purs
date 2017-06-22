@@ -8,6 +8,7 @@ import Data.Date (Date, Day, Month, Year)
 import Data.Either (Either(..))
 import Data.Either.Nested (Either2)
 import Data.Enum (class BoundedEnum, fromEnum, toEnum, upFromIncluding)
+import Data.Foldable (for_)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Generic.Rep (class Generic)
@@ -18,7 +19,7 @@ import Data.Newtype (unwrap)
 import Data.NonEmpty (NonEmpty)
 import Data.Profunctor.Join (Join(..))
 import Data.Profunctor.Star (Star(..))
-import Data.Traversable (fold, for, sequence)
+import Data.Traversable (for)
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
@@ -49,7 +50,9 @@ type NumQuery = Num.Query Int
 type ChoiceQuery = Choice.Query (Maybe Int)
 type ChildQuery = Coproduct2 NumQuery ChoiceQuery
 
-type Slot = Either2 F.Command F.Command
+type ChoiceSlot = F.Command
+type NumSlot = F.Command
+type Slot = Either2 ChoiceSlot NumSlot
 
 cpNum ∷ CP.ChildPath NumQuery ChildQuery F.Command Slot
 cpNum = CP.cp1
@@ -138,11 +141,11 @@ buildDate format = do
   mkBuildStep = commandCata
     { text: \cmd → pure $ Just mempty
     , enum: \cmd → do
-        num ← H.query' cpNum cmd $ H.request (left <<< GetValue)
-        pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
+        num ← queryNum cmd $ H.request (left <<< GetValue)
+        pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     , choice: \cmd → do
-        num ← H.query' cpChoice cmd $ H.request (left <<< GetValue)
-        pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
+        num ← queryChoice cmd $ H.request (left <<< GetValue)
+        pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     }
   runStep ∷ BuildStep -> Maybe (Maybe Date)
   runStep step = step <#> \(Join (Star f)) ->
@@ -160,19 +163,16 @@ evalPicker format (Base (SetValue date reply)) = do
 evalPicker _ (Base (GetValue reply)) = H.get <#> reply
 
 propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
-propagateChange format date = do
-  map (mustBeMounted <<< fold) $ for (unwrap format) $ commandCata
-    { text: \cmd → pure (Just unit)
-    , enum: \cmd → do
-      let val = value date >>= F.toGetter cmd
-      H.query' cpNum cmd $ H.request $ left <<< SetValue val
-    , choice: \cmd → do
-      let val = value date >>= F.toGetter cmd
-      res ← H.query' cpChoice cmd $ H.request $ left <<< SetValue val
-      pure $ res >>= case _ of
-        Just Choice.ValueIsNotInValues → Nothing
-        Nothing → Just unit
-    }
+propagateChange format date = for_ (unwrap format) $ commandCata
+  { text: \cmd → pure unit
+  , enum: \cmd → do
+    let val = value date >>= F.toGetter cmd
+    queryNum cmd $ H.request $ left <<< SetValue val
+  , choice: \cmd → do
+    let val = value date >>= F.toGetter cmd
+    res ← queryChoice cmd $ H.request $ left <<< SetValue val
+    Choice.valueMustBeInValues res
+  }
 
 commandCata ∷ ∀ a.
   { text   ∷ F.Command → a
@@ -189,3 +189,9 @@ commandCata p cmd = case cmd of
   F.MonthTwoDigits      → p.enum cmd
   F.DayOfMonthTwoDigits → p.enum cmd
   F.DayOfMonth          → p.enum cmd
+
+queryChoice ∷ ∀ m. ChoiceSlot → ChoiceQuery ~> DSL m
+queryChoice s q = H.query' cpChoice s q >>= mustBeMounted
+
+queryNum ∷ ∀ m. NumSlot → NumQuery ~> DSL m
+queryNum s q = H.query' cpNum s q >>= mustBeMounted

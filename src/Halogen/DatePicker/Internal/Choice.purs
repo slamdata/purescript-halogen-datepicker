@@ -11,6 +11,7 @@ module Halogen.Datepicker.Internal.Choice
   , boundedEnumHasChoiceInputVal
   , maybeIntHasChoiceInputVal
   , maybeBoundedEnumHasChoiceInputVal
+  , valueMustBeInValues
   )
   where
 
@@ -29,6 +30,7 @@ import Halogen.Datepicker.Component.Types (PickerMessage(..), BasePickerQuery(..
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Query.HalogenM (HalogenM, halt)
 
 
 type State val =
@@ -145,3 +147,10 @@ maybeBoundedEnumHasChoiceInputVal showTitle =
   , toValue: maybe "" (show <<< fromEnum)
   , toTitle: maybe "" showTitle
   }
+
+valueMustBeInValues :: ∀ s f g p o m. Maybe ChoiceError → HalogenM s f g p o m Unit
+valueMustBeInValues = case _ of
+  Just ValueIsNotInValues →
+    halt "Value being set in Choice is not in values"
+  Nothing →
+    pure unit
