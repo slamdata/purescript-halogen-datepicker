@@ -39,7 +39,6 @@ instance durationErrorShow ∷ Show DurationError where
 
 type Slot = F.Command
 
-
 type HTML m = H.ParentHTML DurationQuery (N.Query Number) Slot m
 type DSL m = H.ParentDSL State Query (N.Query Number) Slot Message m
 
@@ -108,5 +107,5 @@ evalPicker _ (Base (GetValue reply)) = H.get <#> reply
 propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
 propagateChange format duration = do
   map (mustBeMounted <<< fold) $ for (unwrap format) \cmd → do
-    let n = duration >>= asRight >>= (F.toGetter cmd <<< unIsoDuration)
+    let n = duration >>= asRight >>= unIsoDuration >>> F.toGetter cmd
     H.query cmd $ H.request $ left <<< SetValue n
