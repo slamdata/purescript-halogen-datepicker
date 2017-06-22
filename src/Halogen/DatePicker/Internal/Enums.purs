@@ -239,7 +239,6 @@ setMonth a d = exactDate (year d) a (day d)
 setDay ∷ Day → Date → Maybe Date
 setDay a d = exactDate (year d) (month d) a
 
--- > 123456789 `unPrecise` 1000
--- 123456000
+-- > (123456789 `unPrecise` 1000) == 123456000
 unPrecise ∷ Int → Int → Int
 unPrecise n by = n / by * by

@@ -218,7 +218,6 @@ example =
       , I.second 124.0
       ]
 
-  -- TODO refactor this
   enum ∷ ∀ a. BoundedEnum a ⇒ Int → a
   enum = unsafePartialBecause "ints passed to this func must be in range" fromJust <<< toEnum
 
