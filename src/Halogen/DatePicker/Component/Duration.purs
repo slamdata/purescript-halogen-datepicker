@@ -9,17 +9,17 @@ import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Interval (Duration, IsoDuration, mkIsoDuration, unIsoDuration)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid (mempty)
 import Data.Monoid.Endo (Endo(..))
 import Data.Newtype (unwrap)
-import Data.Traversable (for, sequence)
+import Data.Traversable (for)
 import Halogen as H
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
 import Halogen.Datepicker.Format.Duration as F
 import Halogen.Datepicker.Internal.Num as N
 import Halogen.Datepicker.Internal.Range (minRange)
-import Halogen.Datepicker.Internal.Utils (componentProps, transitionState', asRight, mustBeMounted, pickerProps)
+import Halogen.Datepicker.Internal.Utils (foldSteps, componentProps, transitionState', asRight, mustBeMounted, pickerProps)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -64,7 +64,7 @@ renderCommand cmd = HH.li componentProps
     (HE.input $ \(NotifyChange n) → UpdateCommand cmd n)]
 
 getComponent ∷ F.Command → IsoDuration → Number
-getComponent cmd d = maybe 0.0 id $ F.toGetter cmd (unIsoDuration d)
+getComponent cmd d = fromMaybe 0.0 $ F.toGetter cmd (unIsoDuration d)
 
 overIsoDuration ∷ (Duration → Duration) → IsoDuration → Maybe IsoDuration
 overIsoDuration f d = mkIsoDuration $ f $ unIsoDuration d
@@ -78,14 +78,21 @@ evalDuration format (UpdateCommand cmd val next) = do
     _  → buildDuration format
   pure next
 
+type BuildStep = Maybe (Endo Duration)
 buildDuration ∷ ∀ m. F.Format → DSL m (Either Boolean IsoDuration)
 buildDuration format = do
-  mbEndo ← for (unwrap format) \cmd → do
+  steps ← for (unwrap format) mkBuildStep
+  pure case runStep $ foldSteps steps of
+   Just (Just x) → Right x
+   Just Nothing → Left true
+   Nothing → Left false
+  where
+  mkBuildStep ∷ F.Command → DSL m BuildStep
+  mkBuildStep cmd = do
     num ← H.query cmd $ H.request (left <<< GetValue)
     pure $ join num <#> F.toSetter cmd >>> Endo
-  pure case map fold $ sequence mbEndo of
-   Just (Endo f) → maybe (Left true) Right $ mkIsoDuration $ f mempty
-   _ → Left false
+  runStep ∷ BuildStep -> Maybe (Maybe IsoDuration)
+  runStep step = step <#> \(Endo f) -> mkIsoDuration $ f mempty
 
 
 evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m

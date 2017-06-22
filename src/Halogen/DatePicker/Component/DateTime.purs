@@ -3,6 +3,7 @@ module Halogen.Datepicker.Component.DateTime where
 import Prelude
 
 import Control.Monad.Writer (Writer, runWriter, tell)
+import Data.Array (sort)
 import Data.Bifunctor (bimap, lmap)
 import Data.Date (Date)
 import Data.DateTime (DateTime, date, modifyDate, modifyTime, time)
@@ -11,7 +12,7 @@ import Data.Either.Nested (Either2)
 import Data.Foldable (class Foldable, fold, length)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Maybe.Last (Last(..))
 import Data.Monoid (mempty)
 import Data.Monoid.Additive (Additive(..))
@@ -29,15 +30,17 @@ import Halogen.Datepicker.Component.Time (TimeError)
 import Halogen.Datepicker.Component.Time as Time
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
 import Halogen.Datepicker.Format.DateTime as F
-import Halogen.Datepicker.Internal.Utils (componentProps, transitionState, pickerProps, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
 type MessageIn = Either Date.Message Time.Message
 data DateTimeQuery a = Update MessageIn a
 
-type DateTimeError = Tuple (Maybe DateError) (Maybe TimeError)
-type DateTimeErrorLast = Tuple (Last DateError) (Last TimeError)
+type DateTimeErrorF f = Tuple (f DateError) (f TimeError)
+type DateTimeError = DateTimeErrorF Maybe
+type DateTimeErrorLast = DateTimeErrorF Last
+
 type State = PickerValue DateTimeError DateTime
 type QueryIn = PickerQuery Unit State
 type Query = Coproduct QueryIn DateTimeQuery
@@ -49,6 +52,9 @@ cpDate ∷ CP.ChildPath Date.Query ChildQuery Unit Slot
 cpDate = CP.cp1
 cpTime ∷ CP.ChildPath Time.Query ChildQuery Unit Slot
 cpTime = CP.cp2
+
+emptyError ∷ DateTimeError
+emptyError = Tuple Nothing Nothing
 
 
 type HTML m = H.ParentHTML DateTimeQuery ChildQuery Slot m
@@ -86,11 +92,11 @@ evalDateTime format (Update msg next) = do
       Left  (NotifyChange newDate) → case newDate of
         Just (Right date) → Right $ setDateDt date dt
         Just (Left x) → Left $ dateError x
-        Nothing → Left $ Tuple Nothing Nothing
+        Nothing → Left $ emptyError
       Right (NotifyChange newTime) → case newTime of
         Just (Right time) → Right $ setTimeDt time dt
         Just (Left x) → Left $ timeError x
-        Nothing → Left $ Tuple Nothing Nothing
+        Nothing → Left $ emptyError
   pure next
 
 resetChildErrorBasedOnMessage ∷ ∀ m. MessageIn → DSL m Unit
@@ -111,56 +117,55 @@ timeError x = Tuple Nothing (Just x)
 dateError ∷ DateError → DateTimeError
 dateError x = Tuple (Just x) Nothing
 
-type StepM = Join (Star (Writer (Maybe (Tuple (Additive Int) DateTimeErrorLast)))) DateTime
-formatToSteps ∷ ∀ m. F.Format → DSL m (Array StepM)
-formatToSteps format = for (unwrap format) case _ of
-  F.Time _ → applyTime <$> queryTime (H.request $ left <<< Base <<< GetValue)
-  F.Date _ → applyDate <$> queryDate (H.request $ left <<< Base <<< GetValue)
-  where
-  applyTime ∷ PickerValue TimeError Time → StepM
-  applyTime val = Join $ Star $ \dt → case val of
-    Just (Right time) →
-      pure $ setTimeDt time dt
-    Just (Left err) →
-      writeErr dt (Additive 1) (biLast $ timeError err)
-    Nothing →
-      writeErr dt (Additive 0) mempty
-  applyDate ∷ PickerValue DateError Date → StepM
-  applyDate val = Join $ Star $ \dt → case val of
-    Just (Right date) →
-      pure $ setDateDt date dt
-    Just (Left err) →
-      writeErr dt (Additive 1) (biLast $ dateError err)
-    Nothing →
-      writeErr dt (Additive 0) mempty
-  writeErr dt a b = tell (Just $ Tuple a b) *> pure dt
-  biLast = bimap Last Last
-
 setTimeDt ∷ Time → DateTime → DateTime
 setTimeDt x dt = modifyTime (const x) dt
 setDateDt ∷ Date → DateTime → DateTime
 setDateDt x dt = modifyDate (const x) dt
 
-
-stepsToFunc ∷ ∀ f
-  . Foldable f
-  ⇒ Int
-  → f StepM
-  → DateTime
-  → Either (Tuple Boolean DateTimeError) DateTime
-stepsToFunc childCount steps dt = fold steps # \(Join (Star f)) → case runWriter $ f dt of
-  Tuple res Nothing → Right res
-  Tuple res (Just (Tuple (Additive errCount) err)) → Left $ Tuple
-    (errCount > 0  && errCount < childCount) -- if we hit arror 0 or childCount we shuoldn't force
-    (bimap unwrap unwrap err)
-
+type BuildStep
+  = Maybe
+    (Join
+      (Star (Writer (Maybe (Tuple (Additive Int) DateTimeErrorLast))))
+      DateTime)
 
 buildDateTime ∷ ∀ m
   . F.Format
   → DSL m (Either (Tuple Boolean DateTimeError) DateTime)
 buildDateTime format = do
-  steps ← formatToSteps format
-  pure $ stepsToFunc (length $ unwrap format) steps bottom
+  buildSteps ← for (sort $ unwrap format) mkBuildStep
+  pure $
+    fromMaybe (Left (Tuple false emptyError)) $
+    runStep (length buildSteps) (foldSteps buildSteps)
+  where
+  runStep
+    ∷ Int
+    → BuildStep
+    → Maybe (Either (Tuple Boolean DateTimeError) DateTime)
+  runStep childCount step = step <#> \(Join (Star f)) → case runWriter $ f bottom of
+    Tuple res Nothing → Right res
+    Tuple res (Just (Tuple (Additive errCount) err)) → Left $ Tuple
+      -- if we hit errCount == 0 or errCount == childCount we shuoldn't force
+      (errCount > 0  && errCount < childCount)
+      (bimap unwrap unwrap err)
+  mkBuildStep ∷ F.Command → DSL m BuildStep
+  mkBuildStep = case _ of
+    F.Time _ → do
+      val ← H.query' cpTime unit (H.request $ left <<< Base <<< GetValue)
+      pure $ val >>= applyValue setTimeDt timeError
+    F.Date _ → do
+      val ← H.query' cpDate unit (H.request $ left <<< Base <<< GetValue)
+      pure $ val >>= applyValue setDateDt dateError
+  applyValue ∷ ∀ val err
+    . (val → DateTime → DateTime)
+    → (err → DateTimeError)
+    → PickerValue err val
+    → BuildStep
+  applyValue f err val = Just $ Join $ Star $ \dt → case val of
+    Just (Right x) → pure $ f x dt
+    Just (Left x) → writeErr dt (Additive 1) (biLast $ err x)
+    Nothing → writeErr dt (Additive 0) mempty
+  writeErr dt a b = tell (Just $ Tuple a b) *> pure dt
+  biLast = bimap Last Last
 
 
 evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m

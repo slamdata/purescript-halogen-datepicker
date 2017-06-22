@@ -6,7 +6,10 @@ import Control.Alternative (class Alternative, empty)
 import Control.MonadPlus (guard)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..), either)
+import Data.Foldable (fold)
 import Data.Maybe (Maybe(..), fromJust)
+import Data.Monoid (class Monoid)
+import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.Datepicker.Component.Types (PickerMessage(..), PickerValue, isInvalid)
@@ -67,3 +70,6 @@ transitionState f = do
     -- `true` indicates if we want to force state change to "invalid"
     Nothing, Left (Tuple true err) → Just (Left err)
     Nothing, Left _ → Nothing
+
+foldSteps ∷ ∀ a. Monoid a => Array (Maybe a) → Maybe a
+foldSteps steps = map fold $ sequence steps

@@ -25,7 +25,7 @@ import Data.Foreign (readBoolean, readString, toForeign)
 import Data.Foreign.Index (readProp)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Data.Int as Int
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Number as N
 import Data.String (Pattern(..), length, stripSuffix)
 import Data.Tuple (Tuple(..), fst)
@@ -89,7 +89,7 @@ evalPicker _ (GetValue next) = H.gets _.number <#> (fst >>> next)
 type InputValue a = Tuple (Maybe a) (Maybe String)
 
 toString ∷ ∀ a. InputValue a → String
-toString (Tuple _ mbStr) = maybe "" id mbStr
+toString (Tuple _ mbStr) = fromMaybe "" mbStr
 
 mkInputValue ∷ ∀ a. HasNumberInputVal a → a → InputValue a
 mkInputValue hasNumberInputVal n = Tuple (Just n) (Just $ hasNumberInputVal.toValue n)
@@ -110,7 +110,7 @@ isEmpty _ = false
 showNum ∷ Number → String
 showNum 0.0 = "0"
 showNum n = let str = show n
-  in maybe str id (stripSuffix (Pattern ".0") str)
+  in fromMaybe str (stripSuffix (Pattern ".0") str)
 
 numberElement ∷ ∀ val query
   . Ord val

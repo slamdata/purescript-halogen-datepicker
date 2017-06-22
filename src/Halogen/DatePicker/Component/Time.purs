@@ -20,7 +20,7 @@ import Data.NonEmpty (NonEmpty)
 import Data.Profunctor.Join (Join(..))
 import Data.Profunctor.Star (Star(..))
 import Data.Time (Time)
-import Data.Traversable (for, sequence)
+import Data.Traversable (for)
 import Halogen as H
 import Halogen.Component.ChildPath as CP
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
@@ -30,7 +30,7 @@ import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (componentProps, transitionState', pickerProps, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mustBeMounted, pickerProps, transitionState')
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -130,18 +130,23 @@ evalTime format (Update update next) = do
       _  → buildTime format
   pure next
 
+type BuildStep = Maybe (Join (Star Maybe) Time)
 buildTime ∷ ∀ m. F.Format → DSL m (Maybe Time)
 buildTime format = do
-  mbKleisliEndo ← for (sort $ unwrap format) mkKleisli
-  pure $ map fold (sequence mbKleisliEndo) >>= \(Join (Star f)) → f bottom
+  buildSteps ← for (sort $ unwrap format) mkBuildStep
+  pure $ runStep $ foldSteps buildSteps
   where
-  mkKleisli (F.Placeholder _) = pure $ Just $ mempty
-  mkKleisli cmd@F.Meridiem = do
-    num ← H.query' cpChoice cmd $ H.request (left <<< GetValue)
-    pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
-  mkKleisli cmd = do
-    num ← H.query' cpNum cmd $ H.request (left <<< GetValue)
-    pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
+  runStep ∷ BuildStep -> Maybe Time
+  runStep step = step >>= \(Join (Star f)) → f bottom
+  mkBuildStep ∷ F.Command → DSL m BuildStep
+  mkBuildStep cmd = case cmd of
+    F.Placeholder _ → pure $ Just $ mempty
+    F.Meridiem → do
+      num ← H.query' cpChoice cmd $ H.request (left <<< GetValue)
+      pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
+    _ → do
+      num ← H.query' cpNum cmd $ H.request (left <<< GetValue)
+      pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
 
 
 evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m

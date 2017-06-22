@@ -28,7 +28,7 @@ import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (componentProps, transitionState', pickerProps, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (foldSteps, componentProps, transitionState', pickerProps, mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -125,11 +125,18 @@ evalDate format (Update update next) = do
     _ → buildDate format
   pure next
 
-
+type BuildStep = Maybe (Join (Star Maybe) Date)
 buildDate ∷ ∀ m. F.Format → DSL m (Either Boolean Date)
 buildDate format = do
-  mbKleisliEndo ← for (sort $ unwrap format) $ commandCata
-    { text: \cmd → pure $ Just $ mempty
+  buildSteps ← for (sort $ unwrap format) $ mkBuildStep
+  pure case runStep $ foldSteps buildSteps of
+    Just (Just x) → Right x
+    Just Nothing → Left true
+    Nothing → Left false
+  where
+  mkBuildStep ∷ F.Command → DSL m BuildStep
+  mkBuildStep = commandCata
+    { text: \cmd → pure $ Just mempty
     , enum: \cmd → do
         num ← H.query' cpNum cmd $ H.request (left <<< GetValue)
         pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
@@ -137,9 +144,9 @@ buildDate format = do
         num ← H.query' cpChoice cmd $ H.request (left <<< GetValue)
         pure $ join num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     }
-  pure case map fold (sequence mbKleisliEndo) of
-    Just (Join (Star f)) → maybe (Left true) Right $  (toEnum 0) >>= (_ `setYear` bottom) >>= f
-    Nothing → Left false
+  runStep ∷ BuildStep -> Maybe (Maybe Date)
+  runStep step = step <#> \(Join (Star f)) ->
+    (toEnum 0) >>= (_ `setYear` bottom) >>= f
 
 
 evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m
