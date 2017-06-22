@@ -26,7 +26,7 @@ pickerProps val = [HP.classes classes]
   where
   classes = [ClassName "Picker"] <> (guard (isInvalid val) $> ClassName "Picker--invalid")
 
-componentProps ∷ forall r z. Array (HP.IProp ( "class" ∷ String | z ) r )
+componentProps ∷ ∀ r z. Array (HP.IProp ( "class" ∷ String | z ) r )
 componentProps = [HP.classes [ClassName "Picker-component"]]
 
 asRight ∷ ∀ e a f. Alternative f ⇒ Either e a → f a
@@ -35,7 +35,7 @@ asRight = either (const empty) pure
 asLeft ∷ ∀ e a f. Alternative f ⇒ Either e a → f e
 asLeft = either pure (const empty)
 
-transitionState' ∷ forall f g p m val err
+transitionState' ∷ ∀ f g p m val err
   . Eq err
   ⇒ Eq val
   ⇒ err
@@ -49,7 +49,7 @@ transitionState' err f = transitionState (f >>>  (map $ lmap (_ `Tuple` err)))
 type TransitionM f g p m err val =
   HalogenM (PickerValue err val) f g p (PickerMessage (PickerValue err val)) m
 
-transitionState ∷ forall f g p m val err
+transitionState ∷ ∀ f g p m val err
   . Eq err
   ⇒ Eq val
   ⇒ ( PickerValue err val
@@ -61,7 +61,7 @@ transitionState f = do
   nextVal ← map (steper val) (f val)
   val `moveStateTo` nextVal
   where
-  moveStateTo ∷ forall a. Eq a ⇒ a → a → HalogenM a f g p (PickerMessage a) m Unit
+  moveStateTo ∷ ∀ a. Eq a ⇒ a → a → HalogenM a f g p (PickerMessage a) m Unit
   moveStateTo old new = H.put new *> unless (new == old) (H.raise $ NotifyChange new)
   steper ∷ ∀ e a. PickerValue e a → Either (Tuple Boolean e) a → PickerValue e a
   steper old new = case old, new of
