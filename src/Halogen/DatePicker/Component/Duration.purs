@@ -24,11 +24,13 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
 
-data DurationQuery a = UpdateCommand F.Command (Maybe Number) a
 type State = PickerValue DurationError IsoDuration
-type QueryIn = PickerQuery Unit State
-type Query = Coproduct QueryIn DurationQuery
+
 type Message = PickerMessage State
+
+type Query = Coproduct QueryIn DurationQuery
+type QueryIn = PickerQuery Unit State
+data DurationQuery a = UpdateCommand F.Command (Maybe Number) a
 
 data DurationError = InvalidIsoDuration
 derive instance durationErrorEq ∷ Eq DurationError
@@ -39,6 +41,7 @@ instance durationErrorShow ∷ Show DurationError where
 
 type Slot = F.Command
 type ChildQuery = N.Query Number
+
 type HTML m = H.ParentHTML DurationQuery ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 

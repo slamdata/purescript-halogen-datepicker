@@ -33,11 +33,13 @@ import Halogen.Datepicker.Internal.Utils (foldSteps, componentProps, transitionS
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
-data DateQuery a = Update (Date → Maybe Date) a
 type State = PickerValue DateError Date
-type QueryIn = PickerQuery Unit State
-type Query = Coproduct QueryIn DateQuery
+
 type Message = PickerMessage State
+
+type Query = Coproduct QueryIn DateQuery
+type QueryIn = PickerQuery Unit State
+data DateQuery a = Update (Date → Maybe Date) a
 
 data DateError = InvalidDate
 derive instance dateErrorEq ∷ Eq DateError
@@ -46,13 +48,12 @@ derive instance dateErrorGeneric ∷ Generic DateError _
 instance dateErrorShow ∷ Show DateError where
   show = genericShow
 
+type Slot = Either2 NumSlot ChoiceSlot
+type ChildQuery = Coproduct2 NumQuery ChoiceQuery
 type NumQuery = Num.Query Int
 type ChoiceQuery = Choice.Query (Maybe Int)
-type ChildQuery = Coproduct2 NumQuery ChoiceQuery
-
-type ChoiceSlot = F.Command
 type NumSlot = F.Command
-type Slot = Either2 ChoiceSlot NumSlot
+type ChoiceSlot = F.Command
 
 cpNum ∷ CP.ChildPath NumQuery ChildQuery F.Command Slot
 cpNum = CP.cp1

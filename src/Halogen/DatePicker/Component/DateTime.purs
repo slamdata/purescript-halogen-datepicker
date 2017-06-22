@@ -34,28 +34,25 @@ import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mustBeMount
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
-type MessageIn = Either Date.Message Time.Message
-data DateTimeQuery a = Update MessageIn a
-
-type DateTimeErrorF f = Tuple (f DateError) (f TimeError)
+type State = PickerValue DateTimeError DateTime
 type DateTimeError = DateTimeErrorF Maybe
+type DateTimeErrorF f = Tuple (f DateError) (f TimeError)
 type DateTimeErrorLast = DateTimeErrorF Last
 
-type State = PickerValue DateTimeError DateTime
-type QueryIn = PickerQuery Unit State
-type Query = Coproduct QueryIn DateTimeQuery
 type Message = PickerMessage State
+
+type Query = Coproduct QueryIn DateTimeQuery
+type QueryIn = PickerQuery Unit State
+data DateTimeQuery a = Update MessageIn a
+type MessageIn = Either Date.Message Time.Message
 
 type ChildQuery = Coproduct2 Date.Query Time.Query
 type Slot = Either2 Unit Unit
+
 cpDate ∷ CP.ChildPath Date.Query ChildQuery Unit Slot
 cpDate = CP.cp1
 cpTime ∷ CP.ChildPath Time.Query ChildQuery Unit Slot
 cpTime = CP.cp2
-
-emptyError ∷ DateTimeError
-emptyError = Tuple Nothing Nothing
-
 
 type HTML m = H.ParentHTML DateTimeQuery ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
@@ -183,6 +180,9 @@ propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
 propagateChange format dateTime = for_ (unwrap format) case _ of
   F.Time _ → setTime $ value dateTime <#> (time >>> Right)
   F.Date _ → setDate $ value dateTime <#> (date >>> Right)
+
+emptyError ∷ DateTimeError
+emptyError = Tuple Nothing Nothing
 
 setTime ∷ ∀ m. PickerValue TimeError Time → DSL m Unit
 setTime val = queryTime $ setValue val

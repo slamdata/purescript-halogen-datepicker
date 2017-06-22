@@ -45,14 +45,16 @@ type State val =
   , title∷ String
   }
 
-type Input val = Maybe val
-data NumQuery val a = Update (InputValue val) a
-type QueryIn val = BasePickerQuery Unit (Input val)
-type Query val = Coproduct (QueryIn val) (NumQuery val)
 type Message val = PickerMessage (Input val)
+type Input val = Maybe val
+
+type Query val = Coproduct (QueryIn val) (NumQuery val)
+type QueryIn val = BasePickerQuery Unit (Input val)
+data NumQuery val a = Update (InputValue val) a
 
 type DSL val = H.ComponentDSL (State val) (Query val) (Message val)
 type HTML val = H.ComponentHTML (NumQuery val)
+
 
 picker ∷ ∀ val m
   . Ord val

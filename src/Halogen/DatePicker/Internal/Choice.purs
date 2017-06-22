@@ -39,15 +39,16 @@ type State val =
   , title∷ String
   }
 
-data ChoiceError = ValueIsNotInValues
-
-data ChoiceQuery val a = Update (Maybe val) a
-type QueryIn val = BasePickerQuery (Maybe ChoiceError) val
-type Query val = Coproduct (QueryIn val) (ChoiceQuery val)
 type Message val = PickerMessage val
+
+type Query val = Coproduct (QueryIn val) (ChoiceQuery val)
+type QueryIn val = BasePickerQuery (Maybe ChoiceError) val
+data ChoiceError = ValueIsNotInValues
+data ChoiceQuery val a = Update (Maybe val) a
 
 type DSL val = H.ComponentDSL (State val) (Query val) (Message val)
 type HTML val = H.ComponentHTML (ChoiceQuery val)
+
 
 picker ∷ ∀ val m
   . Ord val

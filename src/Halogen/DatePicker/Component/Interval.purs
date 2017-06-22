@@ -14,7 +14,6 @@ import Data.Maybe (Maybe(..), isNothing)
 import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.Component.ChildPath as CP
-import Halogen.Datepicker.Component.DateTime (DateTimeError)
 import Halogen.Datepicker.Component.DateTime as DateTime
 import Halogen.Datepicker.Component.Duration (DurationError)
 import Halogen.Datepicker.Component.Duration as Duration
@@ -27,25 +26,27 @@ import Halogen.Datepicker.Internal.Utils (componentProps, transitionState, asLef
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
-type IntervalError = Interval (Maybe DurationError) (Maybe DateTimeError)
-type IsoInterval = Interval IsoDuration DateTime
 type State = PickerValue IntervalError IsoInterval
-data SetIntervalError = IntervalIsNotInShapeOfFormat
+type IntervalError = Interval (Maybe DurationError) (Maybe DateTime.DateTimeError)
+type IsoInterval = Interval IsoDuration DateTime
 
-type MessageIn = Either Duration.Message (Tuple Boolean DateTime.Message)
-data IntervalQuery a = Update MessageIn  a
-
-type Query = Coproduct (PickerQuery (Maybe SetIntervalError) State) IntervalQuery
 type Message = PickerMessage State
 
+type Query = Coproduct QueryIn IntervalQuery
+type QueryIn = PickerQuery (Maybe SetIntervalError) State
+data SetIntervalError = IntervalIsNotInShapeOfFormat
+data IntervalQuery a = Update MessageIn a
+type MessageIn = Either Duration.Message (Tuple Boolean DateTime.Message)
+
+type Slot = Either2 DurationSlot DateTimeSlot
 type ChildQuery = Coproduct2 Duration.Query DateTime.Query
-type Slot = Either2 Unit Boolean
+type DateTimeSlot = Boolean
+type DurationSlot = Unit
 
-cpDuration ∷ CP.ChildPath Duration.Query ChildQuery Unit Slot
+cpDuration ∷ CP.ChildPath Duration.Query ChildQuery DurationSlot Slot
 cpDuration = CP.cp1
-cpDateTime ∷ CP.ChildPath DateTime.Query ChildQuery Boolean Slot
+cpDateTime ∷ CP.ChildPath DateTime.Query ChildQuery DateTimeSlot Slot
 cpDateTime = CP.cp2
-
 
 type HTML m = H.ParentHTML IntervalQuery ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
@@ -154,14 +155,6 @@ collectValues format = case format of
   StartDuration a d → StartDuration <$> getDateTime false <*> getDuration
   JustDuration d → JustDuration <$> getDuration
 
-getDuration ∷ ∀ m. DSL m (PickerValue DurationError IsoDuration)
-getDuration = queryDuration $ getValue
-
-getDateTime ∷ ∀ m
-  . Boolean
-  → DSL m (PickerValue DateTimeError DateTime)
-getDateTime idx  = queryDateTime idx $ getValue
-
 resetChildErrorBasedOnMessage ∷ ∀ m. MessageIn → DSL m Unit
 resetChildErrorBasedOnMessage (Left (NotifyChange (Just (Left _)))) = resetDuration
 resetChildErrorBasedOnMessage (Right (Tuple idx (NotifyChange (Just (Left _))))) = resetDateTime idx
@@ -183,7 +176,7 @@ onFormat onDateTime onDuration format = case format of
   StartDuration a d → onDateTime false *> onDuration
   JustDuration d → onDuration
 
-evalPicker ∷ ∀ m. F.Format → (PickerQuery (Maybe SetIntervalError) State) ~> DSL m
+evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m
 evalPicker format (ResetError next) = do
   H.put Nothing
   resetChildError format
@@ -229,10 +222,16 @@ viewInterval format input = case format, mapedState input of
   mkErr ∷ ∀ e a. Maybe e → Maybe (PickerValue e a)
   mkErr = map (Just <<< Left)
 
-setDuration ∷ ∀ m. PickerValue DurationError IsoDuration → DSL m Unit
+getDuration ∷ ∀ m. DSL m Duration.State
+getDuration = queryDuration $ getValue
+
+getDateTime ∷ ∀ m. Boolean → DSL m DateTime.State
+getDateTime idx  = queryDateTime idx $ getValue
+
+setDuration ∷ ∀ m. Duration.State → DSL m Unit
 setDuration val = queryDuration $ setValue val
 
-setDateTime ∷ ∀ m. Boolean → PickerValue DateTimeError DateTime → DSL m Unit
+setDateTime ∷ ∀ m. Boolean → DateTime.State → DSL m Unit
 setDateTime idx val = queryDateTime idx $ setValue val
 
 resetDuration ∷ ∀ m. DSL m Unit
@@ -244,5 +243,5 @@ resetDateTime idx = queryDateTime idx $ resetError
 queryDuration ∷ ∀ m a. Duration.Query a → DSL m a
 queryDuration q = H.query' cpDuration unit q >>= mustBeMounted
 
-queryDateTime ∷ ∀ m a. Boolean → DateTime.Query a → DSL m a
+queryDateTime ∷ ∀ m a. DateTimeSlot → DateTime.Query a → DSL m a
 queryDateTime idx q = H.query' cpDateTime idx q >>= mustBeMounted

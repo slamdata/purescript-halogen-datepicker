@@ -34,11 +34,13 @@ import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mustBeMount
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
-data TimeQuery a = Update (Time → Maybe Time) a
 type State = PickerValue TimeError Time
-type QueryIn = PickerQuery Unit State
-type Query = Coproduct QueryIn TimeQuery
+
 type Message = PickerMessage State
+
+type Query = Coproduct QueryIn TimeQuery
+type QueryIn = PickerQuery Unit State
+data TimeQuery a = Update (Time → Maybe Time) a
 
 data TimeError = InvalidTime
 derive instance timeErrorEq ∷ Eq TimeError
@@ -47,14 +49,12 @@ derive instance timeErrorGeneric ∷ Generic TimeError _
 instance timeErrorShow ∷ Show TimeError where
   show = genericShow
 
-
+type ChildQuery = Coproduct2 NumQuery ChoiceQuery
+type Slot = Either2 NumSlot ChoiceSlot
 type NumQuery = Num.Query Int
 type ChoiceQuery = Choice.Query (Maybe Int)
-type ChildQuery = Coproduct2 NumQuery ChoiceQuery
-
-type ChoiceSlot = F.Command
 type NumSlot = F.Command
-type Slot = Either2 ChoiceSlot NumSlot
+type ChoiceSlot = F.Command
 
 cpNum ∷ CP.ChildPath NumQuery ChildQuery F.Command Slot
 cpNum = CP.cp1
@@ -64,6 +64,7 @@ cpChoice = CP.cp2
 
 type HTML m = H.ParentHTML TimeQuery ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
+
 
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
 picker format = H.parentComponent
