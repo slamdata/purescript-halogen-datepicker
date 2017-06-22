@@ -32,11 +32,11 @@ data Command
   = Date DateF.Format
   | Time TimeF.Format
 
-  -- placeholder could be as part of Date or Time for now
-  -- we should take a look at first and last commands of date and time and if
-  -- thay contain Placeholder extract it into DateTime format level whis way
-  -- we can merge last placeholder of first element with the first of the second
-  -- | Placeholder String
+  -- NOTE: placeholder can be as part of Date or Time. in future we can add
+  -- `Placeholder` node here, and when we construct Format, we should take a look
+  -- at first and last commands of date and time and if thay contain Placeholder
+  -- extract them into DateTime format level whis way we can merge last placeholder
+  -- of first element with the first of the second.
 
 derive instance commandGeneric ∷ Generic Command _
 derive instance commandEq ∷ Eq Command
@@ -50,7 +50,6 @@ derive instance formatNewtype ∷ Newtype Format _
 derive instance formatGeneric ∷ Generic Format _
 derive instance formatEq ∷ Eq Format
 derive instance formatOrd ∷ Ord Format
--- derive instance formatSemigroup ∷ Semigroup Format
 instance formatShow ∷ Show Format where
   show = genericShow
 
@@ -67,7 +66,7 @@ fromDateTimeFormatter fmt = run $ go Nil
     resFmt ← evalStateT s fmt
     let errs = C.runConstraint formatConstraint resFmt
     when (errs /= []) $ Left $ joinWith "; " errs
-    pure $ Format $ fromFoldable resFmt --- TODO make sure List used here is fine
+    pure $ Format $ fromFoldable resFmt
 
 go
   ∷ List Command
@@ -118,7 +117,6 @@ toDateTimeFormatter (Format fmt) = foldMap toDTCommand fmt
   where
   toDTCommand (Date inFmt) = DateF.toDateTimeFormatter inFmt
   toDTCommand (Time inFmt) = TimeF.toDateTimeFormatter inFmt
-  -- toDTCommand (Placeholder str) = FDT.Placeholder str
 
 unformat ∷ Format → String → Either String DateTime
 unformat fmt str = FDT.unformat (toDateTimeFormatter fmt) str
