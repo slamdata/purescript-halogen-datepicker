@@ -27,6 +27,7 @@ import Data.NonEmpty (NonEmpty, fromNonEmpty, head, tail)
 import Data.Number as N
 import Halogen as H
 import Halogen.Datepicker.Component.Types (PickerMessage(..), BasePickerQuery(..))
+import Halogen.Datepicker.Internal.Utils (mapComponentHTMLQuery)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -57,7 +58,7 @@ picker ∷ ∀ val m
   → H.Component HH.HTML (Query val) Unit (Message val) m
 picker hasChoiceInputVal {title, values} = H.component
   { initialState: const {title, values, value: head $ values}
-  , render: (render hasChoiceInputVal) <#> (map right)
+  , render: render hasChoiceInputVal >>> mapComponentHTMLQuery right
   , eval: coproduct (evalPicker hasChoiceInputVal) evalChoice
   , receiver: const Nothing
   }

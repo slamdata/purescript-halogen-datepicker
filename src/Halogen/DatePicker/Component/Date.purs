@@ -3,7 +3,6 @@ module Halogen.Datepicker.Component.Date where
 import Prelude
 
 import Data.Array (sort)
-import Data.Bifunctor (bimap)
 import Data.Date (Date, Day, Month, Year)
 import Data.Either (Either(..))
 import Data.Either.Nested (Either2)
@@ -29,7 +28,7 @@ import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (foldSteps, componentProps, transitionState', pickerProps, mustBeMounted)
+import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, foldSteps, componentProps, transitionState', pickerProps, mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -68,7 +67,7 @@ type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
 picker format = H.parentComponent
   { initialState: const Nothing
-  , render: render format >>> bimap (map right) right
+  , render: render format >>> mapParentHTMLQuery right
   , eval: coproduct (evalPicker format) (evalDate format)
   , receiver: const Nothing
   }

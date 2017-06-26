@@ -3,7 +3,7 @@ module Halogen.Datepicker.Component.Duration where
 import Prelude
 
 import Data.Array (fold)
-import Data.Bifunctor (bimap, lmap)
+import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Generic.Rep (class Generic)
@@ -22,7 +22,7 @@ import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..
 import Halogen.Datepicker.Format.Duration as F
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (minRange)
-import Halogen.Datepicker.Internal.Utils (foldSteps, componentProps, transitionState, asRight, mustBeMounted, pickerProps)
+import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, foldSteps, componentProps, transitionState, asRight, mustBeMounted, pickerProps)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -52,7 +52,7 @@ type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
 picker format = H.parentComponent
   { initialState: const Nothing
-  , render: render format >>> bimap (map right) right
+  , render: render format >>> mapParentHTMLQuery right
   , eval: coproduct (evalPicker format) (evalDuration format)
   , receiver: const Nothing
   }

@@ -4,7 +4,7 @@ import Prelude
 
 import Control.Alternative (class Alternative, empty)
 import Control.MonadPlus (guard)
-import Data.Bifunctor (lmap)
+import Data.Bifunctor (bimap, lmap)
 import Data.Either (Either(..), either)
 import Data.Foldable (fold)
 import Data.Maybe (Maybe(..))
@@ -73,3 +73,9 @@ transitionState f = do
 
 foldSteps ∷ ∀ a. Monoid a => Array (Maybe a) → Maybe a
 foldSteps steps = map fold $ sequence steps
+
+mapParentHTMLQuery :: ∀ f f' g p m. (f ~> f') → H.ParentHTML f g p m → H.ParentHTML f' g p m
+mapParentHTMLQuery f = bimap (map f) f
+
+mapComponentHTMLQuery :: ∀ f f'. (f ~> f') → H.ComponentHTML f → H.ComponentHTML f'
+mapComponentHTMLQuery f = map f

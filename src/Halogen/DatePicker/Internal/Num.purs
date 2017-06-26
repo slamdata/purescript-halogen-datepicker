@@ -32,7 +32,7 @@ import Data.Tuple (Tuple(..), fst)
 import Halogen as H
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..))
 import Halogen.Datepicker.Internal.Range (Range(..), isInRange, rangeMax, rangeMin)
-import Halogen.Datepicker.Internal.Utils (asRight)
+import Halogen.Datepicker.Internal.Utils (asRight, mapComponentHTMLQuery)
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
@@ -60,7 +60,7 @@ picker ∷ ∀ val m
   → H.Component HH.HTML (Query val) Unit (Message val) m
 picker hasNumberInputVal conf = H.component
   { initialState: const emptyNumberInputValue
-  , render: (render hasNumberInputVal conf) <#> (map right)
+  , render: render hasNumberInputVal conf >>> mapComponentHTMLQuery right
   , eval: coproduct (evalPicker hasNumberInputVal) evalNumber
   , receiver: const Nothing
   }

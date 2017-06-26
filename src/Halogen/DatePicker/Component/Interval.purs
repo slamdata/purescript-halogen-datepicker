@@ -23,7 +23,7 @@ import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Format.Duration as DurationF
 import Halogen.Datepicker.Format.Interval as F
 import Halogen.Datepicker.Internal.Elements (textElement)
-import Halogen.Datepicker.Internal.Utils (componentProps, transitionState, asLeft, mustBeMounted, pickerProps)
+import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, componentProps, transitionState, asLeft, mustBeMounted, pickerProps)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -56,7 +56,7 @@ type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
 picker format = H.parentComponent
   { initialState: const Nothing
-  , render: render format >>> bimap (map right) right
+  , render: render format >>> mapParentHTMLQuery right
   , eval: coproduct (evalPicker format) (evalInterval format)
   , receiver: const Nothing
   }

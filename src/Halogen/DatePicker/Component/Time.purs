@@ -3,7 +3,6 @@ module Halogen.Datepicker.Component.Time where
 import Prelude
 
 import Data.Array (sort)
-import Data.Bifunctor (bimap)
 import Data.DateTime (Hour, Millisecond, Minute, Second)
 import Data.Either (Either(..))
 import Data.Either.Nested (Either2)
@@ -30,7 +29,7 @@ import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mustBeMounted, pickerProps, transitionState')
+import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, componentProps, foldSteps, mustBeMounted, pickerProps, transitionState')
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -69,7 +68,7 @@ type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
 picker format = H.parentComponent
   { initialState: const Nothing
-  , render: render format >>> bimap (map right) right
+  , render: render format >>> mapParentHTMLQuery right
   , eval: coproduct (evalPicker format) (evalTime format)
   , receiver: const Nothing
   }
