@@ -6,14 +6,15 @@ import Control.Monad.Eff (Eff)
 import Data.Bitraversable (bitraverse)
 import Data.Date (Date, canonicalDate)
 import Data.DateTime (DateTime(..))
-import Data.Either (Either(..), either)
+import Data.Either (Either(..), either, fromRight)
 import Data.Either.Nested as Either
 import Data.Enum (class BoundedEnum, toEnum)
 import Data.Foldable (fold)
 import Data.Formatter.Interval (unformatInterval)
 import Data.Functor.Coproduct.Nested as Coproduct
-import Data.Interval (Interval(..), IsoDuration)
+import Data.Interval (Interval(..))
 import Data.Interval as I
+import Data.Interval.Duration.Iso (IsoDuration, mkIsoDuration)
 import Data.Map (Map, lookup, insert)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Monoid (mempty)
@@ -167,13 +168,13 @@ example =
         (Right testDuration)
     <> [HH.h1_ [ HH.text "Interval" ]]
     <> renderInterval s 0
-        (JustDuration
+        (DurationOnly
           [ DurationF.Year
           , DurationF.Month
           , DurationF.Day
           ]
         )
-        (Right $ JustDuration testDuration)
+        (Right $ DurationOnly testDuration)
     <> renderInterval s 1
         (StartDuration
           "YYYY:MM:DD"
@@ -206,8 +207,8 @@ example =
   testDateTime = DateTime testDate (bottom # setHour (enum 2) # setMinute (enum 2))
 
   testDuration ∷ IsoDuration
-  testDuration = unsafePartial fromJust -- this duration must be valid
-    $ I.mkIsoDuration
+  testDuration = unsafePartial fromRight -- this duration must be valid
+    $ mkIsoDuration
     $ fold
       [ I.year 100.0
       , I.month 25.0

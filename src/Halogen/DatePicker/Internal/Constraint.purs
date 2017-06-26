@@ -8,14 +8,14 @@ import Data.List as List
 import Data.Validation.Semigroup (V, invalid, unV)
 
 
-data Error 
+data Error
   = ContainsInvalidValue String
   | ShouldBeNonEmpty
   | ShouldBeSorted
   | UsageCountShouldBeNoneOrOne { count ∷ Int, alowed∷ String }
   | UsageCountShouldBeNoneOrAll { count ∷ Int, alowed∷ String }
 
-showError ∷ Error → String 
+showError ∷ Error → String
 showError = case _ of
   ContainsInvalidValue val →
     "Contains value: " <> val <> " which is not allowed"
@@ -35,7 +35,7 @@ runConstraint f a = unV (map showError) (const []) $ f a
 
 allowedValues ∷ ∀ g a. Foldable g ⇒ (a → String) → Array (EqPred a) → Constraint (g a)
 allowedValues showVal as as' = for_ as' \a → unless
-  (matchesAny a as) 
+  (matchesAny a as)
   (invalid [ContainsInvalidValue $ showVal a])
 
 notEmpty ∷ ∀ f a. Foldable f ⇒ Constraint (f a)
@@ -47,19 +47,19 @@ sorted ∷ ∀ f a. Ord a ⇒ Foldable f ⇒ Sorting → Constraint (f a)
 sorted sorting as = unless isSorted (invalid [ShouldBeSorted])
   where
   isSorted = case sorting of
-    Increasing → List.reverse asList == List.sort asList
-    Decreasing → asList == List.sort asList
+    Increasing → asList == List.sort asList
+    Decreasing → List.reverse asList == List.sort asList
   asList = List.fromFoldable as
 
 
 allowNoneOrOne ∷ ∀ g a. Foldable g ⇒ Array (EqPred a) → Constraint (g a)
-allowNoneOrOne as = usageCount as >>> \c → when 
+allowNoneOrOne as = usageCount as >>> \c → when
   (c > 1)
   (invalid [UsageCountShouldBeNoneOrOne { count: c,  alowed: show as }])
 
 allowNoneOrAll ∷ ∀ f a. Foldable f ⇒ Array (EqPred a) → Constraint (f a)
 allowNoneOrAll as = usageCount as >>> \c → when
-  (c /= 0 && c /= length as) 
+  (c /= 0 && c /= length as)
   (invalid [UsageCountShouldBeNoneOrOne { count: c,  alowed: show as }])
 
 matchesAny ∷ ∀ a . a → Array (EqPred a) → Boolean

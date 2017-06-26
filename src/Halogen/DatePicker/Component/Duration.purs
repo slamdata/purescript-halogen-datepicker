@@ -3,23 +3,25 @@ module Halogen.Datepicker.Component.Duration where
 import Prelude
 
 import Data.Array (fold)
-import Data.Bifunctor (bimap)
+import Data.Bifunctor (bimap, lmap)
 import Data.Either (Either(..))
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.Interval (Duration, IsoDuration, mkIsoDuration, unIsoDuration)
+import Data.Interval (Duration)
+import Data.Interval.Duration.Iso (IsoDuration, mkIsoDuration, unIsoDuration, Errors)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid (mempty)
 import Data.Monoid.Endo (Endo(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (for)
+import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
 import Halogen.Datepicker.Format.Duration as F
 import Halogen.Datepicker.Internal.Num as N
 import Halogen.Datepicker.Internal.Range (minRange)
-import Halogen.Datepicker.Internal.Utils (foldSteps, componentProps, transitionState', asRight, mustBeMounted, pickerProps)
+import Halogen.Datepicker.Internal.Utils (foldSteps, componentProps, transitionState, asRight, mustBeMounted, pickerProps)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -32,7 +34,7 @@ type Query = Coproduct QueryIn DurationQuery
 type QueryIn = PickerQuery Unit State
 data DurationQuery a = UpdateCommand F.Command (Maybe Number) a
 
-data DurationError = InvalidIsoDuration
+data DurationError = InvalidIsoDuration (Maybe Errors)
 derive instance durationErrorEq ∷ Eq DurationError
 derive instance durationErrorOrd ∷ Ord DurationError
 derive instance durationErrorGeneric ∷ Generic DurationError _
@@ -68,32 +70,35 @@ renderCommand cmd = HH.li componentProps
 getComponent ∷ F.Command → IsoDuration → Number
 getComponent cmd d = fromMaybe 0.0 $ F.toGetter cmd (unIsoDuration d)
 
-overIsoDuration ∷ (Duration → Duration) → IsoDuration → Maybe IsoDuration
+overIsoDuration ∷ (Duration → Duration) → IsoDuration → Either Errors IsoDuration
 overIsoDuration f d = mkIsoDuration $ f $ unIsoDuration d
 
 evalDuration ∷ ∀ m. F.Format → DurationQuery ~> DSL m
 evalDuration format (UpdateCommand cmd val next) = do
-  transitionState' InvalidIsoDuration case _ of
-    Just (Right prevDuration) → pure
-      $ maybe (Left false) Right
-      $ val >>= \n → overIsoDuration (F.toSetter cmd n) prevDuration
+  transitionState case _ of
+    Just (Right prevDuration) → pure case val of
+      Just n → overIsoDuration (F.toSetter cmd n) prevDuration # lmap \err ->
+        Tuple false (InvalidIsoDuration (Just err))
+      Nothing -> Left (Tuple false (InvalidIsoDuration Nothing))
     _  → buildDuration format
   pure next
 
 type BuildStep = Maybe (Endo Duration)
-buildDuration ∷ ∀ m. F.Format → DSL m (Either Boolean IsoDuration)
+buildDuration ∷ ∀ m
+  . F.Format
+  → DSL m (Either (Tuple Boolean DurationError) IsoDuration)
 buildDuration format = do
   steps ← for (unwrap format) mkBuildStep
   pure case runStep $ foldSteps steps of
-   Just (Just x) → Right x
-   Just Nothing → Left true
-   Nothing → Left false
+   Just (Right x) → Right x
+   Just (Left err) → Left (Tuple false (InvalidIsoDuration (Just err)))
+   Nothing → Left (Tuple false (InvalidIsoDuration Nothing))
   where
   mkBuildStep ∷ F.Command → DSL m BuildStep
   mkBuildStep cmd = do
     num ← query cmd $ H.request (left <<< GetValue)
     pure $ num <#> F.toSetter cmd >>> Endo
-  runStep ∷ BuildStep -> Maybe (Maybe IsoDuration)
+  runStep ∷ BuildStep -> Maybe (Either Errors IsoDuration)
   runStep step = step <#> \(Endo f) -> mkIsoDuration $ f mempty
 
 

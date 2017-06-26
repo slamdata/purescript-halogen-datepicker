@@ -18,6 +18,7 @@ import Data.Formatter.Interval (unformatInterval, formatInterval)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Interval (DurationComponent(..)) as ReExport
+import Data.Interval.Duration.Iso (IsoDuration)
 import Data.Interval as I
 import Data.Map (insert, lookup)
 import Data.Maybe (Maybe)
@@ -52,13 +53,13 @@ mkFormat cmds = if (not $ null errs)
   fmt = fromFoldable cmds
   errs = C.runConstraint formatConstraint fmt
 
-unformat ∷ String → Either String I.IsoDuration
+unformat ∷ String → Either String IsoDuration
 unformat str = unformatInterval str >>= case _ of
-  I.JustDuration d → pure d
+  I.DurationOnly d → pure d
   x → Left $ "unformating of duration string returned wrong result: " <> show x
 
-format ∷ I.IsoDuration → String
-format = formatInterval <<< I.JustDuration
+format ∷ IsoDuration → String
+format = formatInterval <<< I.DurationOnly
 
 
 formatConstraint ∷ ∀ g. Foldable g ⇒ C.Constraint (g Command)

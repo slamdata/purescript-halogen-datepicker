@@ -9,7 +9,8 @@ import Data.Either.Nested (Either2)
 import Data.Foldable (for_)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Data.Functor.Coproduct.Nested (Coproduct2)
-import Data.Interval (Interval(..), IsoDuration)
+import Data.Interval (Interval(..))
+import Data.Interval.Duration.Iso (IsoDuration)
 import Data.Maybe (Maybe(..), isNothing)
 import Data.Tuple (Tuple(..))
 import Halogen as H
@@ -77,7 +78,7 @@ renderCommand format = map (HH.div componentProps <<< pure) case format of
     [ renderDateTime fmtStart false
     , textElement { text: "/" }
     , renderDuration fmtDuration ]
-  JustDuration fmtDuration →
+  DurationOnly fmtDuration →
     [ renderDuration fmtDuration ]
 
 renderDuration ∷ ∀ m. DurationF.Format → HTML m
@@ -113,7 +114,7 @@ evalInterval format (Update msg next) = do
             false → StartEnd a dateTime
           DurationEnd d a → DurationEnd d dateTime
           StartDuration a d → StartDuration dateTime d
-          JustDuration d → JustDuration d
+          DurationOnly d → DurationOnly d
   pure next
 
 
@@ -127,7 +128,7 @@ addForce err = case err of
   StartEnd Nothing Nothing → Tuple false err
   DurationEnd Nothing Nothing → Tuple false err
   StartDuration Nothing Nothing → Tuple false err
-  JustDuration Nothing → Tuple false err
+  DurationOnly Nothing → Tuple false err
   _ → Tuple true err
 
 unVals ∷ Interval Duration.State DateTime.State → Either IntervalError IsoInterval
@@ -135,7 +136,7 @@ unVals vals = case bimap maybeLeft maybeLeft vals of
   StartEnd (Right dtStart) (Right dtEnd) → Right $ StartEnd dtStart dtEnd
   DurationEnd (Right dur) (Right dt) → Right $ DurationEnd dur dt
   StartDuration (Right dt) (Right dur) → Right $ StartDuration dt dur
-  JustDuration (Right dur) → Right $ JustDuration dur
+  DurationOnly (Right dur) → Right $ DurationOnly dur
   interval → Left $ bimap toError toError interval
 
 toError ∷ ∀ e a. Either (Maybe e) a → Maybe e
@@ -153,7 +154,7 @@ collectValues format = case format of
   StartEnd a b → StartEnd <$> getDateTime false <*> getDateTime true
   DurationEnd d a → DurationEnd <$> getDuration <*> getDateTime false
   StartDuration a d → StartDuration <$> getDateTime false <*> getDuration
-  JustDuration d → JustDuration <$> getDuration
+  DurationOnly d → DurationOnly <$> getDuration
 
 resetChildErrorBasedOnMessage ∷ ∀ m. MessageIn → DSL m Unit
 resetChildErrorBasedOnMessage (Left (NotifyChange (Just (Left _)))) = resetDuration
@@ -174,7 +175,7 @@ onFormat onDateTime onDuration format = case format of
   StartEnd a b → onDateTime false *> onDateTime true
   DurationEnd d a → onDuration *> onDateTime false
   StartDuration a d → onDateTime false *> onDuration
-  JustDuration d → onDuration
+  DurationOnly d → onDuration
 
 evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m
 evalPicker format (ResetError next) = do
@@ -203,7 +204,7 @@ setInterval = case _ of
   StartDuration a d → do
     for_ a $ setDateTime false
     for_ d setDuration
-  JustDuration d → do
+  DurationOnly d → do
     for_ d setDuration
 
 viewInterval ∷ F.Format → State → Maybe ChildStates
@@ -211,7 +212,7 @@ viewInterval format input = case format, mapedState input of
   StartEnd _ _ , Just interval@(StartEnd _ _) → Just $ interval
   DurationEnd _ _ , Just interval@(DurationEnd _ _) → Just $ interval
   StartDuration _ _ , Just interval@(StartDuration _ _) → Just $ interval
-  JustDuration _ , Just interval@(JustDuration _) → Just $ interval
+  DurationOnly _ , Just interval@(DurationOnly _) → Just $ interval
   _, Nothing → Just $ bimap (const $ Just Nothing) (const $ Just Nothing) format
   _ , _ → Nothing
   where
