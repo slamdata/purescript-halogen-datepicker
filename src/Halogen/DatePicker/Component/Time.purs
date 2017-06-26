@@ -84,27 +84,27 @@ renderCommand cmd = HH.li componentProps $ pure case cmd of
   F.Meridiem →
     renderCommandChoice cmd { title: "Meridiem", values: upFromIncluding (bottom ∷ Maybe Meridiem) }
   F.Hours24 →
-    renderCommandEnum cmd { title: "Hours", range: (bottomTop ∷ Range Hour) <#> fromEnum }
+    renderCommandEnum cmd { title: "Hours", placeholder: "HH", range: (bottomTop ∷ Range Hour) <#> fromEnum }
   F.Hours12 →
-    renderCommandEnum cmd { title: "Hours", range: (bottomTop ∷ Range Hour12) <#> fromEnum }
+    renderCommandEnum cmd { title: "Hours", placeholder: "hh", range: (bottomTop ∷ Range Hour12) <#> fromEnum }
   F.MinutesTwoDigits →
-    renderCommandEnum cmd { title: "Minutes", range: (bottomTop ∷ Range Minute) <#> fromEnum }
+    renderCommandEnum cmd { title: "Minutes", placeholder: "MM", range: (bottomTop ∷ Range Minute) <#> fromEnum }
   F.Minutes →
-    renderCommandEnum cmd { title: "Minutes", range: (bottomTop ∷ Range Minute) <#> fromEnum }
+    renderCommandEnum cmd { title: "Minutes", placeholder: "MM", range: (bottomTop ∷ Range Minute) <#> fromEnum }
   F.SecondsTwoDigits →
-    renderCommandEnum cmd { title: "Seconds", range: (bottomTop ∷ Range Second) <#> fromEnum }
+    renderCommandEnum cmd { title: "Seconds", placeholder: "SS", range: (bottomTop ∷ Range Second) <#> fromEnum }
   F.Seconds →
-    renderCommandEnum cmd { title: "Seconds", range: (bottomTop ∷ Range Second) <#> fromEnum }
+    renderCommandEnum cmd { title: "Seconds", placeholder: "SS", range: (bottomTop ∷ Range Second) <#> fromEnum }
   F.Milliseconds →
-    renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop ∷ Range Millisecond) <#> fromEnum }
+    renderCommandEnum cmd { title: "Milliseconds", placeholder: "MMM", range: (bottomTop ∷ Range Millisecond) <#> fromEnum }
   F.MillisecondsTwoDigits →
-    renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop ∷ Range Millisecond2) <#> fromEnum }
+    renderCommandEnum cmd { title: "Milliseconds", placeholder: "MM", range: (bottomTop ∷ Range Millisecond2) <#> fromEnum }
   F.MillisecondsShort →
-    renderCommandEnum cmd { title: "Milliseconds", range: (bottomTop ∷ Range Millisecond1) <#> fromEnum }
+    renderCommandEnum cmd { title: "Milliseconds", placeholder: "M", range: (bottomTop ∷ Range Millisecond1) <#> fromEnum }
 
 renderCommandEnum ∷ ∀ m
   . F.Command
-  → { title ∷ String , range  ∷ Range Int }
+  → Num.Config Int
   → HTML m
 renderCommandEnum cmd conf' = let conf = conf'{range = conf'.range} in
   HH.slot' cpNum cmd
@@ -115,12 +115,12 @@ renderCommandChoice ∷ ∀ m a
   . BoundedEnum a
   ⇒ Show a
   ⇒ F.Command
-  → { title ∷ String , values ∷ NonEmpty Array (Maybe a) }
+  → { title ∷ String, values ∷ NonEmpty Array (Maybe a) }
   → HTML m
 renderCommandChoice cmd conf = HH.slot' cpChoice cmd
     (Choice.picker
-      (Choice.maybeIntHasChoiceInputVal \n → (toEnum n ∷ Maybe a) # maybe "" show)
-      (conf{values = conf.values <#> map fromEnum})
+      (Choice.maybeIntHasChoiceInputVal \n → ((n >>= toEnum) ∷ Maybe a) # maybe "--" show)
+      (conf{values= conf.values <#> map fromEnum})
     )
     unit
     (HE.input $ \(NotifyChange n) → Update $ \t → n >>= (_ `F.toSetter cmd` t))

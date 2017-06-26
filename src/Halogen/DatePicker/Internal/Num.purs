@@ -3,9 +3,9 @@ module Halogen.Datepicker.Internal.Num
   , NumQuery
   , Query
   , QueryIn
+  , Config
   , Input
   , mkInputValue
-  , numberElement
   , HasNumberInputVal
   , numberHasNumberInputVal
   , intHasNumberInputVal
@@ -39,11 +39,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 
-type State val =
-  { number∷ InputValue val
-  , range∷ Range val
-  , title∷ String
-  }
+type State val = InputValue val
 
 type Message val = PickerMessage (Input val)
 type Input val = Maybe val
@@ -55,27 +51,28 @@ data NumQuery val a = Update (InputValue val) a
 type DSL val = H.ComponentDSL (State val) (Query val) (Message val)
 type HTML val = H.ComponentHTML (NumQuery val)
 
+type Config val = {title ∷ String, placeholder ∷ String, range ∷ Range val}
 
 picker ∷ ∀ val m
   . Ord val
   ⇒ HasNumberInputVal val
-  → {title ∷ String, range ∷ Range val}
+  → Config val
   → H.Component HH.HTML (Query val) Unit (Message val) m
-picker hasNumberInputVal {title, range} = H.component
-  { initialState: const {title, range, number: emptyNumberInputValue}
-  , render: (render hasNumberInputVal) <#> (map right)
+picker hasNumberInputVal conf = H.component
+  { initialState: const emptyNumberInputValue
+  , render: (render hasNumberInputVal conf) <#> (map right)
   , eval: coproduct (evalPicker hasNumberInputVal) evalNumber
   , receiver: const Nothing
   }
 
-render ∷ ∀ val. Ord val ⇒ HasNumberInputVal val → State val → HTML val
-render hasNumberInputVal s = numberElement hasNumberInputVal Update { title:s.title, range: s.range} s.number
+render ∷ ∀ val. Ord val ⇒ HasNumberInputVal val → Config val → State val → HTML val
+render hasNumberInputVal conf num = numberElement hasNumberInputVal conf num
 
 evalNumber ∷ ∀ val m . Eq val ⇒ NumQuery val ~> DSL val m
 evalNumber (Update number next) = do
-  s ← H.get
-  H.modify _{number = number}
-  unless (number == s.number) $ H.raise (NotifyChange $ fst number)
+  prevNumber ← H.get
+  H.put number
+  unless (number == prevNumber) $ H.raise (NotifyChange $ fst number)
   pure next
 
 toMbString ∷ ∀ a. HasNumberInputVal a → Maybe a → Maybe String
@@ -83,9 +80,9 @@ toMbString hasNumberInputVal number = (Just $ maybe "" hasNumberInputVal.toValue
 
 evalPicker ∷ ∀ val m . HasNumberInputVal val → QueryIn val ~> DSL val m
 evalPicker hasNumberInputVal (SetValue number next) = do
-  H.modify _{number = Tuple number (toMbString hasNumberInputVal number)}
+  H.put $ Tuple number (toMbString hasNumberInputVal number)
   pure $ next unit
-evalPicker _ (GetValue next) = H.gets _.number <#> (fst >>> next)
+evalPicker _ (GetValue next) = H.get <#> (fst >>> next)
 
 
 type InputValue a = Tuple (Maybe a) (Maybe String)
@@ -114,27 +111,27 @@ showNum 0.0 = "0"
 showNum n = let str = show n
   in fromMaybe str (stripSuffix (Pattern ".0") str)
 
-numberElement ∷ ∀ val query
+numberElement ∷ ∀ val
   . Ord val
   ⇒ HasNumberInputVal val
-  → (∀ b. InputValue val → b → query b)
-  → {title ∷ String, range ∷ Range val}
+  → Config val
   → InputValue val
-  → H.ComponentHTML query
-numberElement hasNumberInputVal query {title, range} value = HH.input $
+  → HTML val
+numberElement hasNumberInputVal {title, placeholder, range} value = HH.input $
   [ HP.type_ HP.InputNumber
   , HP.classes classes
   , HP.title title
+  , HP.placeholder placeholder
   , HP.value valueStr
   , HE.onInput $ HE.input $
     inputValueFromEvent
     >>> parseValidInput
     >>> isInputInRange range
-    >>> query
+    >>> Update
   ]
   <> (toArray (rangeMin range) <#> hasNumberInputVal.toNumber >>> HP.min)
   <> (toArray (rangeMax range) <#> hasNumberInputVal.toNumber >>> HP.max)
-  <> styles
+  <> [styles]
   where
   toArray = maybe [] pure
   -- Number and String value must comute (`map toValue (fromString x) == Just x`)
@@ -151,11 +148,14 @@ numberElement hasNumberInputVal query {title, range} value = HH.input $
 
   valueStr = toString value
   classes = [HH.ClassName "Picker-input"] <> (guard (isInvalid value) $> HH.ClassName "Picker-input--invalid")
-  styles = case range of
-    MinMax _ _ → []
-    _ | isInvalid value → []
-    _ | isEmpty value → [HCSS.style $ CSS.width $ CSS.em 2.25]
-    _ → [HCSS.style $ CSS.width $ CSS.em (Int.toNumber (length valueStr) * 0.5 + 1.75)]
+  controlWidth = 0.75
+  styles = HCSS.style do
+    CSS.minWidth $ CSS.em (Int.toNumber (length placeholder) * 1.0 + controlWidth)
+    case range of
+      MinMax _ _ → pure unit
+      _ | isInvalid value → pure unit
+      _ | isEmpty value → CSS.width $ CSS.em 2.25
+      _ → CSS.width $ CSS.em (Int.toNumber (length valueStr) * 0.5 + 1.0 + controlWidth)
 
 
 -- We need to validate if value is in range manually as for example,

@@ -10,16 +10,17 @@ import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Interval (Duration)
 import Data.Interval.Duration.Iso (IsoDuration, mkIsoDuration, unIsoDuration, Errors)
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (mempty)
 import Data.Monoid.Endo (Endo(..))
 import Data.Newtype (unwrap)
+import Data.String (take)
 import Data.Traversable (for)
 import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
 import Halogen.Datepicker.Format.Duration as F
-import Halogen.Datepicker.Internal.Num as N
+import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (minRange)
 import Halogen.Datepicker.Internal.Utils (foldSteps, componentProps, transitionState, asRight, mustBeMounted, pickerProps)
 import Halogen.HTML as HH
@@ -42,7 +43,7 @@ instance durationErrorShow ∷ Show DurationError where
   show = genericShow
 
 type Slot = F.Command
-type ChildQuery = N.Query Number
+type ChildQuery = Num.Query Number
 
 type HTML m = H.ParentHTML DurationQuery ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
@@ -63,7 +64,7 @@ renderCommand ∷ ∀ m. F.Command → HTML m
 renderCommand cmd = HH.li componentProps
   [ HH.slot
     cmd
-    (N.picker N.numberHasNumberInputVal { title: show cmd, range: minRange 0.0 })
+    (Num.picker Num.numberHasNumberInputVal { title: show cmd, placeholder: take 1 (show cmd),  range: minRange 0.0 })
     unit
     (HE.input $ \(NotifyChange n) → UpdateCommand cmd n)]
 

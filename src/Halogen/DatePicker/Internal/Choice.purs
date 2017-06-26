@@ -131,13 +131,13 @@ boundedEnumHasChoiceInputVal showTitle =
   , toTitle: showTitle
   }
 
-maybeIntHasChoiceInputVal ∷ (Int → String) → HasChoiceInputVal (Maybe Int)
+maybeIntHasChoiceInputVal ∷ (Maybe Int → String) → HasChoiceInputVal (Maybe Int)
 maybeIntHasChoiceInputVal showTitle =
   { fromString: \str → if str == ""
       then pure Nothing
       else intHasChoiceInputVal.fromString str <#> pure
   , toValue: maybe "" show
-  , toTitle: maybe "" showTitle
+  , toTitle: showTitle
   }
 
 maybeBoundedEnumHasChoiceInputVal ∷ ∀ a. BoundedEnum a ⇒ (a → String) → HasChoiceInputVal (Maybe a)
