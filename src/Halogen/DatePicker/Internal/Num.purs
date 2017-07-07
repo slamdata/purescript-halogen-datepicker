@@ -147,10 +147,19 @@ numberElement hasNumberInputVal {title, placeholder, range} value = HH.input $
     pure val
 
   valueStr = toString value
-  classes = [HH.ClassName "Picker-input"] <> (guard (isInvalid value) $> HH.ClassName "Picker-input--invalid")
+  sizeClass = case range of
+    MinMax minVal maxVal →
+      [ HH.ClassName $ "Picker-input--length-" <> show (max
+          (length $ hasNumberInputVal.toValue minVal)
+          (length $ hasNumberInputVal.toValue maxVal)
+        )
+      ]
+    _ → []
+  classes = [HH.ClassName "Picker-input"]
+    <> sizeClass
+    <> (guard (isInvalid value) $> HH.ClassName "Picker-input--invalid")
   controlWidth = 0.75
   styles = HCSS.style do
-    CSS.minWidth $ CSS.em (Int.toNumber (length placeholder) * 1.0 + controlWidth)
     case range of
       MinMax _ _ → pure unit
       _ | isInvalid value → pure unit
