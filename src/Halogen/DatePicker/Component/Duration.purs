@@ -19,10 +19,12 @@ import Data.Traversable (for)
 import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
+import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.Duration as F
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (minRange)
 import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, foldSteps, componentProps, transitionState, asRight, mustBeMounted, pickerProps)
+import Halogen.Datepicker.Internal.Elements (toNumConf)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -48,23 +50,25 @@ type ChildQuery = Num.Query Number
 type HTML m = H.ParentHTML DurationQuery ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
-
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
-picker format = H.parentComponent
+picker = pickerWithConfig defaultConfig
+
+pickerWithConfig ∷ ∀ m. Config → F.Format → H.Component HH.HTML Query Unit Message m
+pickerWithConfig config format = H.parentComponent
   { initialState: const Nothing
-  , render: render format >>> mapParentHTMLQuery right
+  , render: render config format >>> mapParentHTMLQuery right
   , eval: coproduct (evalPicker format) (evalDuration format)
   , receiver: const Nothing
   }
 
-render ∷  ∀ m. F.Format → State → HTML m
-render format duration = HH.ul (pickerProps duration) (unwrap format <#> renderCommand)
+render ∷ ∀ m. Config → F.Format → State → HTML m
+render config format duration = HH.ul (pickerProps config duration) (unwrap format <#> renderCommand config)
 
-renderCommand ∷ ∀ m. F.Command → HTML m
-renderCommand cmd = HH.li componentProps
+renderCommand ∷ ∀ m. Config → F.Command → HTML m
+renderCommand config cmd = HH.li (componentProps config)
   [ HH.slot
     cmd
-    (Num.picker Num.numberHasNumberInputVal { title: show cmd, placeholder: take 1 (show cmd),  range: minRange 0.0 })
+    (Num.picker Num.numberHasNumberInputVal $ toNumConf config { title: show cmd, placeholder: take 1 (show cmd),  range: minRange 0.0 })
     unit
     (HE.input $ \(NotifyChange n) → UpdateCommand cmd n)]
 

@@ -35,6 +35,7 @@ import Halogen.Datepicker.Internal.Range (Range(..), isInRange, rangeMax, rangeM
 import Halogen.Datepicker.Internal.Utils (asRight, mapComponentHTMLQuery)
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
+import Halogen.HTML.Core (ClassName)
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
@@ -51,7 +52,14 @@ data NumQuery val a = Update (InputValue val) a
 type DSL val = H.ComponentDSL (State val) (Query val) (Message val)
 type HTML val = H.ComponentHTML (NumQuery val)
 
-type Config val = {title ∷ String, placeholder ∷ String, range ∷ Range val}
+type Config val =
+  { title ∷ String
+  , placeholder ∷ String
+  , range ∷ Range val
+  , root ∷ Array ClassName
+  , rootInvalid ∷ Array ClassName
+  , rootLength ∷ Int -> Array ClassName
+  }
 
 picker ∷ ∀ val m
   . Ord val
@@ -117,20 +125,20 @@ numberElement ∷ ∀ val
   → Config val
   → InputValue val
   → HTML val
-numberElement hasNumberInputVal {title, placeholder, range} value = HH.input $
+numberElement hasNumberInputVal conf value = HH.input $
   [ HP.type_ HP.InputNumber
   , HP.classes classes
-  , HP.title title
-  , HP.placeholder placeholder
+  , HP.title conf.title
+  , HP.placeholder conf.placeholder
   , HP.value valueStr
   , HE.onInput $ HE.input $
     inputValueFromEvent
     >>> parseValidInput
-    >>> isInputInRange range
+    >>> isInputInRange conf.range
     >>> Update
   ]
-  <> (toArray (rangeMin range) <#> hasNumberInputVal.toNumber >>> HP.min)
-  <> (toArray (rangeMax range) <#> hasNumberInputVal.toNumber >>> HP.max)
+  <> (toArray (rangeMin conf.range) <#> hasNumberInputVal.toNumber >>> HP.min)
+  <> (toArray (rangeMax conf.range) <#> hasNumberInputVal.toNumber >>> HP.max)
   <> [styles]
   where
   toArray = maybe [] pure
@@ -147,20 +155,19 @@ numberElement hasNumberInputVal {title, placeholder, range} value = HH.input $
     pure val
 
   valueStr = toString value
-  sizeClass = case range of
+  sizeClass = case conf.range of
     MinMax minVal maxVal →
-      [ HH.ClassName $ "Picker-input--length-" <> show (max
-          (length $ hasNumberInputVal.toValue minVal)
-          (length $ hasNumberInputVal.toValue maxVal)
-        )
-      ]
+      conf.rootLength (max
+        (length $ hasNumberInputVal.toValue minVal)
+        (length $ hasNumberInputVal.toValue maxVal)
+      )
     _ → []
-  classes = [HH.ClassName "Picker-input"]
+  classes = conf.root
     <> sizeClass
-    <> (guard (isInvalid value) $> HH.ClassName "Picker-input--invalid")
+    <> (guard (isInvalid value) *> conf.rootInvalid)
   controlWidth = 0.75
   styles = HCSS.style do
-    case range of
+    case conf.range of
       MinMax _ _ → pure unit
       _ | isInvalid value → pure unit
       _ | isEmpty value → CSS.width $ CSS.em 2.25

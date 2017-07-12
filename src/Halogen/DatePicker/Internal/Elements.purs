@@ -1,9 +1,77 @@
 module Halogen.Datepicker.Internal.Elements where
 
+import Prelude
+
+import Data.Enum (class BoundedEnum, fromEnum, toEnum)
+import Data.Maybe (Maybe, maybe)
+import Data.NonEmpty (NonEmpty)
 import Halogen as H
+import Halogen.Component.ChildPath (ChildPath)
+import Halogen.Datepicker.Component.Types (PickerMessage(..))
+import Halogen.Datepicker.Config (Config(..))
+import Halogen.Datepicker.Internal.Choice as Choice
+import Halogen.Datepicker.Internal.Num as Num
+import Halogen.Datepicker.Internal.Range (Range)
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Query (Action)
+
+textElement ∷ ∀ p i. Config → {text ∷ String} → H.HTML p i
+textElement (Config {placeholder}) {text} = HH.span [HP.classes placeholder] [HH.text text]
 
 
-textElement ∷ ∀ p i. {text ∷ String} → H.HTML p i
-textElement {text} = HH.span [HP.classes [HH.ClassName "Picker-placeholder"]] [HH.text text]
+type PreNumConfig a = {title ∷ String, placeholder ∷ String, range ∷ Range a}
+type PreChoiceConfig a = {title ∷ String, values ∷ NonEmpty Array a}
+
+toNumConf ∷
+  ∀ a. Config
+  → PreNumConfig a
+  → Num.Config a
+toNumConf (Config {input, inputInvalid, inputLength}) ({title, placeholder, range}) =
+  {title, placeholder, range, root: input, rootInvalid: inputInvalid, rootLength: inputLength }
+
+renderCommandNum :: forall m slot cmd childQuery parentQuery valIn valOut.
+  ChildPath (Num.Query Int) childQuery cmd slot
+  → ((valIn → Maybe valOut) → Action parentQuery)
+  → (cmd → Int → valIn → Maybe valOut)
+  → cmd
+  → Config
+  → PreNumConfig Int
+  → H.ParentHTML parentQuery childQuery slot m
+renderCommandNum cpNum update toSetter cmd mainConf preConf =
+  let
+    conf = toNumConf mainConf preConf
+  in
+    HH.slot' cpNum cmd
+      (Num.picker Num.intHasNumberInputVal conf) unit
+      (HE.input $ \(NotifyChange n) → update $ \t → n >>= (_ `toSetter cmd` t))
+
+toChoiceConf ∷
+  ∀ a. Config
+  → PreChoiceConfig a
+  → Choice.Config a
+toChoiceConf (Config {choice}) ({title, values}) =
+  {title, values, root: choice }
+
+renderCommandChoice :: forall a m slot cmd childQuery parentQuery valIn valOut
+  . BoundedEnum a
+  ⇒ Show a
+  ⇒ ChildPath (Choice.Query (Maybe Int)) childQuery cmd slot
+  → ((valIn → Maybe valOut) → Action parentQuery)
+  → (cmd → Int → valIn → Maybe valOut)
+  → cmd
+  → Config
+  → PreChoiceConfig (Maybe a)
+  → H.ParentHTML parentQuery childQuery slot m
+renderCommandChoice cpChoice update toSetter cmd mainConf preConf =
+  let
+    conf = toChoiceConf mainConf preConf
+  in
+    HH.slot' cpChoice cmd
+      ( Choice.picker
+        (Choice.maybeIntHasChoiceInputVal \n → ((n >>= toEnum) ∷ Maybe a) # maybe "--" show)
+        (conf{values = conf.values <#> map fromEnum})
+      )
+      unit
+      (HE.input $ \(NotifyChange n) → update $ \t → n >>= (_ `toSetter cmd` t))

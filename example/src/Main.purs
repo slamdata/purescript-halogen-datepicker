@@ -28,6 +28,7 @@ import Halogen.Datepicker.Component.Duration as Duration
 import Halogen.Datepicker.Component.Interval as Interval
 import Halogen.Datepicker.Component.Time as Time
 import Halogen.Datepicker.Component.Types (PickerMessage(..), setValue)
+import Halogen.Datepicker.Config (Config(..), defaultConfig)
 import Halogen.Datepicker.Format.Date as DateF
 import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Format.Duration as DurationF
@@ -391,8 +392,20 @@ intervalConfig ∷ ∀ m. ExampleConfig
 intervalConfig =
   { mkFormat: bitraverse DurationF.mkFormat DateTimeF.fromString
   , unformat: const unformatInterval
-  , picker: Interval.picker
+  , picker: Interval.pickerWithConfig (defaultConfig <> myConfig)
   , handler: \idx msg → HandleMessage (MsgInterval idx msg)
   , setter: \idx val → Set (SetInterval idx val)
   , cp: cpInterval
+  }
+
+myConfig :: Config
+myConfig = Config
+  { root: [HH.ClassName "MyPicker"]
+  , rootInvalid: [HH.ClassName "MyPicker--invalid"]
+  , component: [HH.ClassName "MyPicker-component"]
+  , placeholder: [HH.ClassName "MyPicker-placeholder"]
+  , choice: [HH.ClassName "MyPicker-input"]
+  , input: [HH.ClassName "MyPicker-input"]
+  , inputInvalid: [HH.ClassName "MyPicker-input--invalid"]
+  , inputLength: \n → [ HH.ClassName $ "MyPicker-input--length-" <> show n]
   }

@@ -15,22 +15,21 @@ import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap)
-import Data.NonEmpty (NonEmpty)
 import Data.Profunctor.Join (Join(..))
 import Data.Profunctor.Star (Star(..))
 import Data.Traversable (for)
 import Halogen as H
 import Halogen.Component.ChildPath as CP
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage, PickerQuery(..), PickerValue, value)
+import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.Date as F
 import Halogen.Datepicker.Internal.Choice as Choice
-import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
+import Halogen.Datepicker.Internal.Elements (textElement, PreChoiceConfig, renderCommandChoice, renderCommandNum)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
 import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, foldSteps, componentProps, transitionState', pickerProps, mustBeMounted)
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 
 type State = PickerValue DateError Date
 
@@ -65,60 +64,47 @@ type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
 
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
-picker format = H.parentComponent
+picker = pickerWithConfig defaultConfig
+
+pickerWithConfig ∷ ∀ m. Config → F.Format → H.Component HH.HTML Query Unit Message m
+pickerWithConfig config format = H.parentComponent
   { initialState: const Nothing
-  , render: render format >>> mapParentHTMLQuery right
+  , render: render config format >>> mapParentHTMLQuery right
   , eval: coproduct (evalPicker format) (evalDate format)
   , receiver: const Nothing
   }
 
-render ∷ ∀ m. F.Format → State → HTML m
-render format date = HH.ul (pickerProps date) (unwrap format <#> renderCommand)
+render ∷ ∀ m. Config → F.Format → State → HTML m
+render config format date = HH.ul
+  (pickerProps config date)
+  (unwrap format <#> renderCommand config)
 
 
-renderCommandEnum ∷ ∀ m
-  . F.Command
-  → Num.Config Int
-  → HTML m
-renderCommandEnum cmd conf = HH.slot' cpNum cmd
-  (Num.picker Num.intHasNumberInputVal conf) unit
-  (HE.input $ \(NotifyChange n) → Update $ \t → n >>= (_ `F.toSetter cmd` t))
-
-renderCommandChoice ∷ ∀ m a
-  . BoundedEnum a
-  ⇒ Show a
-  ⇒ F.Command
-  → { title ∷ String, values ∷ NonEmpty Array (Maybe a) }
-  → HTML m
-renderCommandChoice cmd conf = HH.slot' cpChoice cmd
-    ( Choice.picker
-      (Choice.maybeIntHasChoiceInputVal \n → ((n >>= toEnum) ∷ Maybe a) # maybe "--" show)
-      (conf{values = conf.values <#> map fromEnum})
-    )
-    unit
-    (HE.input $ \(NotifyChange n) → Update $ \t → n >>= (_ `F.toSetter cmd` t))
-
-
-renderCommand ∷ ∀ m. F.Command → HTML m
-renderCommand cmd = HH.li componentProps $ pure case cmd of
+renderCommand ∷ ∀ m. Config → F.Command → HTML m
+renderCommand config cmd = HH.li (componentProps config) $ pure case cmd of
   F.Placeholder str →
-    textElement { text: str}
-  F.YearFull →
-    renderCommandEnum cmd { title: "Year", placeholder: "YYYY", range: (bottomTop ∷ Range Year4) <#> fromEnum }
-  F.YearTwoDigits →
-    renderCommandEnum cmd { title: "Year", placeholder: "YY", range: (bottomTop ∷ Range Year2) <#> fromEnum }
-  F.YearAbsolute →
-    renderCommandEnum cmd { title: "Year", placeholder: "Y", range: (bottomTop ∷ Range Year) <#> fromEnum }
-  F.MonthFull →
-    renderCommandChoice cmd { title: "Month", values: upFromIncluding (bottom ∷ Maybe Month) }
-  F.MonthShort →
-    renderCommandChoice cmd { title: "Month", values: upFromIncluding (bottom ∷ Maybe MonthShort) }
-  F.MonthTwoDigits →
-    renderCommandEnum cmd { title: "Month", placeholder: "MM", range: (bottomTop ∷ Range Month) <#> fromEnum }
-  F.DayOfMonthTwoDigits →
-    renderCommandEnum cmd { title: "Day", placeholder: "DD", range: (bottomTop ∷ Range Day) <#> fromEnum }
-  F.DayOfMonth →
-    renderCommandEnum cmd { title: "Day", placeholder: "D", range: (bottomTop ∷ Range Day) <#> fromEnum }
+    textElement config { text: str}
+  F.YearFull → renderNum
+     { title: "Year", placeholder: "YYYY", range: (bottomTop ∷ Range Year4) <#> fromEnum }
+  F.YearTwoDigits → renderNum
+     { title: "Year", placeholder: "YY", range: (bottomTop ∷ Range Year2) <#> fromEnum }
+  F.YearAbsolute → renderNum
+     { title: "Year", placeholder: "Y", range: (bottomTop ∷ Range Year) <#> fromEnum }
+  F.MonthFull → renderChoice
+    { title: "Month", values: upFromIncluding (bottom ∷ Maybe Month) }
+  F.MonthShort → renderChoice
+    { title: "Month", values: upFromIncluding (bottom ∷ Maybe MonthShort) }
+  F.MonthTwoDigits → renderNum
+     { title: "Month", placeholder: "MM", range: (bottomTop ∷ Range Month) <#> fromEnum }
+  F.DayOfMonthTwoDigits → renderNum
+     { title: "Day", placeholder: "DD", range: (bottomTop ∷ Range Day) <#> fromEnum }
+  F.DayOfMonth → renderNum
+     { title: "Day", placeholder: "D", range: (bottomTop ∷ Range Day) <#> fromEnum }
+  where
+  renderNum = renderCommandNum cpNum Update F.toSetter cmd config
+  renderChoice ∷ ∀ a. BoundedEnum a ⇒ Show a ⇒ PreChoiceConfig (Maybe a) → HTML m
+  renderChoice = renderCommandChoice cpChoice Update F.toSetter cmd config
+
 
 evalDate ∷ ∀ m . F.Format → DateQuery ~> DSL m
 evalDate format (Update update next) = do

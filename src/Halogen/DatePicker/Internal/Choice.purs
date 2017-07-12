@@ -3,6 +3,7 @@ module Halogen.Datepicker.Internal.Choice
   , ChoiceQuery
   , Query
   , QueryIn
+  , Config
   , ChoiceError(..)
   , HasChoiceInputVal
   , stringHasChoiceInputVal
@@ -34,11 +35,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Query.HalogenM (HalogenM, halt)
 
 
-type State val =
-  { value∷ val
-  , values∷ NonEmpty Array val
-  , title∷ String
-  }
+type State val = {value ∷ val}
 
 type Message val = PickerMessage val
 
@@ -50,25 +47,30 @@ data ChoiceQuery val a = Update (Maybe val) a
 type DSL val = H.ComponentDSL (State val) (Query val) (Message val)
 type HTML val = H.ComponentHTML (ChoiceQuery val)
 
+type Config val =
+  { title ∷ String
+  , values ∷ NonEmpty Array val
+  , root ∷ Array HH.ClassName
+  }
 
 picker ∷ ∀ val m
   . Ord val
   ⇒ HasChoiceInputVal val
-  → {title ∷ String, values ∷ NonEmpty Array val}
+  → Config val
   → H.Component HH.HTML (Query val) Unit (Message val) m
-picker hasChoiceInputVal {title, values} = H.component
-  { initialState: const {title, values, value: head $ values}
-  , render: render hasChoiceInputVal >>> mapComponentHTMLQuery right
-  , eval: coproduct (evalPicker hasChoiceInputVal) evalChoice
+picker hasChoiceInputVal config = H.component
+  { initialState: const { value: head $ config.values }
+  , render: render config hasChoiceInputVal >>> mapComponentHTMLQuery right
+  , eval: coproduct (evalPicker config hasChoiceInputVal) evalChoice
   , receiver: const Nothing
   }
 
-render ∷ ∀ val. Eq val ⇒ HasChoiceInputVal val → State val → HTML val
-render hasChoiceInputVal {title, values, value}  = HH.select
-  [ HP.title title
-  , HP.classes [HH.ClassName "Picker-input"]
+render ∷ ∀ val. Eq val ⇒ Config val → HasChoiceInputVal val → State val → HTML val
+render config hasChoiceInputVal {value}  = HH.select
+  [ HP.title config.title
+  , HP.classes config.root
   , HE.onValueChange (HE.input (hasChoiceInputVal.fromString >>> Update))
-  ] (fromNonEmpty cons values <#> renderValue)
+  ] (fromNonEmpty cons config.values <#> renderValue)
   where
   renderValue value' = HH.option
     [ HP.value $ hasChoiceInputVal.toValue value'
@@ -87,16 +89,15 @@ evalChoice (Update value next) = do
   pure next
 
 
-evalPicker ∷ ∀ val m . Eq val ⇒ HasChoiceInputVal val → QueryIn val ~> DSL val m
-evalPicker hasChoiceInputVal (SetValue value next) = do
-  {values} ← H.get
+evalPicker ∷ ∀ val m . Eq val ⇒ Config val → HasChoiceInputVal val → QueryIn val ~> DSL val m
+evalPicker {values} hasChoiceInputVal (SetValue value next) = do
   if (value == head values || elem value (tail values))
     then do
       H.modify _{value = value}
       pure $ next Nothing
     else do
       pure $ next (Just ValueIsNotInValues)
-evalPicker _ (GetValue next) = H.gets _.value <#> next
+evalPicker _ _ (GetValue next) = H.gets _.value <#> next
 
 
 type HasChoiceInputVal a =

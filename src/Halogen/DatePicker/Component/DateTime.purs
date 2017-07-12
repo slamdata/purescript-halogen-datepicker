@@ -29,6 +29,7 @@ import Halogen.Datepicker.Component.Date as Date
 import Halogen.Datepicker.Component.Time (TimeError)
 import Halogen.Datepicker.Component.Time as Time
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value, getValue, setValue, resetError)
+import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.DateTime as F
 import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, componentProps, foldSteps, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
@@ -59,20 +60,25 @@ type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
 
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
-picker format = H.parentComponent
+picker = pickerWithConfig defaultConfig
+
+pickerWithConfig ∷ ∀ m. Config → F.Format → H.Component HH.HTML Query Unit Message m
+pickerWithConfig config format = H.parentComponent
   { initialState: const Nothing
-  , render: render format >>> mapParentHTMLQuery right
+  , render: render config format >>> mapParentHTMLQuery right
   , eval: coproduct (evalPicker format) (evalDateTime format)
   , receiver: const Nothing
   }
 
-render ∷ ∀ m. F.Format → State → HTML m
-render format dateTime = HH.div (pickerProps dateTime) (unwrap format <#> renderCommand)
+render ∷ ∀ m. Config → F.Format → State → HTML m
+render config format dateTime = HH.div
+  (pickerProps config dateTime)
+  (unwrap format <#> renderCommand config)
 
-renderCommand ∷ ∀ m. F.Command → HTML m
-renderCommand cmd = HH.div componentProps $ pure case cmd of
-  F.Time fmt → HH.slot' cpTime unit (Time.picker fmt) unit (HE.input $ Right >>> Update)
-  F.Date fmt → HH.slot' cpDate unit (Date.picker fmt) unit (HE.input $ Left >>> Update)
+renderCommand ∷ ∀ m. Config → F.Command → HTML m
+renderCommand config cmd = HH.div (componentProps config) $ pure case cmd of
+  F.Time fmt → HH.slot' cpTime unit (Time.pickerWithConfig config fmt) unit (HE.input $ Right >>> Update)
+  F.Date fmt → HH.slot' cpDate unit (Date.pickerWithConfig config fmt) unit (HE.input $ Left >>> Update)
 
 
 evalDateTime ∷ ∀ m . F.Format → DateTimeQuery ~> DSL m

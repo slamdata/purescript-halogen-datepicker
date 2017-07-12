@@ -19,6 +19,7 @@ import Halogen.Datepicker.Component.DateTime as DateTime
 import Halogen.Datepicker.Component.Duration (DurationError)
 import Halogen.Datepicker.Component.Duration as Duration
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, getValue, setValue, resetError)
+import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Format.Duration as DurationF
 import Halogen.Datepicker.Format.Interval as F
@@ -52,40 +53,42 @@ cpDateTime = CP.cp2
 type HTML m = H.ParentHTML IntervalQuery ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
-
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
-picker format = H.parentComponent
+picker = pickerWithConfig defaultConfig
+
+pickerWithConfig ∷ ∀ m. Config → F.Format → H.Component HH.HTML Query Unit Message m
+pickerWithConfig config format = H.parentComponent
   { initialState: const Nothing
-  , render: render format >>> mapParentHTMLQuery right
+  , render: render config format >>> mapParentHTMLQuery right
   , eval: coproduct (evalPicker format) (evalInterval format)
   , receiver: const Nothing
   }
 
-render ∷ ∀ m. F.Format → State → HTML m
-render format interval = HH.div (pickerProps interval) (renderCommand format)
+render ∷ ∀ m. Config → F.Format → State → HTML m
+render config format interval = HH.div (pickerProps config interval) (renderCommand config format)
 
-renderCommand ∷ ∀ m. F.Format → Array (HTML m)
-renderCommand format = map (HH.div componentProps <<< pure) case format of
+renderCommand ∷ ∀ m. Config → F.Format → Array (HTML m)
+renderCommand config format = map (HH.div (componentProps config) <<< pure) case format of
   StartEnd fmtStart fmtEnd →
-    [ renderDateTime fmtStart false
-    , textElement { text: "/" }
-    , renderDateTime fmtEnd true ]
+    [ renderDateTime config fmtStart false
+    , textElement config { text: "/" }
+    , renderDateTime config fmtEnd true ]
   DurationEnd fmtDuration fmtEnd →
-    [ renderDuration fmtDuration
-    , textElement { text: "/" }
-    , renderDateTime fmtEnd false ]
+    [ renderDuration config fmtDuration
+    , textElement config { text: "/" }
+    , renderDateTime config fmtEnd false ]
   StartDuration fmtStart fmtDuration →
-    [ renderDateTime fmtStart false
-    , textElement { text: "/" }
-    , renderDuration fmtDuration ]
+    [ renderDateTime config fmtStart false
+    , textElement config { text: "/" }
+    , renderDuration config fmtDuration ]
   DurationOnly fmtDuration →
-    [ renderDuration fmtDuration ]
+    [ renderDuration config fmtDuration ]
 
-renderDuration ∷ ∀ m. DurationF.Format → HTML m
-renderDuration fmt = HH.slot' cpDuration unit (Duration.picker fmt) unit (HE.input $ Update <<< Left)
+renderDuration ∷ ∀ m. Config → DurationF.Format → HTML m
+renderDuration config fmt = HH.slot' cpDuration unit (Duration.pickerWithConfig config fmt) unit (HE.input $ Update <<< Left)
 
-renderDateTime ∷ ∀ m. DateTimeF.Format → Boolean → HTML m
-renderDateTime fmt idx = HH.slot' cpDateTime idx (DateTime.picker fmt) unit (HE.input $ Update <<< Right <<< (Tuple idx))
+renderDateTime ∷ ∀ m. Config → DateTimeF.Format → Boolean → HTML m
+renderDateTime config fmt idx = HH.slot' cpDateTime idx (DateTime.pickerWithConfig config fmt) unit (HE.input $ Update <<< Right <<< (Tuple idx))
 
 
 -- [1] - this case will not happen as interval will not be `Just Right`

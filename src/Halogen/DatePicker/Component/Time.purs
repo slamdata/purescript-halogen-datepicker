@@ -6,7 +6,7 @@ import Data.Array (sort)
 import Data.DateTime (Hour, Millisecond, Minute, Second)
 import Data.Either (Either(..))
 import Data.Either.Nested (Either2)
-import Data.Enum (class BoundedEnum, fromEnum, toEnum, upFromIncluding)
+import Data.Enum (class BoundedEnum, fromEnum, upFromIncluding)
 import Data.Foldable (for_)
 import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
 import Data.Functor.Coproduct.Nested (Coproduct2)
@@ -15,23 +15,22 @@ import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe(Nothing, Just), maybe)
 import Data.Monoid (mempty)
 import Data.Newtype (unwrap)
-import Data.NonEmpty (NonEmpty)
 import Data.Profunctor.Join (Join(..))
 import Data.Profunctor.Star (Star(..))
 import Data.Time (Time)
 import Data.Traversable (for)
 import Halogen as H
 import Halogen.Component.ChildPath as CP
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage, PickerQuery(..), PickerValue, value)
+import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.Time as F
 import Halogen.Datepicker.Internal.Choice as Choice
-import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
+import Halogen.Datepicker.Internal.Elements (textElement, PreChoiceConfig, renderCommandChoice, renderCommandNum)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
 import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, componentProps, foldSteps, mustBeMounted, pickerProps, transitionState')
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 
 type State = PickerValue TimeError Time
 
@@ -64,65 +63,50 @@ cpChoice = CP.cp2
 type HTML m = H.ParentHTML TimeQuery ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
 
-
 picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
-picker format = H.parentComponent
+picker = pickerWithConfig defaultConfig
+
+pickerWithConfig ∷ ∀ m. Config → F.Format → H.Component HH.HTML Query Unit Message m
+pickerWithConfig config format = H.parentComponent
   { initialState: const Nothing
-  , render: render format >>> mapParentHTMLQuery right
+  , render: render config format >>> mapParentHTMLQuery right
   , eval: coproduct (evalPicker format) (evalTime format)
   , receiver: const Nothing
   }
 
-render ∷ ∀ m. F.Format → State → HTML m
-render format time = HH.ul (pickerProps time) (unwrap format <#> renderCommand)
+render ∷ ∀ m. Config → F.Format → State → HTML m
+render config format time = HH.ul
+  (pickerProps config time)
+  (unwrap format <#> renderCommand config)
 
-renderCommand ∷ ∀ m. F.Command → HTML m
-renderCommand cmd = HH.li componentProps $ pure case cmd of
+renderCommand ∷ ∀ m. Config → F.Command → HTML m
+renderCommand config cmd = HH.li (componentProps config) $ pure case cmd of
   F.Placeholder str →
-    textElement { text: str}
-  F.Meridiem →
-    renderCommandChoice cmd { title: "Meridiem", values: upFromIncluding (bottom ∷ Maybe Meridiem) }
-  F.Hours24 →
-    renderCommandEnum cmd { title: "Hours", placeholder: "HH", range: (bottomTop ∷ Range Hour) <#> fromEnum }
-  F.Hours12 →
-    renderCommandEnum cmd { title: "Hours", placeholder: "hh", range: (bottomTop ∷ Range Hour12) <#> fromEnum }
-  F.MinutesTwoDigits →
-    renderCommandEnum cmd { title: "Minutes", placeholder: "MM", range: (bottomTop ∷ Range Minute) <#> fromEnum }
-  F.Minutes →
-    renderCommandEnum cmd { title: "Minutes", placeholder: "MM", range: (bottomTop ∷ Range Minute) <#> fromEnum }
-  F.SecondsTwoDigits →
-    renderCommandEnum cmd { title: "Seconds", placeholder: "SS", range: (bottomTop ∷ Range Second) <#> fromEnum }
-  F.Seconds →
-    renderCommandEnum cmd { title: "Seconds", placeholder: "SS", range: (bottomTop ∷ Range Second) <#> fromEnum }
-  F.Milliseconds →
-    renderCommandEnum cmd { title: "Milliseconds", placeholder: "MMM", range: (bottomTop ∷ Range Millisecond) <#> fromEnum }
-  F.MillisecondsTwoDigits →
-    renderCommandEnum cmd { title: "Milliseconds", placeholder: "MM", range: (bottomTop ∷ Range Millisecond2) <#> fromEnum }
-  F.MillisecondsShort →
-    renderCommandEnum cmd { title: "Milliseconds", placeholder: "M", range: (bottomTop ∷ Range Millisecond1) <#> fromEnum }
-
-renderCommandEnum ∷ ∀ m
-  . F.Command
-  → Num.Config Int
-  → HTML m
-renderCommandEnum cmd conf' = let conf = conf'{range = conf'.range} in
-  HH.slot' cpNum cmd
-    (Num.picker Num.intHasNumberInputVal conf) unit
-    (HE.input $ \(NotifyChange n) → Update $ \t → n >>= (_ `F.toSetter cmd` t))
-
-renderCommandChoice ∷ ∀ m a
-  . BoundedEnum a
-  ⇒ Show a
-  ⇒ F.Command
-  → { title ∷ String, values ∷ NonEmpty Array (Maybe a) }
-  → HTML m
-renderCommandChoice cmd conf = HH.slot' cpChoice cmd
-    (Choice.picker
-      (Choice.maybeIntHasChoiceInputVal \n → ((n >>= toEnum) ∷ Maybe a) # maybe "--" show)
-      (conf{values= conf.values <#> map fromEnum})
-    )
-    unit
-    (HE.input $ \(NotifyChange n) → Update $ \t → n >>= (_ `F.toSetter cmd` t))
+    textElement config { text: str}
+  F.Meridiem → renderChoice
+    { title: "Meridiem", values: upFromIncluding (bottom ∷ Maybe Meridiem) }
+  F.Hours24 → renderNum
+    { title: "Hours", placeholder: "HH", range: (bottomTop ∷ Range Hour) <#> fromEnum }
+  F.Hours12 → renderNum
+    { title: "Hours", placeholder: "hh", range: (bottomTop ∷ Range Hour12) <#> fromEnum }
+  F.MinutesTwoDigits → renderNum
+    { title: "Minutes", placeholder: "MM", range: (bottomTop ∷ Range Minute) <#> fromEnum }
+  F.Minutes → renderNum
+    { title: "Minutes", placeholder: "MM", range: (bottomTop ∷ Range Minute) <#> fromEnum }
+  F.SecondsTwoDigits → renderNum
+    { title: "Seconds", placeholder: "SS", range: (bottomTop ∷ Range Second) <#> fromEnum }
+  F.Seconds → renderNum
+    { title: "Seconds", placeholder: "SS", range: (bottomTop ∷ Range Second) <#> fromEnum }
+  F.Milliseconds → renderNum
+    { title: "Milliseconds", placeholder: "MMM", range: (bottomTop ∷ Range Millisecond) <#> fromEnum }
+  F.MillisecondsTwoDigits → renderNum
+    { title: "Milliseconds", placeholder: "MM", range: (bottomTop ∷ Range Millisecond2) <#> fromEnum }
+  F.MillisecondsShort → renderNum
+    { title: "Milliseconds", placeholder: "M", range: (bottomTop ∷ Range Millisecond1) <#> fromEnum }
+  where
+  renderNum = renderCommandNum cpNum Update F.toSetter cmd config
+  renderChoice ∷ ∀ a. BoundedEnum a ⇒ Show a ⇒ PreChoiceConfig (Maybe a) → HTML m
+  renderChoice = renderCommandChoice cpChoice Update F.toSetter cmd config
 
 evalTime ∷ ∀ m . F.Format → TimeQuery ~> DSL m
 evalTime format (Update update next) = do

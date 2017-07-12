@@ -13,7 +13,7 @@ import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.Datepicker.Component.Types (PickerMessage(..), PickerValue, isInvalid)
-import Halogen.HTML (ClassName(..))
+import Halogen.Datepicker.Config (Config(..))
 import Halogen.HTML.Properties as HP
 import Halogen.Query.HalogenM (HalogenM, halt)
 
@@ -21,13 +21,13 @@ mustBeMounted ∷ ∀ s f g p o m a. Maybe a → HalogenM s f g p o m a
 mustBeMounted (Just x) = pure x
 mustBeMounted _ = halt "children must be mounted"
 
-pickerProps ∷ ∀ e a r z. PickerValue e a → Array (HP.IProp ( "class" ∷ String | z ) r )
-pickerProps val = [HP.classes classes]
+pickerProps ∷ ∀ e a r z. Config → PickerValue e a → Array (HP.IProp ( "class" ∷ String | z ) r )
+pickerProps (Config {root, rootInvalid}) val = [HP.classes classes]
   where
-  classes = [ClassName "Picker"] <> (guard (isInvalid val) $> ClassName "Picker--invalid")
+  classes = root <> (guard (isInvalid val) *> rootInvalid)
 
-componentProps ∷ ∀ r z. Array (HP.IProp ( "class" ∷ String | z ) r )
-componentProps = [HP.classes [ClassName "Picker-component"]]
+componentProps ∷ ∀ r z. Config → Array (HP.IProp ( "class" ∷ String | z ) r )
+componentProps (Config {component})= [HP.classes component]
 
 asRight ∷ ∀ e a f. Alternative f ⇒ Either e a → f a
 asRight = either (const empty) pure
