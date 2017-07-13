@@ -31,15 +31,17 @@ toNumConf ∷
 toNumConf (Config {input, inputInvalid, inputLength}) ({title, placeholder, range}) =
   {title, placeholder, range, root: input, rootInvalid: inputInvalid, rootLength: inputLength }
 
-renderCommandNum :: forall m slot cmd childQuery parentQuery valIn valOut.
-  ChildPath (Num.Query Int) childQuery cmd slot
-  → ((valIn → Maybe valOut) → Action parentQuery)
-  → (cmd → Int → valIn → Maybe valOut)
+type OptionalUpdate a = a -> Maybe a
+
+renderNum :: ∀ m slot cmd childQuery parentQuery queryVal
+  . ChildPath (Num.Query Int) childQuery cmd slot
+  → (OptionalUpdate queryVal → Action parentQuery)
+  → (cmd → Int → OptionalUpdate queryVal)
   → cmd
   → Config
   → PreNumConfig Int
   → H.ParentHTML parentQuery childQuery slot m
-renderCommandNum cpNum update toSetter cmd mainConf preConf =
+renderNum cpNum update toSetter cmd mainConf preConf =
   let
     conf = toNumConf mainConf preConf
   in
@@ -54,17 +56,17 @@ toChoiceConf ∷
 toChoiceConf (Config {choice}) ({title, values}) =
   {title, values, root: choice }
 
-renderCommandChoice :: forall a m slot cmd childQuery parentQuery valIn valOut
+renderChoice :: ∀ a m slot cmd childQuery parentQuery queryVal
   . BoundedEnum a
   ⇒ Show a
   ⇒ ChildPath (Choice.Query (Maybe Int)) childQuery cmd slot
-  → ((valIn → Maybe valOut) → Action parentQuery)
-  → (cmd → Int → valIn → Maybe valOut)
+  → (OptionalUpdate queryVal → Action parentQuery)
+  → (cmd → Int → OptionalUpdate queryVal)
   → cmd
   → Config
   → PreChoiceConfig (Maybe a)
   → H.ParentHTML parentQuery childQuery slot m
-renderCommandChoice cpChoice update toSetter cmd mainConf preConf =
+renderChoice cpChoice update toSetter cmd mainConf preConf =
   let
     conf = toChoiceConf mainConf preConf
   in

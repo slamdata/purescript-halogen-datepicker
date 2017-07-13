@@ -26,7 +26,7 @@ import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.Time as F
 import Halogen.Datepicker.Internal.Choice as Choice
 import Halogen.Datepicker.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
-import Halogen.Datepicker.Internal.Elements (textElement, PreChoiceConfig, renderCommandChoice, renderCommandNum)
+import Halogen.Datepicker.Internal.Elements (textElement, PreChoiceConfig, renderChoice, renderNum)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
 import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, componentProps, foldSteps, mustBeMounted, pickerProps, transitionState')
@@ -83,30 +83,30 @@ renderCommand ∷ ∀ m. Config → F.Command → HTML m
 renderCommand config cmd = HH.li (componentProps config) $ pure case cmd of
   F.Placeholder str →
     textElement config { text: str}
-  F.Meridiem → renderChoice
+  F.Meridiem → renderChoice'
     { title: "Meridiem", values: upFromIncluding (bottom ∷ Maybe Meridiem) }
-  F.Hours24 → renderNum
+  F.Hours24 → renderNum'
     { title: "Hours", placeholder: "HH", range: (bottomTop ∷ Range Hour) <#> fromEnum }
-  F.Hours12 → renderNum
+  F.Hours12 → renderNum'
     { title: "Hours", placeholder: "hh", range: (bottomTop ∷ Range Hour12) <#> fromEnum }
-  F.MinutesTwoDigits → renderNum
+  F.MinutesTwoDigits → renderNum'
     { title: "Minutes", placeholder: "MM", range: (bottomTop ∷ Range Minute) <#> fromEnum }
-  F.Minutes → renderNum
+  F.Minutes → renderNum'
     { title: "Minutes", placeholder: "MM", range: (bottomTop ∷ Range Minute) <#> fromEnum }
-  F.SecondsTwoDigits → renderNum
+  F.SecondsTwoDigits → renderNum'
     { title: "Seconds", placeholder: "SS", range: (bottomTop ∷ Range Second) <#> fromEnum }
-  F.Seconds → renderNum
+  F.Seconds → renderNum'
     { title: "Seconds", placeholder: "SS", range: (bottomTop ∷ Range Second) <#> fromEnum }
-  F.Milliseconds → renderNum
+  F.Milliseconds → renderNum'
     { title: "Milliseconds", placeholder: "MMM", range: (bottomTop ∷ Range Millisecond) <#> fromEnum }
-  F.MillisecondsTwoDigits → renderNum
+  F.MillisecondsTwoDigits → renderNum'
     { title: "Milliseconds", placeholder: "MM", range: (bottomTop ∷ Range Millisecond2) <#> fromEnum }
-  F.MillisecondsShort → renderNum
+  F.MillisecondsShort → renderNum'
     { title: "Milliseconds", placeholder: "M", range: (bottomTop ∷ Range Millisecond1) <#> fromEnum }
   where
-  renderNum = renderCommandNum cpNum Update F.toSetter cmd config
-  renderChoice ∷ ∀ a. BoundedEnum a ⇒ Show a ⇒ PreChoiceConfig (Maybe a) → HTML m
-  renderChoice = renderCommandChoice cpChoice Update F.toSetter cmd config
+  renderNum' = renderNum cpNum Update F.toSetter cmd config
+  renderChoice' ∷ ∀ a. BoundedEnum a ⇒ Show a ⇒ PreChoiceConfig (Maybe a) → HTML m
+  renderChoice' = renderChoice cpChoice Update F.toSetter cmd config
 
 evalTime ∷ ∀ m . F.Format → TimeQuery ~> DSL m
 evalTime format (Update update next) = do

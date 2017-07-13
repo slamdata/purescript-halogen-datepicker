@@ -25,7 +25,7 @@ import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.Date as F
 import Halogen.Datepicker.Internal.Choice as Choice
 import Halogen.Datepicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
-import Halogen.Datepicker.Internal.Elements (textElement, PreChoiceConfig, renderCommandChoice, renderCommandNum)
+import Halogen.Datepicker.Internal.Elements (textElement, PreChoiceConfig, renderChoice, renderNum)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
 import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, foldSteps, componentProps, transitionState', pickerProps, mustBeMounted)
@@ -84,26 +84,26 @@ renderCommand ∷ ∀ m. Config → F.Command → HTML m
 renderCommand config cmd = HH.li (componentProps config) $ pure case cmd of
   F.Placeholder str →
     textElement config { text: str}
-  F.YearFull → renderNum
+  F.YearFull → renderNum'
      { title: "Year", placeholder: "YYYY", range: (bottomTop ∷ Range Year4) <#> fromEnum }
-  F.YearTwoDigits → renderNum
+  F.YearTwoDigits → renderNum'
      { title: "Year", placeholder: "YY", range: (bottomTop ∷ Range Year2) <#> fromEnum }
-  F.YearAbsolute → renderNum
+  F.YearAbsolute → renderNum'
      { title: "Year", placeholder: "Y", range: (bottomTop ∷ Range Year) <#> fromEnum }
-  F.MonthFull → renderChoice
+  F.MonthFull → renderChoice'
     { title: "Month", values: upFromIncluding (bottom ∷ Maybe Month) }
-  F.MonthShort → renderChoice
+  F.MonthShort → renderChoice'
     { title: "Month", values: upFromIncluding (bottom ∷ Maybe MonthShort) }
-  F.MonthTwoDigits → renderNum
+  F.MonthTwoDigits → renderNum'
      { title: "Month", placeholder: "MM", range: (bottomTop ∷ Range Month) <#> fromEnum }
-  F.DayOfMonthTwoDigits → renderNum
+  F.DayOfMonthTwoDigits → renderNum'
      { title: "Day", placeholder: "DD", range: (bottomTop ∷ Range Day) <#> fromEnum }
-  F.DayOfMonth → renderNum
+  F.DayOfMonth → renderNum'
      { title: "Day", placeholder: "D", range: (bottomTop ∷ Range Day) <#> fromEnum }
   where
-  renderNum = renderCommandNum cpNum Update F.toSetter cmd config
-  renderChoice ∷ ∀ a. BoundedEnum a ⇒ Show a ⇒ PreChoiceConfig (Maybe a) → HTML m
-  renderChoice = renderCommandChoice cpChoice Update F.toSetter cmd config
+  renderNum' = renderNum cpNum Update F.toSetter cmd config
+  renderChoice' ∷ ∀ a. BoundedEnum a ⇒ Show a ⇒ PreChoiceConfig (Maybe a) → HTML m
+  renderChoice' = renderChoice cpChoice Update F.toSetter cmd config
 
 
 evalDate ∷ ∀ m . F.Format → DateQuery ~> DSL m
