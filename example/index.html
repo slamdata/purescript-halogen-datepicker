@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Halogen Datepicker Example</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 570px;
+        margin: auto;
+      }
+      .Picker {
+        list-style: none;
+        padding: 0;
+        margin: 20px 0 0.5ch;
+      }
+      .Picker--invalid .Picker-input {
+        border: 1px solid red;
+        outline-color: red;
+      }
+      .Picker-component {
+        display: inline-block;
+      }
+      .Picker .Picker {
+        margin: 0;
+        display: inline-block;
+      }
+      .Picker-component + .Picker-component,
+      .Picker .Picker + .Picker {
+        margin-left: 0.5ch;
+      }
+      .Picker-input {
+        border: 1px solid hsl(0, 0%, 85%);
+      }
+      .Picker-input--invalid {
+        color: red;
+        outline-color: red;
+      }
+      .Picker-placeholder {
+        white-space: pre;
+      }
+      input, button {
+        font-family: sans-serif;
+        font-size: 14px;
+        max-width: 70px;
+      }
+      input[type=text] {
+        width: 500px;
+        margin: 0px 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="example.js"></script>
+  </body>
+</html>
