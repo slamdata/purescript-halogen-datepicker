@@ -5,6 +5,8 @@ import Prelude
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Monoid (genericMempty)
 import Data.Generic.Rep.Semigroup (genericAppend)
+import Data.Maybe (Maybe(..))
+import Data.Maybe.Last (Last(..))
 import Data.Monoid (class Monoid)
 import Halogen.HTML (ClassName(..))
 
@@ -14,6 +16,7 @@ data Config = Config
   , component ∷ Array ClassName
   , placeholder ∷ Array ClassName
   , choice ∷ Array ClassName
+  , choiceEmptyTitle ∷ Last String
   , input ∷ Array ClassName
   , inputInvalid ∷ Array ClassName
   , inputLength ∷ Int → Array ClassName
@@ -26,6 +29,7 @@ defaultConfig = Config
   , component: [ClassName "Picker-component"]
   , placeholder: [ClassName "Picker-placeholder"]
   , choice: [ClassName "Picker-input"]
+  , choiceEmptyTitle: Last $ Just "--"
   , input: [ClassName "Picker-input"]
   , inputInvalid: [ClassName "Picker-input--invalid"]
   , inputLength: \n → [ ClassName $ "Picker-input--length-" <> show n]

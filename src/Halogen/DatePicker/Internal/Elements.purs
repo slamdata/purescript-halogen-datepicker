@@ -3,7 +3,8 @@ module Halogen.Datepicker.Internal.Elements where
 import Prelude
 
 import Data.Enum (class BoundedEnum, fromEnum, toEnum)
-import Data.Maybe (Maybe, maybe)
+import Data.Maybe (Maybe, fromMaybe, maybe)
+import Data.Newtype (unwrap)
 import Data.NonEmpty (NonEmpty)
 import Halogen as H
 import Halogen.Component.ChildPath (ChildPath)
@@ -19,7 +20,6 @@ import Halogen.Query (Action)
 
 textElement ∷ ∀ p i. Config → {text ∷ String} → H.HTML p i
 textElement (Config {placeholder}) {text} = HH.span [HP.classes placeholder] [HH.text text]
-
 
 type PreNumConfig a = {title ∷ String, placeholder ∷ String, range ∷ Range a}
 type PreChoiceConfig a = {title ∷ String, values ∷ NonEmpty Array a}
@@ -69,10 +69,12 @@ renderChoice :: ∀ a m slot cmd childQuery parentQuery queryVal
 renderChoice cpChoice update toSetter cmd mainConf preConf =
   let
     conf = toChoiceConf mainConf preConf
+    emptyVal = case mainConf of
+      Config {choiceEmptyTitle} -> fromMaybe "" $ unwrap choiceEmptyTitle
   in
     HH.slot' cpChoice cmd
       ( Choice.picker
-        (Choice.maybeIntHasChoiceInputVal \n → ((n >>= toEnum) ∷ Maybe a) # maybe "--" show)
+        (Choice.maybeIntHasChoiceInputVal \n → ((n >>= toEnum) ∷ Maybe a) # maybe emptyVal show)
         (conf{values = conf.values <#> map fromEnum})
       )
       unit

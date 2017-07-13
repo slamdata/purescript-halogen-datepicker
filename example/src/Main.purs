@@ -17,6 +17,7 @@ import Data.Interval as I
 import Data.Interval.Duration.Iso (IsoDuration, mkIsoDuration)
 import Data.Map (Map, lookup, insert)
 import Data.Maybe (Maybe(..), fromJust)
+import Data.Maybe.Last (Last(..))
 import Data.Monoid (mempty)
 import Data.Time (Time, setHour, setMinute)
 import Halogen as H
@@ -194,7 +195,7 @@ example =
           , DurationF.Minute
           , DurationF.Second
           ]
-          "YYYY:MM:DD-HH:mm"
+          "YYYY:MMM:DD-HH:mm"
         )
         (Right $ DurationEnd testDuration testDateTime)
     <> renderInterval s 3
@@ -405,6 +406,7 @@ myConfig = Config
   , component: [HH.ClassName "MyPicker-component"]
   , placeholder: [HH.ClassName "MyPicker-placeholder"]
   , choice: [HH.ClassName "MyPicker-input"]
+  , choiceEmptyTitle: Last $ Just "=="
   , input: [HH.ClassName "MyPicker-input"]
   , inputInvalid: [HH.ClassName "MyPicker-input--invalid"]
   , inputLength: \n → [ HH.ClassName $ "MyPicker-input--length-" <> show n]
