@@ -8,9 +8,10 @@ import Data.Generic.Rep.Semigroup (genericAppend)
 import Data.Maybe (Maybe(..))
 import Data.Maybe.Last (Last(..))
 import Data.Monoid (class Monoid)
+import Data.Newtype (class Newtype)
 import Halogen.HTML (ClassName(..))
 
-data Config = Config
+newtype Config = Config
   { root ∷ Array ClassName
   , rootInvalid ∷ Array ClassName
   , component ∷ Array ClassName
@@ -36,6 +37,7 @@ defaultConfig = Config
   }
 
 derive instance configGeneric :: Generic Config _
+derive instance configNewtype :: Newtype Config _
 
 instance configSemigroup :: Semigroup Config where
   append = genericAppend
