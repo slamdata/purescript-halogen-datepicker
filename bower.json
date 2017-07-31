@@ -29,6 +29,7 @@
     "purescript-validation": "^3.1.0",
     "purescript-profunctor": "^3.1.0",
     "purescript-numbers": "^5.0.0",
-    "purescript-these": "^3.0.0"
+    "purescript-these": "^3.0.0",
+    "purescript-number-input-halogen": "git://github.com/safareli/purescript-number-input-halogen.git#initial"
   }
 }
