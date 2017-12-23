@@ -11,8 +11,8 @@ import Halogen.Component.ChildPath (ChildPath)
 import Halogen.Datepicker.Component.Types (PickerMessage(..))
 import Halogen.Datepicker.Config (Config(..))
 import Halogen.Datepicker.Internal.Choice as Choice
-import Halogen.Datepicker.Internal.Num as Num
-import Halogen.Datepicker.Internal.Range (Range)
+import NumberInput.Halogen.Component as Num
+import NumberInput.Range (Range)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -46,8 +46,8 @@ renderNum cpNum update toSetter cmd mainConf preConf =
     conf = toNumConf mainConf preConf
   in
     HH.slot' cpNum cmd
-      (Num.picker Num.intHasNumberInputVal conf) unit
-      (HE.input $ \(NotifyChange n) → update $ \t → n >>= (_ `toSetter cmd` t))
+      (Num.input Num.intHasNumberInputVal conf) unit
+      (HE.input $ \(Num.NotifyChange n) → update $ \t → n >>= (_ `toSetter cmd` t))
 
 toChoiceConf ∷
   ∀ a. Config

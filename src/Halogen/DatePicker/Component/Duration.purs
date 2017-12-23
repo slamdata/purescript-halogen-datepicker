@@ -5,7 +5,7 @@ import Prelude
 import Data.Array (fold)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
-import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
+import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Interval (Duration)
@@ -18,11 +18,11 @@ import Data.String (take)
 import Data.Traversable (for)
 import Data.Tuple (Tuple(..))
 import Halogen as H
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage, PickerQuery(..), PickerValue)
 import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.Duration as F
-import Halogen.Datepicker.Internal.Num as Num
-import Halogen.Datepicker.Internal.Range (minRange)
+import NumberInput.Halogen.Component as Num
+import NumberInput.Range (minRange)
 import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, foldSteps, componentProps, transitionState, asRight, mustBeMounted, pickerProps)
 import Halogen.Datepicker.Internal.Elements (toNumConf)
 import Halogen.HTML as HH
@@ -68,9 +68,9 @@ renderCommand ∷ ∀ m. Config → F.Command → HTML m
 renderCommand config cmd = HH.li (componentProps config)
   [ HH.slot
     cmd
-    (Num.picker Num.numberHasNumberInputVal $ toNumConf config { title: show cmd, placeholder: take 1 (show cmd),  range: minRange 0.0 })
+    (Num.input Num.numberHasNumberInputVal $ toNumConf config { title: show cmd, placeholder: take 1 (show cmd),  range: minRange 0.0 })
     unit
-    (HE.input $ \(NotifyChange n) → UpdateCommand cmd n)]
+    (HE.input $ \(Num.NotifyChange n) → UpdateCommand cmd n)]
 
 getComponent ∷ F.Command → IsoDuration → Number
 getComponent cmd d = fromMaybe 0.0 $ F.toGetter cmd (unIsoDuration d)
@@ -101,7 +101,7 @@ buildDuration format = do
   where
   mkBuildStep ∷ F.Command → DSL m BuildStep
   mkBuildStep cmd = do
-    num ← query cmd $ H.request (left <<< GetValue)
+    num ← query cmd $ H.request (Num.GetValue)
     pure $ num <#> F.toSetter cmd >>> Endo
   runStep ∷ BuildStep -> Maybe (Either Errors IsoDuration)
   runStep step = step <#> \(Endo f) -> mkIsoDuration $ f mempty
@@ -121,7 +121,7 @@ propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
 propagateChange format duration = do
   map fold $ for (unwrap format) \cmd → do
     let n = duration >>= asRight >>= unIsoDuration >>> F.toGetter cmd
-    query cmd $ H.request $ left <<< SetValue n
+    query cmd $ H.action $ Num.SetValue n
 
 query ∷ ∀ m. Slot → ChildQuery ~> DSL m
 query cmd q = H.query cmd q >>= mustBeMounted

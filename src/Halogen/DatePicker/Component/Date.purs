@@ -26,8 +26,8 @@ import Halogen.Datepicker.Format.Date as F
 import Halogen.Datepicker.Internal.Choice as Choice
 import Halogen.Datepicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
 import Halogen.Datepicker.Internal.Elements (textElement, PreChoiceConfig, renderChoice, renderNum)
-import Halogen.Datepicker.Internal.Num as Num
-import Halogen.Datepicker.Internal.Range (Range, bottomTop)
+import NumberInput.Halogen.Component as Num
+import NumberInput.Range (Range, bottomTop)
 import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, foldSteps, componentProps, transitionState', pickerProps, mustBeMounted)
 import Halogen.HTML as HH
 
@@ -126,7 +126,7 @@ buildDate format = do
   mkBuildStep = commandCata
     { text: \cmd → pure $ Just mempty
     , enum: \cmd → do
-        num ← queryNum cmd $ H.request (left <<< GetValue)
+        num ← queryNum cmd $ H.request Num.GetValue
         pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     , choice: \cmd → do
         num ← queryChoice cmd $ H.request (left <<< GetValue)
@@ -152,7 +152,7 @@ propagateChange format date = for_ (unwrap format) $ commandCata
   { text: \cmd → pure unit
   , enum: \cmd → do
     let val = value date >>= F.toGetter cmd
-    queryNum cmd $ H.request $ left <<< SetValue val
+    queryNum cmd $ H.action $ Num.SetValue val
   , choice: \cmd → do
     let val = value date >>= F.toGetter cmd
     res ← queryChoice cmd $ H.request $ left <<< SetValue val

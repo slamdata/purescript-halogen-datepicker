@@ -27,8 +27,8 @@ import Halogen.Datepicker.Format.Time as F
 import Halogen.Datepicker.Internal.Choice as Choice
 import Halogen.Datepicker.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
 import Halogen.Datepicker.Internal.Elements (textElement, PreChoiceConfig, renderChoice, renderNum)
-import Halogen.Datepicker.Internal.Num as Num
-import Halogen.Datepicker.Internal.Range (Range, bottomTop)
+import NumberInput.Halogen.Component as Num
+import NumberInput.Range (Range, bottomTop)
 import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, componentProps, foldSteps, mustBeMounted, pickerProps, transitionState')
 import Halogen.HTML as HH
 
@@ -132,7 +132,7 @@ buildTime format = do
       num ← queryChoice cmd $ H.request (left <<< GetValue)
       pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     _ → do
-      num ← queryNum cmd $ H.request (left <<< GetValue)
+      num ← queryNum cmd $ H.request (Num.GetValue)
       pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
 
 
@@ -155,7 +155,7 @@ propagateChange format time = for_ (unwrap format) \cmd → case cmd of
     Choice.valueMustBeInValues res
   _ → do
     let val = value time >>= F.toGetter cmd
-    queryNum cmd $ H.request $ left <<< SetValue val
+    queryNum cmd $ H.action $ Num.SetValue val
 
 queryChoice ∷ ∀ m. ChoiceSlot → ChoiceQuery ~> DSL m
 queryChoice s q = H.query' cpChoice s q >>= mustBeMounted
