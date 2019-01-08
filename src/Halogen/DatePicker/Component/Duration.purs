@@ -11,7 +11,6 @@ import Data.Generic.Rep.Show (genericShow)
 import Data.Interval (Duration)
 import Data.Interval.Duration.Iso (IsoDuration, mkIsoDuration, unIsoDuration, Errors)
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Monoid (mempty)
 import Data.Monoid.Endo (Endo(..))
 import Data.Newtype (unwrap)
 import Data.String (take)
@@ -88,7 +87,7 @@ evalDuration format (UpdateCommand cmd val next) = do
     _  → buildDuration format
   pure next
 
-type BuildStep = Maybe (Endo Duration)
+type BuildStep = Maybe (Endo (->) Duration)
 buildDuration ∷ ∀ m
   . F.Format
   → DSL m (Either (Tuple Boolean DurationError) IsoDuration)

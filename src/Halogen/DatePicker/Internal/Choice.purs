@@ -84,7 +84,7 @@ evalChoice (Update value next) = do
   s ← H.get
   -- there wouldn't be case when value is Nothing so it's fine to do `for_`
   for_ value \value' → do
-    H.modify _{value = value'}
+    H.modify_ _{value = value'}
     when (value' /= s.value) $ H.raise (NotifyChange $ value')
   pure next
 
@@ -93,7 +93,7 @@ evalPicker ∷ ∀ val m . Eq val ⇒ Config val → HasChoiceInputVal val → Q
 evalPicker {values} hasChoiceInputVal (SetValue value next) = do
   if (value == head values || elem value (tail values))
     then do
-      H.modify _{value = value}
+      H.modify_ _{value = value}
       pure $ next Nothing
     else do
       pure $ next (Just ValueIsNotInValues)
@@ -109,8 +109,8 @@ type HasChoiceInputVal a =
 stringHasChoiceInputVal ∷ HasChoiceInputVal String
 stringHasChoiceInputVal =
   { fromString: pure
-  , toValue: id
-  , toTitle: id
+  , toValue: identity
+  , toTitle: identity
   }
 numberHasChoiceInputVal ∷ HasChoiceInputVal Number
 numberHasChoiceInputVal =

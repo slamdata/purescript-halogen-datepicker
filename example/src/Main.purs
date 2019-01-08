@@ -2,7 +2,6 @@ module Main where
 
 import Prelude
 
-import Control.Monad.Eff (Eff)
 import Data.Bitraversable (bitraverse)
 import Data.Date (Date, canonicalDate)
 import Data.DateTime (DateTime(..))
@@ -18,8 +17,8 @@ import Data.Interval.Duration.Iso (IsoDuration, mkIsoDuration)
 import Data.Map (Map, lookup, insert)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Maybe.Last (Last(..))
-import Data.Monoid (mempty)
 import Data.Time (Time, setHour, setMinute)
+import Effect (Effect)
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.Component.ChildPath as CP
@@ -101,7 +100,7 @@ cpInterval = CP.cp5
 type HTML m = H.ParentHTML Query ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Void m
 
-main ∷ Eff (HA.HalogenEffects ()) Unit
+main ∷ Effect Unit
 main = HA.runHalogenAff do
   body ← HA.awaitBody
   runUI example unit body
@@ -270,15 +269,15 @@ example =
   eval (HandleMessage payload next) = do
     case payload of
       MsgTime idx (NotifyChange val) →
-        H.modify \s → s{ times = insert idx (show val) s.times }
+        H.modify_ \s → s{ times = insert idx (show val) s.times }
       MsgDate idx (NotifyChange val) →
-        H.modify \s → s{ dates = insert idx (show val) s.dates }
+        H.modify_ \s → s{ dates = insert idx (show val) s.dates }
       MsgDateTime idx (NotifyChange val) →
-        H.modify \s → s{ dateTimes = insert idx (show val) s.dateTimes }
+        H.modify_ \s → s{ dateTimes = insert idx (show val) s.dateTimes }
       MsgDuration idx (NotifyChange val) →
-        H.modify \s → s{ durations = insert idx (show val) s.durations }
+        H.modify_ \s → s{ durations = insert idx (show val) s.durations }
       MsgInterval idx (NotifyChange val) →
-        H.modify \s → s{ intervals = insert idx (show val) s.intervals }
+        H.modify_ \s → s{ intervals = insert idx (show val) s.intervals }
     pure next
 
 
@@ -318,7 +317,7 @@ renderExample c items idx fmt' value'= unEither $ do
     [ HE.onClick $ HE.input_ $ c.setter idx val]
     [ HH.text txt]
   unEither ∷ StrOr (Array (HTML m)) → Array (HTML m)
-  unEither = either (HH.text >>> pure >>> HH.div_ >>> pure) id
+  unEither = either (HH.text >>> pure >>> HH.div_ >>> pure) identity
 
 timeConfig ∷ ∀ m. ExampleConfig
   String
