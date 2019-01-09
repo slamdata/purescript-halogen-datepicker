@@ -87,7 +87,7 @@ evalDuration format (UpdateCommand cmd val next) = do
     _  → buildDuration format
   pure next
 
-type BuildStep = Maybe (Endo Duration)
+type BuildStep = Maybe (Endo Function Duration)
 buildDuration ∷ ∀ m
   . F.Format
   → DSL m (Either (Tuple Boolean DurationError) IsoDuration)
