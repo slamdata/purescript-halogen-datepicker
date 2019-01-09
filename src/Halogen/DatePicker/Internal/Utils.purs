@@ -8,7 +8,6 @@ import Data.Bifunctor (bimap, lmap)
 import Data.Either (Either(..), either)
 import Data.Foldable (fold)
 import Data.Maybe (Maybe(..))
-import Data.Monoid (class Monoid)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Halogen as H

@@ -7,7 +7,6 @@ import Data.Generic.Rep.Monoid (genericMempty)
 import Data.Generic.Rep.Semigroup (genericAppend)
 import Data.Maybe (Maybe(..))
 import Data.Maybe.Last (Last(..))
-import Data.Monoid (class Monoid)
 import Data.Newtype (class Newtype)
 import Halogen.HTML (ClassName(..))
 

@@ -18,17 +18,16 @@ import CSS as CSS
 import Control.Alternative (class Alternative, empty)
 import Control.Monad.Except (runExcept)
 import Control.MonadPlus (guard)
-import DOM.Event.Event (Event)
 import Data.Bifunctor (lmap)
 import Data.Enum (class BoundedEnum, fromEnum, toEnum)
-import Data.Foreign (readBoolean, readString, toForeign)
-import Data.Foreign.Index (readProp)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Data.Int as Int
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Number as N
 import Data.String (Pattern(..), length, stripSuffix)
 import Data.Tuple (Tuple(..), fst)
+import Foreign (readBoolean, readString, unsafeToForeign)
+import Foreign.Index (readProp)
 import Halogen as H
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..))
 import Halogen.Datepicker.Internal.Range (Range(..), isInRange, rangeMax, rangeMin)
@@ -38,6 +37,7 @@ import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Core (ClassName)
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Web.Event.Event (Event)
 
 
 type State val = InputValue val
@@ -188,7 +188,7 @@ inputValueFromEvent event = let val = validValueFromEvent event
 
 validValueFromEvent ∷ Event → Maybe String
 validValueFromEvent event = join $ asRight $ runExcept $ do
-  target ← readProp "target" $ toForeign event
+  target ← readProp "target" $ unsafeToForeign event
   validity ← readProp "validity" target
   badInput ← readProp "badInput" validity >>= readBoolean
   value ← readProp "value" target >>= readString
@@ -204,7 +204,7 @@ numberHasNumberInputVal ∷ HasNumberInputVal Number
 numberHasNumberInputVal =
   { fromString: N.fromString
   , toValue: showNum
-  , toNumber: id
+  , toNumber: identity
   }
 
 intHasNumberInputVal ∷ HasNumberInputVal Int
