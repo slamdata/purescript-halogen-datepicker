@@ -2,7 +2,7 @@ module Main where
 
 import Prelude
 
-import Control.Monad.Eff (Eff)
+import Effect (Effect)
 import Data.Bitraversable (bitraverse)
 import Data.Date (Date, canonicalDate)
 import Data.DateTime (DateTime(..))
@@ -101,7 +101,7 @@ cpInterval = CP.cp5
 type HTML m = H.ParentHTML Query ChildQuery Slot m
 type DSL m = H.ParentDSL State Query ChildQuery Slot Void m
 
-main ∷ Eff (HA.HalogenEffects ()) Unit
+main ∷ Effect Unit
 main = HA.runHalogenAff do
   body ← HA.awaitBody
   runUI example unit body
