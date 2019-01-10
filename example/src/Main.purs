@@ -2,11 +2,11 @@ module Main where
 
 import Prelude
 
+import Control.Monad.Error.Class (class MonadError)
 import Data.Bitraversable (bitraverse)
 import Data.Date (Date, canonicalDate)
 import Data.DateTime (DateTime(..))
 import Data.Either (Either(..), either, fromRight)
-import Data.Either.Nested as Either
 import Data.Enum (class BoundedEnum, toEnum)
 import Data.Foldable (fold)
 import Data.Formatter.Interval (unformatInterval)
@@ -17,11 +17,12 @@ import Data.Interval.Duration.Iso (IsoDuration, mkIsoDuration)
 import Data.Map (Map, lookup, insert)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Maybe.Last (Last(..))
+import Data.Symbol (class IsSymbol, SProxy(..))
 import Data.Time (Time, setHour, setMinute)
 import Effect (Effect)
+import Effect.Exception as Ex
 import Halogen as H
 import Halogen.Aff as HA
-import Halogen.Component.ChildPath as CP
 import Halogen.Datepicker.Component.Date as Date
 import Halogen.Datepicker.Component.DateTime as DateTime
 import Halogen.Datepicker.Component.Duration as Duration
@@ -39,6 +40,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.VDom.Driver (runUI)
 import Partial.Unsafe (unsafePartial)
+import Prim.Row as Row
 
 type TimeIdx = Int
 type DateIdx = Int
@@ -80,25 +82,22 @@ type State =
   , intervals ∷ Map IntervalIdx String
   }
 
-type Slot = Either.Either5 TimeIdx DateIdx DateTimeIdx DurationIdx IntervalIdx
+type Slots =
+  ( time ∷ Time.Slot TimeIdx
+  , date ∷ Date.Slot DateIdx
+  , dateTime ∷ DateTime.Slot DateTimeIdx
+  , duration ∷ Duration.Slot DurationIdx
+  , interval ∷ Interval.Slot IntervalIdx
+  )
 
-cpTime ∷ CP.ChildPath Time.Query ChildQuery TimeIdx Slot
-cpTime = CP.cp1
+_time = SProxy ∷ SProxy "time"
+_date = SProxy ∷ SProxy "date"
+_dateTime = SProxy ∷ SProxy "dateTime"
+_duration = SProxy ∷ SProxy "duration"
+_interval = SProxy ∷ SProxy "interval"
 
-cpDate ∷ CP.ChildPath Date.Query ChildQuery DateIdx Slot
-cpDate = CP.cp2
-
-cpDateTime ∷ CP.ChildPath DateTime.Query ChildQuery DateTimeIdx Slot
-cpDateTime = CP.cp3
-
-cpDuration ∷ CP.ChildPath Duration.Query ChildQuery DurationIdx Slot
-cpDuration = CP.cp4
-
-cpInterval ∷ CP.ChildPath Interval.Query ChildQuery IntervalIdx Slot
-cpInterval = CP.cp5
-
-type HTML m = H.ParentHTML Query ChildQuery Slot m
-type DSL m = H.ParentDSL State Query ChildQuery Slot Void m
+type HTML m = H.ComponentHTML Query Slots m
+type DSL m = H.HalogenM State Query Slots Void m
 
 main ∷ Effect Unit
 main = HA.runHalogenAff do
@@ -107,13 +106,19 @@ main = HA.runHalogenAff do
 
 type StrOr = Either String
 
-example ∷ ∀ m. Applicative m ⇒ H.Component HH.HTML Query Unit Void m
+example
+  ∷ ∀ m
+  . MonadError Ex.Error m
+  ⇒ Applicative m
+  ⇒ H.Component HH.HTML Query Unit Void m
 example =
-  H.parentComponent
+  H.component
     { initialState: const initialState
     , render
     , eval
     , receiver: const Nothing
+    , initializer: Nothing
+    , finalizer: Nothing
     }
   where
   initialState =
@@ -223,10 +228,10 @@ example =
   enum = unsafePartial fromJust <<< toEnum -- Ints passed to this func must be in range
 
   renderTime ∷ State → Int → String → StrOr Time → Array (HTML m)
-  renderTime s = renderExample timeConfig s.times
+  renderTime s = renderExample timeConfig _time s.times
 
   renderDate ∷ State → Int → String → StrOr Date → Array (HTML m)
-  renderDate s = renderExample dateConfig s.dates
+  renderDate s = renderExample dateConfig _date s.dates
 
   renderDuration
     ∷ State
@@ -234,7 +239,7 @@ example =
     → Array DurationF.Command
     → StrOr IsoDuration
     → Array (HTML m)
-  renderDuration s = renderExample durationConfig s.durations
+  renderDuration s = renderExample durationConfig _duration s.durations
 
   renderInterval
     ∷ State
@@ -242,7 +247,7 @@ example =
     → Interval (Array DurationF.Command) String
     → StrOr (Interval IsoDuration DateTime)
     → Array (HTML m)
-  renderInterval s = renderExample intervalConfig s.intervals
+  renderInterval s = renderExample intervalConfig _interval s.intervals
 
   renderDateTime
     ∷ State
@@ -250,21 +255,21 @@ example =
     → String
     → StrOr DateTime
     → Array (HTML m)
-  renderDateTime s = renderExample dateTimeConfig s.dateTimes
+  renderDateTime s = renderExample dateTimeConfig _dateTime s.dateTimes
 
   eval ∷ Query ~> DSL m
   eval (Set payload next) = do
     mustBeMounted =<< case payload of
       SetTime idx val →
-        H.query' timeConfig.cp idx $ setValue $ map Right val
+        H.query _time idx $ setValue $ map Right val
       SetDate idx val →
-        H.query' dateConfig.cp idx $ setValue $ map Right val
+        H.query _date idx $ setValue $ map Right val
       SetDateTime idx val →
-        H.query' dateTimeConfig.cp idx $ setValue $ map Right val
+        H.query _dateTime idx $ setValue $ map Right val
       SetDuration idx val →
-        H.query' durationConfig.cp idx $ setValue $ map Right val
+        H.query _duration idx $ setValue $ map Right val
       SetInterval idx val →
-        map void $ H.query' intervalConfig.cp idx $ setValue $ map Right val
+        map void $ H.query _interval idx $ setValue $ map Right val
     pure next
   eval (HandleMessage payload next) = do
     case payload of
@@ -280,31 +285,31 @@ example =
         H.modify_ \s → s{ intervals = insert idx (show val) s.intervals }
     pure next
 
-
-
 type ExampleConfig fmtInput input fmt query out m =
   { mkFormat ∷ fmtInput → StrOr fmt
   , unformat ∷ fmt → String → StrOr input
   , picker ∷ fmt → H.Component HH.HTML query Unit out m
   , handler ∷ ∀ z. Int → out → z → Query z
   , setter ∷ ∀ z. Int → Maybe input → z → Query z
-  , cp ∷ CP.ChildPath query ChildQuery Int Slot
   }
 
 renderExample
-  ∷ ∀ fmtInput input fmt query out m
-  . ExampleConfig fmtInput input fmt query out m
+  ∷ ∀ fmtInput input fmt sym query out px m
+  . Row.Cons sym (H.Slot query out Int) px Slots
+  ⇒ IsSymbol sym
+  ⇒ ExampleConfig fmtInput input fmt query out m
+  → SProxy sym
   → Map Int String
   → Int
   → fmtInput
   → StrOr input
   → Array (HTML m)
-renderExample c items idx fmt' value'= unEither $ do
+renderExample c sp items idx fmt' value'= unEither $ do
   fmt ← c.mkFormat fmt'
   value ← either (c.unformat fmt) Right value'
   let cmp = c.picker fmt
   pure
-    [ HH.slot' c.cp idx cmp unit (HE.input (c.handler idx))
+    [ HH.slot sp idx cmp unit (HE.input (c.handler idx))
     , btn (Just value) "reset"
     , btn Nothing "clear"
     , case lookup idx items of
@@ -319,86 +324,67 @@ renderExample c items idx fmt' value'= unEither $ do
   unEither ∷ StrOr (Array (HTML m)) → Array (HTML m)
   unEither = either (HH.text >>> pure >>> HH.div_ >>> pure) identity
 
-timeConfig ∷ ∀ m. ExampleConfig
-  String
-  Time
-  TimeF.Format
-  Time.Query
-  Time.Message
-  m
+timeConfig
+  ∷ ∀ m
+  . MonadError Ex.Error m
+  ⇒ ExampleConfig String Time TimeF.Format Time.Query Time.Message m
 timeConfig =
   { mkFormat: TimeF.fromString
   , unformat: TimeF.unformat
   , picker: Time.picker
   , handler: \idx msg → HandleMessage (MsgTime idx msg)
   , setter: \idx val → Set (SetTime idx val)
-  , cp: cpTime
   }
 
-dateConfig ∷ ∀ m. ExampleConfig
-  String
-  Date
-  DateF.Format
-  Date.Query
-  Date.Message
-  m
+dateConfig
+  ∷ ∀ m
+  . MonadError Ex.Error m
+  ⇒ ExampleConfig String Date DateF.Format Date.Query Date.Message m
 dateConfig =
   { mkFormat: DateF.fromString
   , unformat: DateF.unformat
   , picker: Date.picker
   , handler: \idx msg → HandleMessage (MsgDate idx msg)
   , setter: \idx val → Set (SetDate idx val)
-  , cp: cpDate
   }
 
-dateTimeConfig ∷ ∀ m. ExampleConfig
-  String
-  DateTime
-  DateTimeF.Format
-  DateTime.Query
-  DateTime.Message
-  m
+dateTimeConfig
+  ∷ ∀ m
+  . MonadError Ex.Error m
+  ⇒ ExampleConfig String DateTime DateTimeF.Format DateTime.Query DateTime.Message m
 dateTimeConfig =
   { mkFormat: DateTimeF.fromString
   , unformat: DateTimeF.unformat
   , picker: DateTime.picker
   , handler: \idx msg → HandleMessage (MsgDateTime idx msg)
   , setter: \idx val → Set (SetDateTime idx val)
-  , cp: cpDateTime
   }
 
-durationConfig ∷ ∀ m. ExampleConfig
-  (Array DurationF.Command)
-  IsoDuration
-  DurationF.Format
-  Duration.Query
-  Duration.Message
-  m
+durationConfig
+  ∷ ∀ m
+  . MonadError Ex.Error m
+  ⇒ ExampleConfig (Array DurationF.Command) IsoDuration DurationF.Format Duration.Query Duration.Message m
 durationConfig =
   { mkFormat: DurationF.mkFormat
   , unformat: const DurationF.unformat
   , picker: Duration.picker
   , handler: \idx msg → HandleMessage (MsgDuration idx msg)
   , setter: \idx val → Set (SetDuration idx val)
-  , cp: cpDuration
   }
 
-intervalConfig ∷ ∀ m. ExampleConfig
-  (Interval (Array DurationF.Command) String)
-  (Interval IsoDuration DateTime)
-  IntervalF.Format
-  Interval.Query
-  Interval.Message m
+intervalConfig
+  ∷ ∀ m
+  . MonadError Ex.Error m
+  ⇒ ExampleConfig (Interval (Array DurationF.Command) String) (Interval IsoDuration DateTime) IntervalF.Format Interval.Query Interval.Message m
 intervalConfig =
   { mkFormat: bitraverse DurationF.mkFormat DateTimeF.fromString
   , unformat: const unformatInterval
   , picker: Interval.pickerWithConfig (defaultConfig <> myConfig)
   , handler: \idx msg → HandleMessage (MsgInterval idx msg)
   , setter: \idx val → Set (SetInterval idx val)
-  , cp: cpInterval
   }
 
-myConfig :: Config
+myConfig ∷ Config
 myConfig = Config
   { root: [HH.ClassName "MyPicker"]
   , rootInvalid: [HH.ClassName "MyPicker--invalid"]

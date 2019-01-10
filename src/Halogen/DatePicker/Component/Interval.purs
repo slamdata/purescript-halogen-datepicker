@@ -2,19 +2,19 @@ module Halogen.Datepicker.Component.Interval where
 
 import Prelude
 
+import Control.Monad.Error.Class (class MonadError)
 import Data.Bifunctor (bimap, lmap)
 import Data.DateTime (DateTime)
 import Data.Either (Either(..), either)
-import Data.Either.Nested (Either2)
 import Data.Foldable (for_)
 import Data.Functor.Coproduct (Coproduct, coproduct, right)
-import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Interval (Interval(..))
 import Data.Interval.Duration.Iso (IsoDuration)
 import Data.Maybe (Maybe(..), isNothing)
+import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
+import Effect.Exception as Ex
 import Halogen as H
-import Halogen.Component.ChildPath as CP
 import Halogen.Datepicker.Component.DateTime as DateTime
 import Halogen.Datepicker.Component.Duration (DurationError)
 import Halogen.Datepicker.Component.Duration as Duration
@@ -24,7 +24,7 @@ import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Format.Duration as DurationF
 import Halogen.Datepicker.Format.Interval as F
 import Halogen.Datepicker.Internal.Elements (textElement)
-import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, componentProps, transitionState, asLeft, mustBeMounted, pickerProps)
+import Halogen.Datepicker.Internal.Utils (asLeft, componentProps, mapComponentHTMLQuery, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 
@@ -40,34 +40,41 @@ data SetIntervalError = IntervalIsNotInShapeOfFormat
 data IntervalQuery a = Update MessageIn a
 type MessageIn = Either Duration.Message (Tuple Boolean DateTime.Message)
 
-type Slot = Either2 DurationSlot DateTimeSlot
-type ChildQuery = Coproduct2 Duration.Query DateTime.Query
-type DateTimeSlot = Boolean
-type DurationSlot = Unit
+type Slots =
+  ( dateTime ∷ DateTime.Slot Boolean
+  , duration ∷ Duration.Slot Unit
+  )
 
-cpDuration ∷ CP.ChildPath Duration.Query ChildQuery DurationSlot Slot
-cpDuration = CP.cp1
-cpDateTime ∷ CP.ChildPath DateTime.Query ChildQuery DateTimeSlot Slot
-cpDateTime = CP.cp2
+_dateTime = SProxy ∷ SProxy "dateTime"
+_duration = SProxy ∷ SProxy "duration"
 
-type HTML m = H.ParentHTML IntervalQuery ChildQuery Slot m
-type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
+type Slot = H.Slot Query Message
 
-picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
+type HTML m = H.ComponentHTML IntervalQuery Slots m
+type DSL = H.HalogenM State Query Slots Message
+
+picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component HH.HTML Query Unit Message m
 picker = pickerWithConfig defaultConfig
 
-pickerWithConfig ∷ ∀ m. Config → F.Format → H.Component HH.HTML Query Unit Message m
-pickerWithConfig config format = H.parentComponent
+pickerWithConfig
+  ∷ ∀ m
+  . MonadError Ex.Error m
+  ⇒ Config
+  → F.Format
+  → H.Component HH.HTML Query Unit Message m
+pickerWithConfig config format = H.component
   { initialState: const Nothing
-  , render: render config format >>> mapParentHTMLQuery right
+  , render: render config format >>> mapComponentHTMLQuery right
   , eval: coproduct (evalPicker format) (evalInterval format)
   , receiver: const Nothing
+  , initializer: Nothing
+  , finalizer: Nothing
   }
 
-render ∷ ∀ m. Config → F.Format → State → HTML m
+render ∷ ∀ m. MonadError Ex.Error m ⇒ Config → F.Format → State → HTML m
 render config format interval = HH.div (pickerProps config interval) (renderCommand config format)
 
-renderCommand ∷ ∀ m. Config → F.Format → Array (HTML m)
+renderCommand ∷ ∀ m. MonadError Ex.Error m ⇒ Config → F.Format → Array (HTML m)
 renderCommand config format = map (HH.div (componentProps config) <<< pure) case format of
   StartEnd fmtStart fmtEnd →
     [ renderDateTime config fmtStart false
@@ -84,16 +91,15 @@ renderCommand config format = map (HH.div (componentProps config) <<< pure) case
   DurationOnly fmtDuration →
     [ renderDuration config fmtDuration ]
 
-renderDuration ∷ ∀ m. Config → DurationF.Format → HTML m
-renderDuration config fmt = HH.slot' cpDuration unit (Duration.pickerWithConfig config fmt) unit (HE.input $ Update <<< Left)
+renderDuration ∷ ∀ m. MonadError Ex.Error m ⇒ Config → DurationF.Format → HTML m
+renderDuration config fmt = HH.slot _duration unit (Duration.pickerWithConfig config fmt) unit (HE.input $ Update <<< Left)
 
-renderDateTime ∷ ∀ m. Config → DateTimeF.Format → Boolean → HTML m
-renderDateTime config fmt idx = HH.slot' cpDateTime idx (DateTime.pickerWithConfig config fmt) unit (HE.input $ Update <<< Right <<< (Tuple idx))
-
+renderDateTime ∷ ∀ m. MonadError Ex.Error m ⇒ Config → DateTimeF.Format → Boolean → HTML m
+renderDateTime config fmt idx = HH.slot _dateTime idx (DateTime.pickerWithConfig config fmt) unit (HE.input $ Update <<< Right <<< (Tuple idx))
 
 -- [1] - this case will not happen as interval will not be `Just Right`
 --       if any of it's child is `Nothing` so return nonsence value
-evalInterval ∷ ∀ m . F.Format → IntervalQuery ~> DSL m
+evalInterval ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → IntervalQuery ~> DSL m
 evalInterval format (Update msg next) = do
   transitionState case _ of
     Nothing  → do
@@ -120,8 +126,7 @@ evalInterval format (Update msg next) = do
           DurationOnly d → DurationOnly d
   pure next
 
-
-buildInterval ∷ ∀ m. F.Format → DSL m (Either (Tuple Boolean IntervalError) IsoInterval)
+buildInterval ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → DSL m (Either (Tuple Boolean IntervalError) IsoInterval)
 buildInterval format = do
   vals ← collectValues format
   pure $ lmap addForce $ unVals vals
@@ -150,8 +155,10 @@ maybeLeft (Just (Right a)) = Right a
 maybeLeft (Just (Left a)) = Left $ Just a
 maybeLeft Nothing = Left $ Nothing
 
-collectValues ∷ ∀ d a m
-  . Interval d a
+collectValues
+  ∷ ∀ d a m
+  . MonadError Ex.Error m
+  ⇒ Interval d a
   → DSL m (Interval Duration.State DateTime.State)
 collectValues format = case format of
   StartEnd a b → StartEnd <$> getDateTime false <*> getDateTime true
@@ -159,16 +166,17 @@ collectValues format = case format of
   StartDuration a d → StartDuration <$> getDateTime false <*> getDuration
   DurationOnly d → DurationOnly <$> getDuration
 
-resetChildErrorBasedOnMessage ∷ ∀ m. MessageIn → DSL m Unit
+resetChildErrorBasedOnMessage ∷ ∀ m. MonadError Ex.Error m ⇒ MessageIn → DSL m Unit
 resetChildErrorBasedOnMessage (Left (NotifyChange (Just (Left _)))) = resetDuration
 resetChildErrorBasedOnMessage (Right (Tuple idx (NotifyChange (Just (Left _))))) = resetDateTime idx
 resetChildErrorBasedOnMessage _ = pure unit
 
-resetChildError ∷ ∀ m. F.Format → DSL m Unit
+resetChildError ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → DSL m Unit
 resetChildError format = do
   onFormat resetDateTime resetDuration format
 
-onFormat ∷ ∀ m a d
+onFormat
+  ∷ ∀ m a d
   . Apply m
   ⇒ (Boolean → m Unit)
   → m Unit
@@ -180,7 +188,7 @@ onFormat onDateTime onDuration format = case format of
   StartDuration a d → onDateTime false *> onDuration
   DurationOnly d → onDuration
 
-evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m
+evalPicker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → QueryIn ~> DSL m
 evalPicker format (ResetError next) = do
   H.put Nothing
   resetChildError format
@@ -196,7 +204,7 @@ evalPicker _ (Base (GetValue reply)) = H.get <#> reply
 type ChildStates
   = Interval (Maybe Duration.State) (Maybe DateTime.State)
 
-setInterval ∷ ∀ m. ChildStates → DSL m Unit
+setInterval ∷ ∀ m. MonadError Ex.Error m ⇒ ChildStates → DSL m Unit
 setInterval = case _ of
   StartEnd a b → do
     for_ a $ setDateTime false
@@ -211,41 +219,41 @@ setInterval = case _ of
     for_ d setDuration
 
 viewInterval ∷ F.Format → State → Maybe ChildStates
-viewInterval format input = case format, mapedState input of
-  StartEnd _ _ , Just interval@(StartEnd _ _) → Just $ interval
-  DurationEnd _ _ , Just interval@(DurationEnd _ _) → Just $ interval
-  StartDuration _ _ , Just interval@(StartDuration _ _) → Just $ interval
-  DurationOnly _ , Just interval@(DurationOnly _) → Just $ interval
+viewInterval format input = case format, mappedState input of
+  StartEnd _ _ , Just interval@(StartEnd _ _) → Just interval
+  DurationEnd _ _ , Just interval@(DurationEnd _ _) → Just interval
+  StartDuration _ _ , Just interval@(StartDuration _ _) → Just interval
+  DurationOnly _ , Just interval@(DurationOnly _) → Just interval
   _, Nothing → Just $ bimap (const $ Just Nothing) (const $ Just Nothing) format
   _ , _ → Nothing
   where
-  mapedState ∷ State → Maybe ChildStates
-  mapedState = map $ either (bimap mkErr mkErr) (bimap mkVal mkVal)
+  mappedState ∷ State → Maybe ChildStates
+  mappedState = map $ either (bimap mkErr mkErr) (bimap mkVal mkVal)
   mkVal ∷ ∀ e a. a → Maybe (PickerValue e a)
   mkVal = Just <<< Just <<< Right
   mkErr ∷ ∀ e a. Maybe e → Maybe (PickerValue e a)
   mkErr = map (Just <<< Left)
 
-getDuration ∷ ∀ m. DSL m Duration.State
+getDuration ∷ ∀ m. MonadError Ex.Error m ⇒ DSL m Duration.State
 getDuration = queryDuration $ getValue
 
-getDateTime ∷ ∀ m. Boolean → DSL m DateTime.State
-getDateTime idx  = queryDateTime idx $ getValue
+getDateTime ∷ ∀ m. MonadError Ex.Error m ⇒ Boolean → DSL m DateTime.State
+getDateTime idx = queryDateTime idx getValue
 
-setDuration ∷ ∀ m. Duration.State → DSL m Unit
+setDuration ∷ ∀ m. MonadError Ex.Error m ⇒ Duration.State → DSL m Unit
 setDuration val = queryDuration $ setValue val
 
-setDateTime ∷ ∀ m. Boolean → DateTime.State → DSL m Unit
+setDateTime ∷ ∀ m. MonadError Ex.Error m ⇒ Boolean → DateTime.State → DSL m Unit
 setDateTime idx val = queryDateTime idx $ setValue val
 
-resetDuration ∷ ∀ m. DSL m Unit
+resetDuration ∷ ∀ m. MonadError Ex.Error m ⇒ DSL m Unit
 resetDuration = queryDuration $ resetError
 
-resetDateTime ∷ ∀ m. Boolean → DSL m Unit
-resetDateTime idx = queryDateTime idx $ resetError
+resetDateTime ∷ ∀ m. MonadError Ex.Error m ⇒ Boolean → DSL m Unit
+resetDateTime idx = queryDateTime idx resetError
 
-queryDuration ∷ ∀ m a. Duration.Query a → DSL m a
-queryDuration q = H.query' cpDuration unit q >>= mustBeMounted
+queryDuration ∷ ∀ m a. MonadError Ex.Error m ⇒ Duration.Query a → DSL m a
+queryDuration q = H.query _duration unit q >>= mustBeMounted
 
-queryDateTime ∷ ∀ m a. DateTimeSlot → DateTime.Query a → DSL m a
-queryDateTime idx q = H.query' cpDateTime idx q >>= mustBeMounted
+queryDateTime ∷ ∀ m a. MonadError Ex.Error m ⇒ Boolean → DateTime.Query a → DSL m a
+queryDateTime idx q = H.query _dateTime idx q >>= mustBeMounted

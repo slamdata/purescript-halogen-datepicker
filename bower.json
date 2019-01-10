@@ -23,12 +23,16 @@
     "purescript-enums": "^4.0.0",
     "purescript-formatters": "^4.0.0",
     "purescript-datetime": "^4.1.0",
-    "purescript-halogen": "^4.0.0",
+    "purescript-halogen": "7d924b1f8ebe3bb1a469e1a5f05df09351da3438",
     "purescript-halogen-css": "^8.0.0",
     "purescript-generics-rep": "^6.1.0",
     "purescript-validation": "^4.0.0",
     "purescript-profunctor": "^4.0.0",
     "purescript-numbers": "^6.0.0",
     "purescript-these": "^4.0.0"
+  },
+  "resolutions": {
+    "purescript-halogen": "7d924b1f8ebe3bb1a469e1a5f05df09351da3438",
+    "purescript-halogen-vdom": "^4.0.0"
   }
 }

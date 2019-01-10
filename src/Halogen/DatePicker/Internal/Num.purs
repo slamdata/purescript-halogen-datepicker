@@ -3,6 +3,8 @@ module Halogen.Datepicker.Internal.Num
   , NumQuery
   , Query
   , QueryIn
+  , Message
+  , Slot
   , Config
   , Input
   , mkInputValue
@@ -39,7 +41,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Web.Event.Event (Event)
 
-
 type State val = InputValue val
 
 type Message val = PickerMessage (Input val)
@@ -49,8 +50,12 @@ type Query val = Coproduct (QueryIn val) (NumQuery val)
 type QueryIn val = BasePickerQuery Unit (Input val)
 data NumQuery val a = Update (InputValue val) a
 
-type DSL val = H.ComponentDSL (State val) (Query val) (Message val)
-type HTML val = H.ComponentHTML (NumQuery val)
+type Slots = ()
+
+type Slot val = H.Slot (Query val) (Message val)
+
+type DSL val = H.HalogenM (State val) (Query val) Slots (Message val)
+type HTML val m = H.ComponentHTML (NumQuery val) Slots m
 
 type Config val =
   { title ∷ String
@@ -58,10 +63,11 @@ type Config val =
   , range ∷ Range val
   , root ∷ Array ClassName
   , rootInvalid ∷ Array ClassName
-  , rootLength ∷ Int -> Array ClassName
+  , rootLength ∷ Int → Array ClassName
   }
 
-picker ∷ ∀ val m
+picker
+  ∷ ∀ val m
   . Ord val
   ⇒ HasNumberInputVal val
   → Config val
@@ -71,27 +77,46 @@ picker hasNumberInputVal conf = H.component
   , render: render hasNumberInputVal conf >>> mapComponentHTMLQuery right
   , eval: coproduct (evalPicker hasNumberInputVal) evalNumber
   , receiver: const Nothing
+  , initializer: Nothing
+  , finalizer: Nothing
   }
 
-render ∷ ∀ val. Ord val ⇒ HasNumberInputVal val → Config val → State val → HTML val
+render
+  ∷ ∀ val m
+  . Ord val
+  ⇒ HasNumberInputVal val
+  → Config val
+  → State val
+  → HTML val m
 render hasNumberInputVal conf num = numberElement hasNumberInputVal conf num
 
-evalNumber ∷ ∀ val m . Eq val ⇒ NumQuery val ~> DSL val m
+evalNumber
+  ∷ ∀ val m
+  . Eq val
+  ⇒ NumQuery val
+  ~> DSL val m
 evalNumber (Update number next) = do
   prevNumber ← H.get
   H.put number
   unless (number == prevNumber) $ H.raise (NotifyChange $ fst number)
   pure next
 
-toMbString ∷ ∀ a. HasNumberInputVal a → Maybe a → Maybe String
+toMbString
+  ∷ ∀ a
+  . HasNumberInputVal a
+  → Maybe a
+  → Maybe String
 toMbString hasNumberInputVal number = (Just $ maybe "" hasNumberInputVal.toValue number)
 
-evalPicker ∷ ∀ val m . HasNumberInputVal val → QueryIn val ~> DSL val m
+evalPicker
+  ∷ ∀ val m
+  . HasNumberInputVal val
+  → QueryIn val
+  ~> DSL val m
 evalPicker hasNumberInputVal (SetValue number next) = do
   H.put $ Tuple number (toMbString hasNumberInputVal number)
   pure $ next unit
 evalPicker _ (GetValue next) = H.get <#> (fst >>> next)
-
 
 type InputValue a = Tuple (Maybe a) (Maybe String)
 
@@ -99,18 +124,19 @@ toString ∷ ∀ a. InputValue a → String
 toString (Tuple _ mbStr) = fromMaybe "" mbStr
 
 mkInputValue ∷ ∀ a. HasNumberInputVal a → a → InputValue a
-mkInputValue hasNumberInputVal n = Tuple (Just n) (Just $ hasNumberInputVal.toValue n)
+mkInputValue hasNumberInputVal n =
+  Tuple (Just n) (Just $ hasNumberInputVal.toValue n)
 
 emptyNumberInputValue ∷ ∀ a. InputValue a
 emptyNumberInputValue = Tuple Nothing (Just "")
 
-isInvalid  ∷ ∀ a. InputValue a → Boolean
+isInvalid ∷ ∀ a. InputValue a → Boolean
 isInvalid (Tuple Nothing (Just "")) = false
 isInvalid (Tuple Nothing (Just _)) = true
 isInvalid (Tuple _ Nothing) = true
 isInvalid _ = false
 
-isEmpty  ∷ ∀ a. InputValue a → Boolean
+isEmpty ∷ ∀ a. InputValue a → Boolean
 isEmpty (Tuple _ (Just "")) = true
 isEmpty _ = false
 
@@ -119,12 +145,13 @@ showNum 0.0 = "0"
 showNum n = let str = show n
   in fromMaybe str (stripSuffix (Pattern ".0") str)
 
-numberElement ∷ ∀ val
+numberElement
+  ∷ ∀ val m
   . Ord val
   ⇒ HasNumberInputVal val
   → Config val
   → InputValue val
-  → HTML val
+  → HTML val m
 numberElement hasNumberInputVal conf value = HH.input $
   [ HP.type_ HP.InputNumber
   , HP.classes classes
@@ -194,7 +221,7 @@ validValueFromEvent event = join $ asRight $ runExcept $ do
   value ← readProp "value" target >>= readString
   pure (if badInput then Nothing else Just value)
 
-type HasNumberInputVal a  =
+type HasNumberInputVal a =
   { fromString ∷ String → Maybe a
   , toValue ∷ a → String
   , toNumber ∷ a → Number

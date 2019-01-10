@@ -2,6 +2,7 @@ module Halogen.Datepicker.Component.Duration where
 
 import Prelude
 
+import Control.Monad.Error.Class (class MonadError)
 import Data.Array (fold)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
@@ -14,19 +15,20 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid.Endo (Endo(..))
 import Data.Newtype (unwrap)
 import Data.String (take)
+import Data.Symbol (SProxy(..))
 import Data.Traversable (for)
 import Data.Tuple (Tuple(..))
+import Effect.Exception as Ex
 import Halogen as H
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
 import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.Duration as F
+import Halogen.Datepicker.Internal.Elements (toNumConf)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (minRange)
-import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, foldSteps, componentProps, transitionState, asRight, mustBeMounted, pickerProps)
-import Halogen.Datepicker.Internal.Elements (toNumConf)
+import Halogen.Datepicker.Internal.Utils (asRight, componentProps, foldSteps, mapComponentHTMLQuery, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-
 
 type State = PickerValue DurationError IsoDuration
 
@@ -43,22 +45,34 @@ derive instance durationErrorGeneric ∷ Generic DurationError _
 instance durationErrorShow ∷ Show DurationError where
   show = genericShow
 
-type Slot = F.Command
-type ChildQuery = Num.Query Number
+type Slots =
+  ( num ∷ (Num.Slot Number) F.Command
+  )
 
-type HTML m = H.ParentHTML DurationQuery ChildQuery Slot m
-type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
+_num = SProxy ∷ SProxy "num"
 
-picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
+type Slot = H.Slot Query Message
+
+type HTML m = H.ComponentHTML DurationQuery Slots m
+type DSL = H.HalogenM State Query Slots Message
+
+picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component HH.HTML Query Unit Message m
 picker = pickerWithConfig defaultConfig
 
-pickerWithConfig ∷ ∀ m. Config → F.Format → H.Component HH.HTML Query Unit Message m
-pickerWithConfig config format = H.parentComponent
+pickerWithConfig
+  ∷ ∀ m
+  . MonadError Ex.Error m
+  ⇒ Config
+  → F.Format
+  → H.Component HH.HTML Query Unit Message m
+pickerWithConfig config format = H.component
   { initialState: const Nothing
-  , render: render config format >>> mapParentHTMLQuery right
+  , render: render config format >>> mapComponentHTMLQuery right
   , eval: coproduct (evalPicker format) (evalDuration format)
   , receiver: const Nothing
-  }
+  , initializer: Nothing
+  , finalizer: Nothing
+}
 
 render ∷ ∀ m. Config → F.Format → State → HTML m
 render config format duration = HH.ul (pickerProps config duration) (unwrap format <#> renderCommand config)
@@ -66,6 +80,7 @@ render config format duration = HH.ul (pickerProps config duration) (unwrap form
 renderCommand ∷ ∀ m. Config → F.Command → HTML m
 renderCommand config cmd = HH.li (componentProps config)
   [ HH.slot
+    _num
     cmd
     (Num.picker Num.numberHasNumberInputVal $ toNumConf config { title: show cmd, placeholder: take 1 (show cmd),  range: minRange 0.0 })
     unit
@@ -77,19 +92,21 @@ getComponent cmd d = fromMaybe 0.0 $ F.toGetter cmd (unIsoDuration d)
 overIsoDuration ∷ (Duration → Duration) → IsoDuration → Either Errors IsoDuration
 overIsoDuration f d = mkIsoDuration $ f $ unIsoDuration d
 
-evalDuration ∷ ∀ m. F.Format → DurationQuery ~> DSL m
+evalDuration ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → DurationQuery ~> DSL m
 evalDuration format (UpdateCommand cmd val next) = do
   transitionState case _ of
     Just (Right prevDuration) → pure case val of
       Just n → overIsoDuration (F.toSetter cmd n) prevDuration # lmap \err ->
         Tuple false (InvalidIsoDuration (Just err))
-      Nothing -> Left (Tuple false (InvalidIsoDuration Nothing))
+      Nothing → Left (Tuple false (InvalidIsoDuration Nothing))
     _  → buildDuration format
   pure next
 
 type BuildStep = Maybe (Endo (->) Duration)
-buildDuration ∷ ∀ m
-  . F.Format
+buildDuration
+  ∷ ∀ m
+  . MonadError Ex.Error m
+  ⇒ F.Format
   → DSL m (Either (Tuple Boolean DurationError) IsoDuration)
 buildDuration format = do
   steps ← for (unwrap format) mkBuildStep
@@ -102,11 +119,10 @@ buildDuration format = do
   mkBuildStep cmd = do
     num ← query cmd $ H.request (left <<< GetValue)
     pure $ num <#> F.toSetter cmd >>> Endo
-  runStep ∷ BuildStep -> Maybe (Either Errors IsoDuration)
-  runStep step = step <#> \(Endo f) -> mkIsoDuration $ f mempty
+  runStep ∷ BuildStep → Maybe (Either Errors IsoDuration)
+  runStep step = step <#> \(Endo f) → mkIsoDuration $ f mempty
 
-
-evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m
+evalPicker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → QueryIn ~> DSL m
 evalPicker _ (ResetError next) = do
   H.put Nothing
   pure next
@@ -116,11 +132,11 @@ evalPicker format (Base (SetValue duration reply)) = do
   pure $ reply unit
 evalPicker _ (Base (GetValue reply)) = H.get <#> reply
 
-propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
+propagateChange ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → State → DSL m Unit
 propagateChange format duration = do
   map fold $ for (unwrap format) \cmd → do
     let n = duration >>= asRight >>= unIsoDuration >>> F.toGetter cmd
     query cmd $ H.request $ left <<< SetValue n
 
-query ∷ ∀ m. Slot → ChildQuery ~> DSL m
-query cmd q = H.query cmd q >>= mustBeMounted
+query ∷ ∀ m. MonadError Ex.Error m ⇒ F.Command → Num.Query Number ~> DSL m
+query cmd q = H.query _num cmd q >>= mustBeMounted
