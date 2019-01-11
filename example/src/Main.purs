@@ -10,7 +10,6 @@ import Data.Either (Either(..), either, fromRight)
 import Data.Enum (class BoundedEnum, toEnum)
 import Data.Foldable (fold)
 import Data.Formatter.Interval (unformatInterval)
-import Data.Functor.Coproduct.Nested as Coproduct
 import Data.Interval (Interval(..))
 import Data.Interval as I
 import Data.Interval.Duration.Iso (IsoDuration, mkIsoDuration)
@@ -65,14 +64,6 @@ data MessagePayload
   | MsgDateTime DateTimeIdx DateTime.Message
   | MsgDuration DurationIdx Duration.Message
   | MsgInterval IntervalIdx Interval.Message
-
-type ChildQuery
-  = Coproduct.Coproduct5
-    Time.Query
-    Date.Query
-    DateTime.Query
-    Duration.Query
-    Interval.Query
 
 type State =
   { times ∷ Map TimeIdx String
