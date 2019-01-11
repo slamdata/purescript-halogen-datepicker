@@ -1,11 +1,5 @@
 module Halogen.Datepicker.Format.Duration
-  ( Format
-  , Command
-  , mkFormat
-  , unformat
-  , format
-  , toSetter
-  , toGetter
+  ( module Halogen.Datepicker.Format.Duration
   , module ReExport
   ) where
 
