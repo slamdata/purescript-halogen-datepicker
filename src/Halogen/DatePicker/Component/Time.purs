@@ -20,7 +20,7 @@ import Data.Time (Time)
 import Data.Traversable (for)
 import Effect.Exception as Ex
 import Halogen as H
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage, PickerQuery(..), PickerValue, value)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery(..), PickerValue, value)
 import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.Time as F
 import Halogen.Datepicker.Internal.Choice as Choice
@@ -33,7 +33,7 @@ import Halogen.HTML as HH
 
 type State = PickerValue TimeError Time
 
-type Message = PickerMessage State
+type Message = PickerValue TimeError Time
 
 type Query = Coproduct QueryIn TimeQuery
 type QueryIn = PickerQuery Unit State

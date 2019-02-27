@@ -14,7 +14,7 @@ import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Effect.Exception as Ex
 import Halogen as H
-import Halogen.Datepicker.Component.Types (PickerMessage(..), PickerValue, isInvalid)
+import Halogen.Datepicker.Component.Types (PickerValue, isInvalid)
 import Halogen.Datepicker.Config (Config(..))
 import Halogen.HTML.Properties as HP
 import Halogen.Query.HalogenM (HalogenM)
@@ -72,7 +72,7 @@ transitionState'
 transitionState' err f = transitionState (f >>>  (map $ lmap (_ `Tuple` err)))
 
 type TransitionM f ps m err val =
-  HalogenM (PickerValue err val) f ps (PickerMessage (PickerValue err val)) m
+  HalogenM (PickerValue err val) f ps (PickerValue err val) m
 
 transitionState
   ∷ ∀ f ps m val err
@@ -87,8 +87,8 @@ transitionState f = do
   nextVal ← map (steper val) (f val)
   val `moveStateTo` nextVal
   where
-  moveStateTo ∷ ∀ a. Eq a ⇒ a → a → HalogenM a f ps (PickerMessage a) m Unit
-  moveStateTo old new = H.put new *> unless (new == old) (H.raise $ NotifyChange new)
+  moveStateTo ∷ ∀ a. Eq a ⇒ a → a → HalogenM a f ps a m Unit
+  moveStateTo old new = H.put new *> unless (new == old) (H.raise new)
   steper ∷ ∀ e a. PickerValue e a → Either (Tuple Boolean e) a → PickerValue e a
   steper old new = case old, new of
     _, Right x → Just (Right x)

@@ -20,7 +20,7 @@ import Data.Traversable (for)
 import Data.Tuple (Tuple(..))
 import Effect.Exception as Ex
 import Halogen as H
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery(..), PickerValue)
 import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.Duration as F
 import Halogen.Datepicker.Internal.Elements (toNumConf)
@@ -31,7 +31,7 @@ import Halogen.HTML as HH
 
 type State = PickerValue DurationError IsoDuration
 
-type Message = PickerMessage State
+type Message = PickerValue DurationError IsoDuration
 
 type Query = Coproduct QueryIn DurationQuery
 type QueryIn = PickerQuery Unit State
@@ -82,7 +82,7 @@ renderCommand config cmd =
         cmd
         (Num.picker Num.numberHasNumberInputVal $ toNumConf config { title: show cmd, placeholder: take 1 (show cmd),  range: minRange 0.0 })
         unit
-        (\(NotifyChange n) → Just (UpdateCommand cmd n unit))
+        (\n → Just (UpdateCommand cmd n unit))
     ]
 
 getComponent ∷ F.Command → IsoDuration → Number

@@ -8,7 +8,6 @@ import Data.Newtype (unwrap)
 import Data.NonEmpty (NonEmpty)
 import Data.Symbol (class IsSymbol, SProxy)
 import Halogen as H
-import Halogen.Datepicker.Component.Types (PickerMessage(..))
 import Halogen.Datepicker.Config (Config(..))
 import Halogen.Datepicker.Internal.Choice as Choice
 import Halogen.Datepicker.Internal.Num as Num
@@ -51,7 +50,7 @@ renderNum sym update toSetter cmd mainConf preConf =
   in
     HH.slot sym cmd
       (Num.picker Num.intHasNumberInputVal conf) unit
-      (\(NotifyChange n) → Just $ update \t → n >>= (_ `toSetter cmd` t))
+      (\n → Just $ update \t → n >>= (_ `toSetter cmd` t))
 
 toChoiceConf
   ∷ ∀ a
@@ -87,4 +86,4 @@ renderChoice cpChoice update toSetter cmd mainConf preConf =
         (conf{values = conf.values <#> map fromEnum})
       )
       unit
-      (\(NotifyChange n) → Just $ update \t → n >>= (_ `toSetter cmd` t))
+      (\n → Just $ update \t → n >>= (_ `toSetter cmd` t))

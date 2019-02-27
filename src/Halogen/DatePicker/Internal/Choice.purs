@@ -3,7 +3,6 @@ module Halogen.Datepicker.Internal.Choice
   , ChoiceQuery
   , Query
   , QueryIn
-  , Message
   , Slot
   , Config
   , ChoiceError(..)
@@ -31,7 +30,7 @@ import Data.NonEmpty (NonEmpty, fromNonEmpty, head, tail)
 import Data.Number as N
 import Effect.Exception as Ex
 import Halogen as H
-import Halogen.Datepicker.Component.Types (PickerMessage(..), BasePickerQuery(..))
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..))
 import Halogen.Datepicker.Internal.Utils (mapComponentHTMLQuery, mkEval)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -40,8 +39,6 @@ import Halogen.Query.HalogenM (HalogenM)
 
 type State val = {value ∷ val}
 
-type Message val = PickerMessage val
-
 type Query val = Coproduct (QueryIn val) (ChoiceQuery val)
 type QueryIn val = BasePickerQuery (Maybe ChoiceError) val
 data ChoiceError = ValueIsNotInValues
@@ -49,9 +46,9 @@ data ChoiceQuery val a = Update (Maybe val) a
 
 type Slots = ()
 
-type Slot val = H.Slot (Query val) (Message val)
+type Slot val = H.Slot (Query val) val
 
-type DSL val = H.HalogenM (State val) (Query val Unit) Slots (Message val)
+type DSL val = H.HalogenM (State val) (Query val Unit) Slots val
 type HTML val m = H.ComponentHTML (ChoiceQuery val Unit) Slots m
 
 type Config val =
@@ -65,7 +62,7 @@ picker
   . Ord val
   ⇒ HasChoiceInputVal val
   → Config val
-  → H.Component HH.HTML (Query val) Unit (Message val) m
+  → H.Component HH.HTML (Query val) Unit val m
 picker hasChoiceInputVal config =
   H.mkComponent
     { initialState: const { value: head config.values }
@@ -99,7 +96,7 @@ evalChoice (Update value next) = do
   -- there wouldn't be case when value is Nothing so it's fine to do `for_`
   for_ value \value' → do
     H.modify_ _{value = value'}
-    when (value' /= s.value) $ H.raise (NotifyChange $ value')
+    when (value' /= s.value) $ H.raise value'
   pure next
 
 evalPicker

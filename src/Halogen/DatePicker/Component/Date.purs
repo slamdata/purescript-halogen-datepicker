@@ -19,7 +19,7 @@ import Data.Symbol (SProxy(..))
 import Data.Traversable (for)
 import Effect.Exception as Ex
 import Halogen as H
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage, PickerQuery(..), PickerValue, value)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery(..), PickerValue, value)
 import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.Date as F
 import Halogen.Datepicker.Internal.Choice as Choice
@@ -32,7 +32,7 @@ import Halogen.HTML as HH
 
 type State = PickerValue DateError Date
 
-type Message = PickerMessage State
+type Message = PickerValue DateError Date
 
 type Query = Coproduct QueryIn DateQuery
 type QueryIn = PickerQuery Unit State

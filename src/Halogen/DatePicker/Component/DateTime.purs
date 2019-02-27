@@ -27,7 +27,7 @@ import Halogen.Datepicker.Component.Date (DateError)
 import Halogen.Datepicker.Component.Date as Date
 import Halogen.Datepicker.Component.Time (TimeError)
 import Halogen.Datepicker.Component.Time as Time
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value, getValue, setValue, resetError)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery(..), PickerValue, value, getValue, setValue, resetError)
 import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.DateTime as F
 import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mapComponentHTMLQuery, mkEval, mustBeMounted, pickerProps, transitionState)
@@ -38,7 +38,7 @@ type DateTimeError = DateTimeErrorF Maybe
 type DateTimeErrorF f = Tuple (f DateError) (f TimeError)
 type DateTimeErrorLast = DateTimeErrorF Last
 
-type Message = PickerMessage State
+type Message = PickerValue DateTimeError DateTime
 
 type Query = Coproduct QueryIn DateTimeQuery
 type QueryIn = PickerQuery Unit State
@@ -107,19 +107,19 @@ evalDateTime format (Update msg next) = do
       pure dt
     Just (Left err) → buildDateTime format
     Just (Right dt) → pure $ lmap (Tuple false) case msg of
-      Left  (NotifyChange newDate) → case newDate of
+      Left newDate → case newDate of
         Just (Right date) → Right $ setDateDt date dt
         Just (Left x) → Left $ dateError x
         Nothing → Left $ emptyError
-      Right (NotifyChange newTime) → case newTime of
+      Right newTime → case newTime of
         Just (Right time) → Right $ setTimeDt time dt
         Just (Left x) → Left $ timeError x
         Nothing → Left $ emptyError
   pure next
 
 resetChildErrorBasedOnMessage ∷ ∀ m. MonadError Ex.Error m ⇒ MessageIn → DSL m Unit
-resetChildErrorBasedOnMessage (Left (NotifyChange (Just (Left _)))) = resetDate
-resetChildErrorBasedOnMessage (Right (NotifyChange (Just (Left _)))) = resetTime
+resetChildErrorBasedOnMessage (Left (Just (Left _))) = resetDate
+resetChildErrorBasedOnMessage (Right (Just (Left _))) = resetTime
 resetChildErrorBasedOnMessage _ = pure unit
 
 resetChildError ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → DSL m Unit

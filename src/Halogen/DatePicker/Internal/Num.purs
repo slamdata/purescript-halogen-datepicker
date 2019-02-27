@@ -31,7 +31,7 @@ import Data.Tuple (Tuple(..), fst)
 import Foreign (readBoolean, readString, unsafeToForeign)
 import Foreign.Index (readProp)
 import Halogen as H
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..))
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..))
 import Halogen.Datepicker.Internal.Range (Range(..), isInRange, rangeMax, rangeMin)
 import Halogen.Datepicker.Internal.Utils (asRight, mapComponentHTMLQuery, mkEval)
 import Halogen.HTML as HH
@@ -43,7 +43,7 @@ import Web.Event.Event (Event)
 
 type State val = InputValue val
 
-type Message val = PickerMessage (Input val)
+type Message val = Maybe val
 type Input val = Maybe val
 
 type Query val = Coproduct (QueryIn val) (NumQuery val)
@@ -96,7 +96,7 @@ evalNumber
 evalNumber (Update number next) = do
   prevNumber ← H.get
   H.put number
-  unless (number == prevNumber) $ H.raise (NotifyChange $ fst number)
+  unless (number == prevNumber) $ H.raise (fst number)
   pure next
 
 toMbString

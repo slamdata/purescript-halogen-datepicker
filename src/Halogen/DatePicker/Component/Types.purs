@@ -15,9 +15,6 @@ data BasePickerQuery err val next
   = GetValue (val → next)
   | SetValue val (err → next)
 
-data PickerMessage val
-  = NotifyChange val
-
 type PickerValue e a = Maybe (Either e a)
 
 getValue ∷ ∀ val err r. Coproduct (PickerQuery err val) r val

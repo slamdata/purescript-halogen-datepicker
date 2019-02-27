@@ -18,7 +18,7 @@ import Halogen as H
 import Halogen.Datepicker.Component.DateTime as DateTime
 import Halogen.Datepicker.Component.Duration (DurationError)
 import Halogen.Datepicker.Component.Duration as Duration
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, getValue, setValue, resetError)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery(..), PickerValue, getValue, setValue, resetError)
 import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Format.Duration as DurationF
@@ -31,7 +31,7 @@ type State = PickerValue IntervalError IsoInterval
 type IntervalError = Interval (Maybe DurationError) (Maybe DateTime.DateTimeError)
 type IsoInterval = Interval IsoDuration DateTime
 
-type Message = PickerMessage State
+type Message = PickerValue IntervalError IsoInterval
 
 type Query = Coproduct QueryIn IntervalQuery
 type QueryIn = PickerQuery (Maybe SetIntervalError) State
@@ -119,11 +119,11 @@ evalInterval format (Update msg next) = do
       pure newInterval
     Just (Left err) → buildInterval format
     Just (Right prevInterval) → pure $ lmap (Tuple false) case msg of
-      Left (NotifyChange newDuration) → case newDuration of
+      Left newDuration → case newDuration of
         Just (Left x) → Left $ bimap (const $ Just x) (const Nothing) format
         Nothing → Left $ bimap (const Nothing) (const Nothing) format -- [1]
         Just (Right duration) → Right $ lmap (const duration) prevInterval
-      Right (Tuple idx (NotifyChange newDateTime)) → case newDateTime of
+      Right (Tuple idx newDateTime) → case newDateTime of
         Just (Left x) → Left $ bimap (const Nothing) (const $ Just x) format
         Nothing → Left $ bimap (const Nothing) (const Nothing) format -- [1]
         Just (Right dateTime) → Right case prevInterval of
@@ -176,8 +176,8 @@ collectValues format = case format of
   DurationOnly d → DurationOnly <$> getDuration
 
 resetChildErrorBasedOnMessage ∷ ∀ m. MonadError Ex.Error m ⇒ MessageIn → DSL m Unit
-resetChildErrorBasedOnMessage (Left (NotifyChange (Just (Left _)))) = resetDuration
-resetChildErrorBasedOnMessage (Right (Tuple idx (NotifyChange (Just (Left _))))) = resetDateTime idx
+resetChildErrorBasedOnMessage (Left (Just (Left _))) = resetDuration
+resetChildErrorBasedOnMessage (Right (Tuple idx (Just (Left _)))) = resetDateTime idx
 resetChildErrorBasedOnMessage _ = pure unit
 
 resetChildError ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → DSL m Unit
