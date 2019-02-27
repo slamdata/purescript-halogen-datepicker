@@ -3,7 +3,7 @@ module Halogen.Datepicker.Internal.Elements where
 import Prelude
 
 import Data.Enum (class BoundedEnum, fromEnum, toEnum)
-import Data.Maybe (Maybe, fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (unwrap)
 import Data.NonEmpty (NonEmpty)
 import Data.Symbol (class IsSymbol, SProxy)
@@ -14,9 +14,7 @@ import Halogen.Datepicker.Internal.Choice as Choice
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range)
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Query (Action)
 import Prim.Row as Row
 
 textElement ∷ ∀ p i. Config → {text ∷ String} → HH.HTML p i
@@ -36,24 +34,24 @@ toNumConf (Config {input, inputInvalid, inputLength}) ({title, placeholder, rang
 type OptionalUpdate a = a → Maybe a
 
 renderNum
-  ∷ ∀ m sym cmd px ps parentQuery queryVal
+  ∷ ∀ m sym cmd px ps action queryVal
   . Row.Cons sym ((Num.Slot Int) cmd) px ps
   ⇒ IsSymbol sym
   ⇒ Ord cmd
   ⇒ SProxy sym
-  → (OptionalUpdate queryVal → Action parentQuery)
+  → (OptionalUpdate queryVal → action)
   → (cmd → Int → OptionalUpdate queryVal)
   → cmd
   → Config
   → PreNumConfig Int
-  → H.ComponentHTML parentQuery ps m
+  → H.ComponentHTML action ps m
 renderNum sym update toSetter cmd mainConf preConf =
   let
     conf = toNumConf mainConf preConf
   in
     HH.slot sym cmd
       (Num.picker Num.intHasNumberInputVal conf) unit
-      (HE.input $ \(NotifyChange n) → update $ \t → n >>= (_ `toSetter cmd` t))
+      (\(NotifyChange n) → Just $ update \t → n >>= (_ `toSetter cmd` t))
 
 toChoiceConf
   ∷ ∀ a
@@ -64,19 +62,19 @@ toChoiceConf (Config {choice}) ({title, values}) =
   {title, values, root: choice }
 
 renderChoice
-  ∷ ∀ a m sym cmd px ps parentQuery queryVal
+  ∷ ∀ a m sym cmd px ps action queryVal
   . BoundedEnum a
   ⇒ Show a
   ⇒ Row.Cons sym ((Choice.Slot (Maybe Int)) cmd) px ps
   ⇒ IsSymbol sym
   ⇒ Ord cmd
   ⇒ SProxy sym
-  → (OptionalUpdate queryVal → Action parentQuery)
+  → (OptionalUpdate queryVal → action)
   → (cmd → Int → OptionalUpdate queryVal)
   → cmd
   → Config
   → PreChoiceConfig (Maybe a)
-  → H.ComponentHTML parentQuery ps m
+  → H.ComponentHTML action ps m
 renderChoice cpChoice update toSetter cmd mainConf preConf =
   let
     conf = toChoiceConf mainConf preConf
@@ -89,4 +87,4 @@ renderChoice cpChoice update toSetter cmd mainConf preConf =
         (conf{values = conf.values <#> map fromEnum})
       )
       unit
-      (HE.input $ \(NotifyChange n) → update $ \t → n >>= (_ `toSetter cmd` t))
+      (\(NotifyChange n) → Just $ update \t → n >>= (_ `toSetter cmd` t))

@@ -8,7 +8,7 @@ import Data.Date (Date, Day, Month, Year)
 import Data.Either (Either(..))
 import Data.Enum (class BoundedEnum, fromEnum, toEnum, upFromIncluding)
 import Data.Foldable (for_)
-import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
+import Data.Functor.Coproduct (Coproduct, left, right)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe(..), maybe)
@@ -27,7 +27,7 @@ import Halogen.Datepicker.Internal.Elements (textElement, PreChoiceConfig, rende
 import Halogen.Datepicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mapComponentHTMLQuery, mustBeMounted, pickerProps, transitionState')
+import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mapComponentHTMLQuery, mkEval, mustBeMounted, pickerProps, transitionState')
 import Halogen.HTML as HH
 
 type State = PickerValue DateError Date
@@ -55,9 +55,8 @@ _choice = SProxy ∷ SProxy "choice"
 
 type Slot = H.Slot Query Message
 
-type HTML m = H.ComponentHTML DateQuery Slots m
-type DSL = H.HalogenM State Query Slots Message
-
+type HTML m = H.ComponentHTML (DateQuery Unit) Slots m
+type DSL = H.HalogenM State (Query Unit) Slots Message
 
 picker
   ∷ ∀ m
@@ -71,14 +70,12 @@ pickerWithConfig
   ⇒ Config
   → F.Format
   → H.Component HH.HTML Query Unit Message m
-pickerWithConfig config format = H.component
-  { initialState: const Nothing
-  , render: render config format >>> mapComponentHTMLQuery right
-  , eval: coproduct (evalPicker format) (evalDate format)
-  , receiver: const Nothing
-  , initializer: Nothing
-  , finalizer: Nothing
-  }
+pickerWithConfig config format =
+  H.mkComponent
+    { initialState: const Nothing
+    , render: render config format >>> mapComponentHTMLQuery right
+    , eval: mkEval (evalPicker format) (evalDate format)
+    }
 
 render ∷ ∀ m. Config → F.Format → State → HTML m
 render config format date = HH.ul
@@ -106,9 +103,9 @@ renderCommand config cmd = HH.li (componentProps config) $ pure case cmd of
   F.DayOfMonth → renderNum'
      { title: "Day", placeholder: "D", range: (bottomTop ∷ Range Day) <#> fromEnum }
   where
-  renderNum' = renderNum _num Update F.toSetter cmd config
+  renderNum' = renderNum _num (flip Update unit) F.toSetter cmd config
   renderChoice' ∷ ∀ a. BoundedEnum a ⇒ Show a ⇒ PreChoiceConfig (Maybe a) → HTML m
-  renderChoice' = renderChoice _choice Update F.toSetter cmd config
+  renderChoice' = renderChoice _choice (flip Update unit) F.toSetter cmd config
 
 evalDate ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → DateQuery ~> DSL m
 evalDate format (Update update next) = do

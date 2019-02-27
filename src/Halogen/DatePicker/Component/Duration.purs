@@ -6,7 +6,7 @@ import Control.Monad.Error.Class (class MonadError)
 import Data.Array (fold)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
-import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
+import Data.Functor.Coproduct (Coproduct, left, right)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Interval (Duration)
@@ -26,9 +26,8 @@ import Halogen.Datepicker.Format.Duration as F
 import Halogen.Datepicker.Internal.Elements (toNumConf)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (minRange)
-import Halogen.Datepicker.Internal.Utils (asRight, componentProps, foldSteps, mapComponentHTMLQuery, mustBeMounted, pickerProps, transitionState)
+import Halogen.Datepicker.Internal.Utils (asRight, componentProps, foldSteps, mapComponentHTMLQuery, mkEval, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 
 type State = PickerValue DurationError IsoDuration
 
@@ -53,8 +52,8 @@ _num = SProxy ∷ SProxy "num"
 
 type Slot = H.Slot Query Message
 
-type HTML m = H.ComponentHTML DurationQuery Slots m
-type DSL = H.HalogenM State Query Slots Message
+type HTML m = H.ComponentHTML (DurationQuery Unit) Slots m
+type DSL = H.HalogenM State (Query Unit) Slots Message
 
 picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component HH.HTML Query Unit Message m
 picker = pickerWithConfig defaultConfig
@@ -65,26 +64,26 @@ pickerWithConfig
   ⇒ Config
   → F.Format
   → H.Component HH.HTML Query Unit Message m
-pickerWithConfig config format = H.component
-  { initialState: const Nothing
-  , render: render config format >>> mapComponentHTMLQuery right
-  , eval: coproduct (evalPicker format) (evalDuration format)
-  , receiver: const Nothing
-  , initializer: Nothing
-  , finalizer: Nothing
-}
+pickerWithConfig config format =
+  H.mkComponent
+    { initialState: const Nothing
+    , render: render config format >>> mapComponentHTMLQuery right
+    , eval: mkEval (evalPicker format) (evalDuration format)
+    }
 
 render ∷ ∀ m. Config → F.Format → State → HTML m
 render config format duration = HH.ul (pickerProps config duration) (unwrap format <#> renderCommand config)
 
 renderCommand ∷ ∀ m. Config → F.Command → HTML m
-renderCommand config cmd = HH.li (componentProps config)
-  [ HH.slot
-    _num
-    cmd
-    (Num.picker Num.numberHasNumberInputVal $ toNumConf config { title: show cmd, placeholder: take 1 (show cmd),  range: minRange 0.0 })
-    unit
-    (HE.input $ \(NotifyChange n) → UpdateCommand cmd n)]
+renderCommand config cmd =
+  HH.li (componentProps config)
+    [ HH.slot
+        _num
+        cmd
+        (Num.picker Num.numberHasNumberInputVal $ toNumConf config { title: show cmd, placeholder: take 1 (show cmd),  range: minRange 0.0 })
+        unit
+        (\(NotifyChange n) → Just (UpdateCommand cmd n unit))
+    ]
 
 getComponent ∷ F.Command → IsoDuration → Number
 getComponent cmd d = fromMaybe 0.0 $ F.toGetter cmd (unIsoDuration d)

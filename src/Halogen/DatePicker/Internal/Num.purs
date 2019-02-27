@@ -22,7 +22,7 @@ import Control.Monad.Except (runExcept)
 import Control.MonadPlus (guard)
 import Data.Bifunctor (lmap)
 import Data.Enum (class BoundedEnum, fromEnum, toEnum)
-import Data.Functor.Coproduct (Coproduct, coproduct, right)
+import Data.Functor.Coproduct (Coproduct, right)
 import Data.Int as Int
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Number as N
@@ -33,7 +33,7 @@ import Foreign.Index (readProp)
 import Halogen as H
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..))
 import Halogen.Datepicker.Internal.Range (Range(..), isInRange, rangeMax, rangeMin)
-import Halogen.Datepicker.Internal.Utils (asRight, mapComponentHTMLQuery)
+import Halogen.Datepicker.Internal.Utils (asRight, mapComponentHTMLQuery, mkEval)
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Core (ClassName)
@@ -54,8 +54,8 @@ type Slots = ()
 
 type Slot val = H.Slot (Query val) (Message val)
 
-type DSL val = H.HalogenM (State val) (Query val) Slots (Message val)
-type HTML val m = H.ComponentHTML (NumQuery val) Slots m
+type DSL val = H.HalogenM (State val) (Query val Unit) Slots (Message val)
+type HTML val m = H.ComponentHTML (NumQuery val Unit) Slots m
 
 type Config val =
   { title ∷ String
@@ -72,14 +72,12 @@ picker
   ⇒ HasNumberInputVal val
   → Config val
   → H.Component HH.HTML (Query val) Unit (Message val) m
-picker hasNumberInputVal conf = H.component
-  { initialState: const emptyNumberInputValue
-  , render: render hasNumberInputVal conf >>> mapComponentHTMLQuery right
-  , eval: coproduct (evalPicker hasNumberInputVal) evalNumber
-  , receiver: const Nothing
-  , initializer: Nothing
-  , finalizer: Nothing
-  }
+picker hasNumberInputVal conf =
+  H.mkComponent
+    { initialState: const emptyNumberInputValue
+    , render: render hasNumberInputVal conf >>> mapComponentHTMLQuery right
+    , eval: mkEval (evalPicker hasNumberInputVal) evalNumber
+    }
 
 render
   ∷ ∀ val m
@@ -158,11 +156,7 @@ numberElement hasNumberInputVal conf value = HH.input $
   , HP.title conf.title
   , HP.placeholder conf.placeholder
   , HP.value valueStr
-  , HE.onInput $ HE.input $
-    inputValueFromEvent
-    >>> parseValidInput
-    >>> isInputInRange conf.range
-    >>> Update
+  , HE.onInput \val → Just (Update (isInputInRange conf.range (parseValidInput (inputValueFromEvent val))) unit)
   ]
   <> (toArray (rangeMin conf.range) <#> hasNumberInputVal.toNumber >>> HP.min)
   <> (toArray (rangeMax conf.range) <#> hasNumberInputVal.toNumber >>> HP.max)

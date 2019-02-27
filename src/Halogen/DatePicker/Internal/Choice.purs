@@ -24,7 +24,7 @@ import Control.Monad.Error.Class (class MonadError, throwError)
 import Data.Array (cons)
 import Data.Enum (class BoundedEnum, fromEnum, toEnum)
 import Data.Foldable (elem, for_)
-import Data.Functor.Coproduct (Coproduct, coproduct, right)
+import Data.Functor.Coproduct (Coproduct, right)
 import Data.Int as Int
 import Data.Maybe (Maybe(..), maybe)
 import Data.NonEmpty (NonEmpty, fromNonEmpty, head, tail)
@@ -32,7 +32,7 @@ import Data.Number as N
 import Effect.Exception as Ex
 import Halogen as H
 import Halogen.Datepicker.Component.Types (PickerMessage(..), BasePickerQuery(..))
-import Halogen.Datepicker.Internal.Utils (mapComponentHTMLQuery)
+import Halogen.Datepicker.Internal.Utils (mapComponentHTMLQuery, mkEval)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -51,8 +51,8 @@ type Slots = ()
 
 type Slot val = H.Slot (Query val) (Message val)
 
-type DSL val = H.HalogenM (State val) (Query val) Slots (Message val)
-type HTML val m = H.ComponentHTML (ChoiceQuery val) Slots m
+type DSL val = H.HalogenM (State val) (Query val Unit) Slots (Message val)
+type HTML val m = H.ComponentHTML (ChoiceQuery val Unit) Slots m
 
 type Config val =
   { title ∷ String
@@ -66,14 +66,12 @@ picker
   ⇒ HasChoiceInputVal val
   → Config val
   → H.Component HH.HTML (Query val) Unit (Message val) m
-picker hasChoiceInputVal config = H.component
-  { initialState: const { value: head $ config.values }
-  , render: render config hasChoiceInputVal >>> mapComponentHTMLQuery right
-  , eval: coproduct (evalPicker config hasChoiceInputVal) evalChoice
-  , receiver: const Nothing
-  , initializer: Nothing
-  , finalizer: Nothing
-  }
+picker hasChoiceInputVal config =
+  H.mkComponent
+    { initialState: const { value: head config.values }
+    , render: render config hasChoiceInputVal >>> mapComponentHTMLQuery right
+    , eval: mkEval (evalPicker config hasChoiceInputVal) evalChoice
+    }
 
 render
   ∷ ∀ val m
@@ -82,11 +80,12 @@ render
   → HasChoiceInputVal val
   → State val
   → HTML val m
-render config hasChoiceInputVal {value}  = HH.select
-  [ HP.title config.title
-  , HP.classes config.root
-  , HE.onValueChange (HE.input (hasChoiceInputVal.fromString >>> Update))
-  ] (fromNonEmpty cons config.values <#> renderValue)
+render config hasChoiceInputVal {value} =
+  HH.select
+    [ HP.title config.title
+    , HP.classes config.root
+    , HE.onValueChange (\val → Just (Update (hasChoiceInputVal.fromString val) unit))
+    ] (fromNonEmpty cons config.values <#> renderValue)
   where
   renderValue value' = HH.option
     [ HP.value $ hasChoiceInputVal.toValue value'
@@ -94,7 +93,7 @@ render config hasChoiceInputVal {value}  = HH.select
     ]
     [ HH.text $ hasChoiceInputVal.toTitle value' ]
 
-evalChoice ∷ ∀ val m . Eq val ⇒ ChoiceQuery val ~> DSL val m
+evalChoice ∷ ∀ val m. Eq val ⇒ ChoiceQuery val ~> DSL val m
 evalChoice (Update value next) = do
   s ← H.get
   -- there wouldn't be case when value is Nothing so it's fine to do `for_`

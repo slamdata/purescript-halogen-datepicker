@@ -8,6 +8,7 @@ import Control.MonadPlus (guard)
 import Data.Bifunctor (bimap, lmap)
 import Data.Either (Either(..), either)
 import Data.Foldable (fold)
+import Data.Functor.Coproduct (Coproduct, coproduct)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
@@ -16,13 +17,25 @@ import Halogen as H
 import Halogen.Datepicker.Component.Types (PickerMessage(..), PickerValue, isInvalid)
 import Halogen.Datepicker.Config (Config(..))
 import Halogen.HTML.Properties as HP
-import Halogen.Query.HalogenM (HalogenM')
+import Halogen.Query.HalogenM (HalogenM)
+
+mkEval
+  ∷ ∀ state f g slots input output m
+  . (f ~> H.HalogenM state (Coproduct f g Unit) slots output m)
+  → (g ~> H.HalogenM state (Coproduct f g Unit) slots output m)
+  → H.HalogenQ (Coproduct f g) (Coproduct f g Unit) input
+  ~> H.HalogenM state (Coproduct f g Unit) slots output m
+mkEval f g =
+  H.mkEval $ H.defaultEval
+    { handleAction = coproduct f g
+    , handleQuery = coproduct (map Just <<< f) (map Just <<< g)
+    }
 
 mustBeMounted
   ∷ ∀ s f ps o m a
   . MonadError Ex.Error m
   ⇒ Maybe a
-  → HalogenM' s f ps o m a
+  → HalogenM s f ps o m a
 mustBeMounted (Just x) = pure x
 mustBeMounted _ = throwError $ Ex.error "children must be mounted"
 
@@ -59,7 +72,7 @@ transitionState'
 transitionState' err f = transitionState (f >>>  (map $ lmap (_ `Tuple` err)))
 
 type TransitionM f ps m err val =
-  HalogenM' (PickerValue err val) f ps (PickerMessage (PickerValue err val)) m
+  HalogenM (PickerValue err val) f ps (PickerMessage (PickerValue err val)) m
 
 transitionState
   ∷ ∀ f ps m val err
@@ -74,7 +87,7 @@ transitionState f = do
   nextVal ← map (steper val) (f val)
   val `moveStateTo` nextVal
   where
-  moveStateTo ∷ ∀ a. Eq a ⇒ a → a → HalogenM' a f ps (PickerMessage a) m Unit
+  moveStateTo ∷ ∀ a. Eq a ⇒ a → a → HalogenM a f ps (PickerMessage a) m Unit
   moveStateTo old new = H.put new *> unless (new == old) (H.raise $ NotifyChange new)
   steper ∷ ∀ e a. PickerValue e a → Either (Tuple Boolean e) a → PickerValue e a
   steper old new = case old, new of
@@ -89,7 +102,7 @@ foldSteps steps = map fold $ sequence steps
 
 mapComponentHTMLQuery
   ∷ ∀ f f' ps m
-  . (f ~> f')
+  . (f → f')
   → H.ComponentHTML f ps m
   → H.ComponentHTML f' ps m
 mapComponentHTMLQuery f = bimap (map f) f

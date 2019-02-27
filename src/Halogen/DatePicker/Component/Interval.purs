@@ -7,7 +7,7 @@ import Data.Bifunctor (bimap, lmap)
 import Data.DateTime (DateTime)
 import Data.Either (Either(..), either)
 import Data.Foldable (for_)
-import Data.Functor.Coproduct (Coproduct, coproduct, right)
+import Data.Functor.Coproduct (Coproduct, right)
 import Data.Interval (Interval(..))
 import Data.Interval.Duration.Iso (IsoDuration)
 import Data.Maybe (Maybe(..), isNothing)
@@ -24,9 +24,8 @@ import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Format.Duration as DurationF
 import Halogen.Datepicker.Format.Interval as F
 import Halogen.Datepicker.Internal.Elements (textElement)
-import Halogen.Datepicker.Internal.Utils (asLeft, componentProps, mapComponentHTMLQuery, mustBeMounted, pickerProps, transitionState)
+import Halogen.Datepicker.Internal.Utils (asLeft, componentProps, mapComponentHTMLQuery, mkEval, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 
 type State = PickerValue IntervalError IsoInterval
 type IntervalError = Interval (Maybe DurationError) (Maybe DateTime.DateTimeError)
@@ -50,8 +49,8 @@ _duration = SProxy ∷ SProxy "duration"
 
 type Slot = H.Slot Query Message
 
-type HTML m = H.ComponentHTML IntervalQuery Slots m
-type DSL = H.HalogenM State Query Slots Message
+type HTML m = H.ComponentHTML (IntervalQuery Unit) Slots m
+type DSL = H.HalogenM State (Query Unit) Slots Message
 
 picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component HH.HTML Query Unit Message m
 picker = pickerWithConfig defaultConfig
@@ -62,14 +61,12 @@ pickerWithConfig
   ⇒ Config
   → F.Format
   → H.Component HH.HTML Query Unit Message m
-pickerWithConfig config format = H.component
-  { initialState: const Nothing
-  , render: render config format >>> mapComponentHTMLQuery right
-  , eval: coproduct (evalPicker format) (evalInterval format)
-  , receiver: const Nothing
-  , initializer: Nothing
-  , finalizer: Nothing
-  }
+pickerWithConfig config format =
+  H.mkComponent
+    { initialState: const Nothing
+    , render: render config format >>> mapComponentHTMLQuery right
+    , eval: mkEval (evalPicker format) (evalInterval format)
+    }
 
 render ∷ ∀ m. MonadError Ex.Error m ⇒ Config → F.Format → State → HTML m
 render config format interval = HH.div (pickerProps config interval) (renderCommand config format)
@@ -92,10 +89,22 @@ renderCommand config format = map (HH.div (componentProps config) <<< pure) case
     [ renderDuration config fmtDuration ]
 
 renderDuration ∷ ∀ m. MonadError Ex.Error m ⇒ Config → DurationF.Format → HTML m
-renderDuration config fmt = HH.slot _duration unit (Duration.pickerWithConfig config fmt) unit (HE.input $ Update <<< Left)
+renderDuration config fmt =
+  HH.slot
+    _duration
+    unit
+    (Duration.pickerWithConfig config fmt)
+    unit
+    (\val → Just (Update (Left val) unit))
 
 renderDateTime ∷ ∀ m. MonadError Ex.Error m ⇒ Config → DateTimeF.Format → Boolean → HTML m
-renderDateTime config fmt idx = HH.slot _dateTime idx (DateTime.pickerWithConfig config fmt) unit (HE.input $ Update <<< Right <<< (Tuple idx))
+renderDateTime config fmt idx =
+  HH.slot
+    _dateTime
+    idx
+    (DateTime.pickerWithConfig config fmt)
+    unit
+    (\val → Just (Update (Right (Tuple idx val)) unit))
 
 -- [1] - this case will not happen as interval will not be `Just Right`
 --       if any of it's child is `Nothing` so return nonsence value

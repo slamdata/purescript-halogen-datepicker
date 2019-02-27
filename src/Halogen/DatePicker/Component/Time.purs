@@ -8,7 +8,7 @@ import Data.DateTime (Hour, Millisecond, Minute, Second)
 import Data.Either (Either(..))
 import Data.Enum (class BoundedEnum, fromEnum, upFromIncluding)
 import Data.Foldable (for_)
-import Data.Functor.Coproduct (Coproduct, coproduct, right, left)
+import Data.Functor.Coproduct (Coproduct, left, right)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe(Nothing, Just), maybe)
@@ -28,7 +28,7 @@ import Halogen.Datepicker.Internal.Elements (textElement, PreChoiceConfig, rende
 import Halogen.Datepicker.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mapComponentHTMLQuery, mustBeMounted, pickerProps, transitionState')
+import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mapComponentHTMLQuery, mkEval, mustBeMounted, pickerProps, transitionState')
 import Halogen.HTML as HH
 
 type State = PickerValue TimeError Time
@@ -56,8 +56,8 @@ _choice = SProxy ∷ SProxy "choice"
 
 type Slot = H.Slot Query Message
 
-type HTML m = H.ComponentHTML TimeQuery Slots m
-type DSL = H.HalogenM State Query Slots Message
+type HTML m = H.ComponentHTML (TimeQuery Unit) Slots m
+type DSL = H.HalogenM State (Query Unit) Slots Message
 
 picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component HH.HTML Query Unit Message m
 picker = pickerWithConfig defaultConfig
@@ -68,14 +68,12 @@ pickerWithConfig
   ⇒ Config
   → F.Format
   → H.Component HH.HTML Query Unit Message m
-pickerWithConfig config format = H.component
-  { initialState: const Nothing
-  , render: render config format >>> mapComponentHTMLQuery right
-  , eval: coproduct (evalPicker format) (evalTime format)
-  , receiver: const Nothing
-  , initializer: Nothing
-  , finalizer: Nothing
- }
+pickerWithConfig config format =
+  H.mkComponent
+    { initialState: const Nothing
+    , render: render config format >>> mapComponentHTMLQuery right
+    , eval: mkEval (evalPicker format) (evalTime format)
+    }
 
 render ∷ ∀ m. Config → F.Format → State → HTML m
 render config format time = HH.ul
@@ -107,9 +105,9 @@ renderCommand config cmd = HH.li (componentProps config) $ pure case cmd of
   F.MillisecondsShort → renderNum'
     { title: "Milliseconds", placeholder: "M", range: (bottomTop ∷ Range Millisecond1) <#> fromEnum }
   where
-  renderNum' = renderNum _num Update F.toSetter cmd config
+  renderNum' = renderNum _num (flip Update unit) F.toSetter cmd config
   renderChoice' ∷ ∀ a. BoundedEnum a ⇒ Show a ⇒ PreChoiceConfig (Maybe a) → HTML m
-  renderChoice' = renderChoice _choice Update F.toSetter cmd config
+  renderChoice' = renderChoice _choice (flip Update unit) F.toSetter cmd config
 
 evalTime ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → TimeQuery ~> DSL m
 evalTime format (Update update next) = do

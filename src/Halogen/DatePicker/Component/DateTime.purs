@@ -10,7 +10,7 @@ import Data.Date (Date)
 import Data.DateTime (DateTime, date, modifyDate, modifyTime, time)
 import Data.Either (Either(..))
 import Data.Foldable (length)
-import Data.Functor.Coproduct (Coproduct, coproduct, right)
+import Data.Functor.Coproduct (Coproduct, right)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Maybe.Last (Last(..))
 import Data.Monoid.Additive (Additive(..))
@@ -30,9 +30,8 @@ import Halogen.Datepicker.Component.Time as Time
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value, getValue, setValue, resetError)
 import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.DateTime as F
-import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mapComponentHTMLQuery, mustBeMounted, pickerProps, transitionState)
+import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mapComponentHTMLQuery, mkEval, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 
 type State = PickerValue DateTimeError DateTime
 type DateTimeError = DateTimeErrorF Maybe
@@ -56,8 +55,8 @@ _time = SProxy ∷ SProxy "time"
 
 type Slot = H.Slot Query Message
 
-type HTML m = H.ComponentHTML DateTimeQuery Slots m
-type DSL = H.HalogenM State Query Slots Message
+type HTML m = H.ComponentHTML (DateTimeQuery Unit) Slots m
+type DSL = H.HalogenM State (Query Unit) Slots Message
 
 picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component HH.HTML Query Unit Message m
 picker = pickerWithConfig defaultConfig
@@ -68,14 +67,12 @@ pickerWithConfig
   ⇒ Config
   → F.Format
   → H.Component HH.HTML Query Unit Message m
-pickerWithConfig config format = H.component
-  { initialState: const Nothing
-  , render: render config format >>> mapComponentHTMLQuery right
-  , eval: coproduct (evalPicker format) (evalDateTime format)
-  , receiver: const Nothing
-  , initializer: Nothing
-  , finalizer: Nothing
- }
+pickerWithConfig config format =
+  H.mkComponent
+    { initialState: const Nothing
+    , render: render config format >>> mapComponentHTMLQuery right
+    , eval: mkEval (evalPicker format) (evalDateTime format)
+    }
 
 render ∷ ∀ m. MonadError Ex.Error m ⇒ Config → F.Format → State → HTML m
 render config format dateTime = HH.div
@@ -84,8 +81,20 @@ render config format dateTime = HH.div
 
 renderCommand ∷ ∀ m. MonadError Ex.Error m ⇒ Config → F.Command → HTML m
 renderCommand config cmd = HH.div (componentProps config) $ pure case cmd of
-  F.Time fmt → HH.slot _time unit (Time.pickerWithConfig config fmt) unit (HE.input $ Right >>> Update)
-  F.Date fmt → HH.slot _date unit (Date.pickerWithConfig config fmt) unit (HE.input $ Left >>> Update)
+  F.Time fmt →
+    HH.slot
+      _time
+      unit
+      (Time.pickerWithConfig config fmt)
+      unit
+      (\val → Just (Update (Right val) unit))
+  F.Date fmt →
+    HH.slot
+      _date
+      unit
+      (Date.pickerWithConfig config fmt)
+      unit
+      (\val → Just (Update (Left val) unit))
 
 evalDateTime ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → DateTimeQuery ~> DSL m
 evalDateTime format (Update msg next) = do
