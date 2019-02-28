@@ -27,7 +27,7 @@ import Halogen.Datepicker.Component.DateTime as DateTime
 import Halogen.Datepicker.Component.Duration as Duration
 import Halogen.Datepicker.Component.Interval as Interval
 import Halogen.Datepicker.Component.Time as Time
-import Halogen.Datepicker.Component.Types (PickerMessage(..), setValue)
+import Halogen.Datepicker.Component.Types (setValue)
 import Halogen.Datepicker.Config (Config(..), defaultConfig)
 import Halogen.Datepicker.Format.Date as DateF
 import Halogen.Datepicker.Format.DateTime as DateTimeF
@@ -47,9 +47,9 @@ type DateTimeIdx = Int
 type DurationIdx = Int
 type IntervalIdx = Int
 
-data Query a
-  = Set SetPayload a
-  | HandleMessage MessagePayload a
+data Action
+  = Set SetPayload
+  | HandleMessage MessagePayload
 
 data SetPayload
   = SetTime TimeIdx (Maybe Time)
@@ -87,8 +87,8 @@ _dateTime = SProxy ∷ SProxy "dateTime"
 _duration = SProxy ∷ SProxy "duration"
 _interval = SProxy ∷ SProxy "interval"
 
-type HTML m = H.ComponentHTML Query Slots m
-type DSL m = H.HalogenM State Query Slots Void m
+type HTML m = H.ComponentHTML Action Slots m
+type DSL m = H.HalogenM State Action Slots Void m
 
 main ∷ Effect Unit
 main = HA.runHalogenAff do
@@ -98,18 +98,15 @@ main = HA.runHalogenAff do
 type StrOr = Either String
 
 example
-  ∷ ∀ m
+  ∷ ∀ f m
   . MonadError Ex.Error m
   ⇒ Applicative m
-  ⇒ H.Component HH.HTML Query Unit Void m
+  ⇒ H.Component HH.HTML f Unit Void m
 example =
-  H.component
+  H.mkComponent
     { initialState: const initialState
     , render
-    , eval
-    , receiver: const Nothing
-    , initializer: Nothing
-    , finalizer: Nothing
+    , eval: H.mkEval (H.defaultEval { handleAction = handleAction })
     }
   where
   initialState =
@@ -248,8 +245,8 @@ example =
     → Array (HTML m)
   renderDateTime s = renderExample dateTimeConfig _dateTime s.dateTimes
 
-  eval ∷ Query ~> DSL m
-  eval (Set payload next) = do
+  handleAction ∷ Action → DSL m Unit
+  handleAction (Set payload) = do
     mustBeMounted =<< case payload of
       SetTime idx val →
         H.query _time idx $ setValue $ map Right val
@@ -261,27 +258,25 @@ example =
         H.query _duration idx $ setValue $ map Right val
       SetInterval idx val →
         map void $ H.query _interval idx $ setValue $ map Right val
-    pure next
-  eval (HandleMessage payload next) = do
+  handleAction (HandleMessage payload) = do
     case payload of
-      MsgTime idx (NotifyChange val) →
+      MsgTime idx val →
         H.modify_ \s → s{ times = insert idx (show val) s.times }
-      MsgDate idx (NotifyChange val) →
+      MsgDate idx val →
         H.modify_ \s → s{ dates = insert idx (show val) s.dates }
-      MsgDateTime idx (NotifyChange val) →
+      MsgDateTime idx val →
         H.modify_ \s → s{ dateTimes = insert idx (show val) s.dateTimes }
-      MsgDuration idx (NotifyChange val) →
+      MsgDuration idx val →
         H.modify_ \s → s{ durations = insert idx (show val) s.durations }
-      MsgInterval idx (NotifyChange val) →
+      MsgInterval idx val →
         H.modify_ \s → s{ intervals = insert idx (show val) s.intervals }
-    pure next
 
 type ExampleConfig fmtInput input fmt query out m =
   { mkFormat ∷ fmtInput → StrOr fmt
   , unformat ∷ fmt → String → StrOr input
   , picker ∷ fmt → H.Component HH.HTML query Unit out m
-  , handler ∷ ∀ z. Int → out → z → Query z
-  , setter ∷ ∀ z. Int → Maybe input → z → Query z
+  , handler ∷ Int → out → Action
+  , setter ∷ Int → Maybe input → Action 
   }
 
 renderExample
@@ -300,7 +295,7 @@ renderExample c sp items idx fmt' value'= unEither $ do
   value ← either (c.unformat fmt) Right value'
   let cmp = c.picker fmt
   pure
-    [ HH.slot sp idx cmp unit (HE.input (c.handler idx))
+    [ HH.slot sp idx cmp unit (Just <<< c.handler idx)
     , btn (Just value) "reset"
     , btn Nothing "clear"
     , case lookup idx items of
@@ -310,7 +305,7 @@ renderExample c sp items idx fmt' value'= unEither $ do
   where
   btn ∷ Maybe input → String → HTML m
   btn val txt = HH.button
-    [ HE.onClick $ HE.input_ $ c.setter idx val]
+    [ HE.onClick \_ → Just (c.setter idx val) ]
     [ HH.text txt]
   unEither ∷ StrOr (Array (HTML m)) → Array (HTML m)
   unEither = either (HH.text >>> pure >>> HH.div_ >>> pure) identity

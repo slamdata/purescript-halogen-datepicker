@@ -24,7 +24,7 @@
     "purescript-formatters": "^4.0.0",
     "purescript-datetime": "^4.1.0",
     "purescript-halogen": "^5.0.0-rc.1",
-    "purescript-halogen-css": "garyb/purescript-halogen-css#956f13629c075895e9aa56b15ff918a987c6a3c8",
+    "purescript-halogen-css": "garyb/purescript-halogen-css#halogen-5-bump",
     "purescript-generics-rep": "^6.1.0",
     "purescript-validation": "^4.0.0",
     "purescript-profunctor": "^4.0.0",
