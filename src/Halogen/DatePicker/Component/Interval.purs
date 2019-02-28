@@ -7,7 +7,6 @@ import Data.Bifunctor (bimap, lmap)
 import Data.DateTime (DateTime)
 import Data.Either (Either(..), either)
 import Data.Foldable (for_)
-import Data.Functor.Coproduct (Coproduct, right)
 import Data.Interval (Interval(..))
 import Data.Interval.Duration.Iso (IsoDuration)
 import Data.Maybe (Maybe(..), isNothing)
@@ -24,7 +23,7 @@ import Halogen.Datepicker.Format.DateTime as DateTimeF
 import Halogen.Datepicker.Format.Duration as DurationF
 import Halogen.Datepicker.Format.Interval as F
 import Halogen.Datepicker.Internal.Elements (textElement)
-import Halogen.Datepicker.Internal.Utils (asLeft, componentProps, mapComponentHTMLQuery, mkEval, mustBeMounted, pickerProps, transitionState)
+import Halogen.Datepicker.Internal.Utils (asLeft, componentProps, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
 
 type State = PickerValue IntervalError IsoInterval
@@ -33,10 +32,8 @@ type IsoInterval = Interval IsoDuration DateTime
 
 type Message = PickerValue IntervalError IsoInterval
 
-type Query = Coproduct QueryIn IntervalQuery
-type QueryIn = PickerQuery (Maybe SetIntervalError) State
+type Query = PickerQuery (Maybe SetIntervalError) State
 data SetIntervalError = IntervalIsNotInShapeOfFormat
-data IntervalQuery a = Update MessageIn a
 type MessageIn = Either Duration.Message (Tuple Boolean DateTime.Message)
 
 type Slots =
@@ -49,8 +46,8 @@ _duration = SProxy ∷ SProxy "duration"
 
 type Slot = H.Slot Query Message
 
-type HTML m = H.ComponentHTML (IntervalQuery Unit) Slots m
-type DSL = H.HalogenM State (Query Unit) Slots Message
+type HTML m = H.ComponentHTML MessageIn Slots m
+type DSL = H.HalogenM State MessageIn Slots Message
 
 picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component HH.HTML Query Unit Message m
 picker = pickerWithConfig defaultConfig
@@ -64,8 +61,11 @@ pickerWithConfig
 pickerWithConfig config format =
   H.mkComponent
     { initialState: const Nothing
-    , render: render config format >>> mapComponentHTMLQuery right
-    , eval: mkEval (evalPicker format) (evalInterval format)
+    , render: render config format
+    , eval: H.mkEval $ H.defaultEval
+        { handleAction = handleAction format
+        , handleQuery = handleQuery format
+        }
     }
 
 render ∷ ∀ m. MonadError Ex.Error m ⇒ Config → F.Format → State → HTML m
@@ -95,7 +95,7 @@ renderDuration config fmt =
     unit
     (Duration.pickerWithConfig config fmt)
     unit
-    (\val → Just (Update (Left val) unit))
+    (\val → Just (Left val))
 
 renderDateTime ∷ ∀ m. MonadError Ex.Error m ⇒ Config → DateTimeF.Format → Boolean → HTML m
 renderDateTime config fmt idx =
@@ -104,12 +104,12 @@ renderDateTime config fmt idx =
     idx
     (DateTime.pickerWithConfig config fmt)
     unit
-    (\val → Just (Update (Right (Tuple idx val)) unit))
+    (\val → Just (Right (Tuple idx val)))
 
 -- [1] - this case will not happen as interval will not be `Just Right`
 --       if any of it's child is `Nothing` so return nonsence value
-evalInterval ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → IntervalQuery ~> DSL m
-evalInterval format (Update msg next) = do
+handleAction ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → MessageIn → DSL m Unit
+handleAction format msg = do
   transitionState case _ of
     Nothing  → do
       newInterval ← buildInterval format
@@ -133,7 +133,6 @@ evalInterval format (Update msg next) = do
           DurationEnd d a → DurationEnd d dateTime
           StartDuration a d → StartDuration dateTime d
           DurationOnly d → DurationOnly d
-  pure next
 
 buildInterval ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → DSL m (Either (Tuple Boolean IntervalError) IsoInterval)
 buildInterval format = do
@@ -197,18 +196,20 @@ onFormat onDateTime onDuration format = case format of
   StartDuration a d → onDateTime false *> onDuration
   DurationOnly d → onDuration
 
-evalPicker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → QueryIn ~> DSL m
-evalPicker format (ResetError next) = do
-  H.put Nothing
-  resetChildError format
-  pure next
-evalPicker format (Base (SetValue interval reply)) = do
-  res ← case viewInterval format interval <#> setInterval of
-    Just x → x $> Nothing
-    Nothing → pure $ Just IntervalIsNotInShapeOfFormat
-  when (isNothing res) $ H.put interval
-  pure $ reply res
-evalPicker _ (Base (GetValue reply)) = H.get <#> reply
+handleQuery ∷ ∀ m a. MonadError Ex.Error m ⇒ F.Format → Query a → DSL m (Maybe a)
+handleQuery format = case _ of
+  ResetError a → do
+    H.put Nothing
+    resetChildError format
+    pure $ Just a
+  Base (SetValue interval k) → do
+    res ← case viewInterval format interval <#> setInterval of
+      Just x → x $> Nothing
+      Nothing → pure $ Just IntervalIsNotInShapeOfFormat
+    when (isNothing res) $ H.put interval
+    pure $ Just $ k res
+  Base (GetValue k) →
+    Just <<< k <$> H.get
 
 type ChildStates
   = Interval (Maybe Duration.State) (Maybe DateTime.State)

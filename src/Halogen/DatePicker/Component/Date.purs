@@ -8,7 +8,6 @@ import Data.Date (Date, Day, Month, Year)
 import Data.Either (Either(..))
 import Data.Enum (class BoundedEnum, fromEnum, toEnum, upFromIncluding)
 import Data.Foldable (for_)
-import Data.Functor.Coproduct (Coproduct, left, right)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe(..), maybe)
@@ -27,27 +26,25 @@ import Halogen.Datepicker.Internal.Elements (textElement, PreChoiceConfig, rende
 import Halogen.Datepicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mapComponentHTMLQuery, mkEval, mustBeMounted, pickerProps, transitionState')
+import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mustBeMounted, pickerProps, transitionState')
 import Halogen.HTML as HH
 
 type State = PickerValue DateError Date
 
 type Message = PickerValue DateError Date
 
-type Query = Coproduct QueryIn DateQuery
-type QueryIn = PickerQuery Unit State
-data DateQuery a = Update (Date → Maybe Date) a
+type Query = PickerQuery Unit State
+type Action = Date → Maybe Date
 
 data DateError = InvalidDate
 derive instance dateErrorEq ∷ Eq DateError
 derive instance dateErrorOrd ∷ Ord DateError
 derive instance dateErrorGeneric ∷ Generic DateError _
-instance dateErrorShow ∷ Show DateError where
-  show = genericShow
+instance dateErrorShow ∷ Show DateError where show = genericShow
 
 type Slots =
-  ( num ∷ (Num.Slot Int) F.Command
-  , choice ∷ (Choice.Slot (Maybe Int)) F.Command
+  ( num ∷ Num.Slot Int F.Command
+  , choice ∷ Choice.Slot (Maybe Int) F.Command
   )
 
 _num = SProxy ∷ SProxy "num"
@@ -55,8 +52,8 @@ _choice = SProxy ∷ SProxy "choice"
 
 type Slot = H.Slot Query Message
 
-type HTML m = H.ComponentHTML (DateQuery Unit) Slots m
-type DSL = H.HalogenM State (Query Unit) Slots Message
+type HTML m = H.ComponentHTML Action Slots m
+type DSL = H.HalogenM State Action Slots Message
 
 picker
   ∷ ∀ m
@@ -73,8 +70,11 @@ pickerWithConfig
 pickerWithConfig config format =
   H.mkComponent
     { initialState: const Nothing
-    , render: render config format >>> mapComponentHTMLQuery right
-    , eval: mkEval (evalPicker format) (evalDate format)
+    , render: render config format
+    , eval: H.mkEval $ H.defaultEval
+        { handleAction = handleAction format
+        , handleQuery = handleQuery format
+        }
     }
 
 render ∷ ∀ m. Config → F.Format → State → HTML m
@@ -103,18 +103,18 @@ renderCommand config cmd = HH.li (componentProps config) $ pure case cmd of
   F.DayOfMonth → renderNum'
      { title: "Day", placeholder: "D", range: (bottomTop ∷ Range Day) <#> fromEnum }
   where
-  renderNum' = renderNum _num (flip Update unit) F.toSetter cmd config
+  renderNum' = renderNum _num identity F.toSetter cmd config
   renderChoice' ∷ ∀ a. BoundedEnum a ⇒ Show a ⇒ PreChoiceConfig (Maybe a) → HTML m
-  renderChoice' = renderChoice _choice (flip Update unit) F.toSetter cmd config
+  renderChoice' = renderChoice _choice identity F.toSetter cmd config
 
-evalDate ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → DateQuery ~> DSL m
-evalDate format (Update update next) = do
+handleAction ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → Action → DSL m Unit
+handleAction format update = do
   transitionState' InvalidDate case _ of
     Just (Right prevDate) → pure $ maybe (Left false) Right $ update prevDate
     _ → buildDate format
-  pure next
 
 type BuildStep = Maybe (Join (Star Maybe) Date)
+
 buildDate ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → DSL m (Either Boolean Date)
 buildDate format = do
   buildSteps ← for (sort $ unwrap format) $ mkBuildStep
@@ -127,25 +127,27 @@ buildDate format = do
   mkBuildStep = commandCata
     { text: \cmd → pure $ Just mempty
     , enum: \cmd → do
-        num ← queryNum cmd $ H.request (left <<< GetValue)
+        num ← queryNum cmd $ H.request GetValue
         pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     , choice: \cmd → do
-        num ← queryChoice cmd $ H.request (left <<< GetValue)
+        num ← queryChoice cmd $ H.request GetValue
         pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     }
   runStep ∷ BuildStep → Maybe (Maybe Date)
   runStep step = step <#> \(Join (Star f)) ->
     (toEnum 0) >>= (_ `setYear` bottom) >>= f
 
-evalPicker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → QueryIn ~> DSL m
-evalPicker _ (ResetError next) = do
-  H.put Nothing
-  pure next
-evalPicker format (Base (SetValue date reply)) = do
-  propagateChange format date
-  H.put date
-  pure $ reply unit
-evalPicker _ (Base (GetValue reply)) = H.get <#> reply
+handleQuery ∷ ∀ m a. MonadError Ex.Error m ⇒ F.Format → Query a → DSL m (Maybe a)
+handleQuery format = case _ of
+  ResetError a → do
+    H.put Nothing
+    pure $ Just a
+  Base (SetValue date k) → do
+    propagateChange format date
+    H.put date
+    pure $ Just $ k unit
+  Base (GetValue k) →
+    Just <<< k <$> H.get
 
 propagateChange
   ∷ ∀ m
@@ -156,12 +158,12 @@ propagateChange
 propagateChange format date = for_ (unwrap format) $ commandCata
   { text: \cmd → pure unit
   , enum: \cmd → do
-    let val = value date >>= F.toGetter cmd
-    queryNum cmd $ H.request $ left <<< SetValue val
+      let val = value date >>= F.toGetter cmd
+      queryNum cmd $ H.request (SetValue val)
   , choice: \cmd → do
-    let val = value date >>= F.toGetter cmd
-    res ← queryChoice cmd $ H.request $ left <<< SetValue val
-    Choice.valueMustBeInValues res
+      let val = value date >>= F.toGetter cmd
+      res ← queryChoice cmd $ H.request (SetValue val)
+      Choice.valueMustBeInValues res
   }
 
 commandCata

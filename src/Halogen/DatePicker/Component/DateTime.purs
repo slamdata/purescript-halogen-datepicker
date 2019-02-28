@@ -10,7 +10,6 @@ import Data.Date (Date)
 import Data.DateTime (DateTime, date, modifyDate, modifyTime, time)
 import Data.Either (Either(..))
 import Data.Foldable (length)
-import Data.Functor.Coproduct (Coproduct, right)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Maybe.Last (Last(..))
 import Data.Monoid.Additive (Additive(..))
@@ -30,7 +29,7 @@ import Halogen.Datepicker.Component.Time as Time
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery(..), PickerValue, value, getValue, setValue, resetError)
 import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.DateTime as F
-import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mapComponentHTMLQuery, mkEval, mustBeMounted, pickerProps, transitionState)
+import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
 
 type State = PickerValue DateTimeError DateTime
@@ -40,10 +39,8 @@ type DateTimeErrorLast = DateTimeErrorF Last
 
 type Message = PickerValue DateTimeError DateTime
 
-type Query = Coproduct QueryIn DateTimeQuery
-type QueryIn = PickerQuery Unit State
-data DateTimeQuery a = Update MessageIn a
-type MessageIn = Either Date.Message Time.Message
+type Query = PickerQuery Unit State
+type Action = Either Date.Message Time.Message
 
 type Slots =
   ( date ∷ Date.Slot Unit
@@ -55,8 +52,8 @@ _time = SProxy ∷ SProxy "time"
 
 type Slot = H.Slot Query Message
 
-type HTML m = H.ComponentHTML (DateTimeQuery Unit) Slots m
-type DSL = H.HalogenM State (Query Unit) Slots Message
+type HTML m = H.ComponentHTML Action Slots m
+type DSL = H.HalogenM State Action Slots Message
 
 picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component HH.HTML Query Unit Message m
 picker = pickerWithConfig defaultConfig
@@ -70,8 +67,11 @@ pickerWithConfig
 pickerWithConfig config format =
   H.mkComponent
     { initialState: const Nothing
-    , render: render config format >>> mapComponentHTMLQuery right
-    , eval: mkEval (evalPicker format) (evalDateTime format)
+    , render: render config format
+    , eval: H.mkEval $ H.defaultEval
+        { handleAction = handleAction format
+        , handleQuery = handleQuery format
+        }
     }
 
 render ∷ ∀ m. MonadError Ex.Error m ⇒ Config → F.Format → State → HTML m
@@ -87,17 +87,17 @@ renderCommand config cmd = HH.div (componentProps config) $ pure case cmd of
       unit
       (Time.pickerWithConfig config fmt)
       unit
-      (\val → Just (Update (Right val) unit))
+      (\val → Just (Right val))
   F.Date fmt →
     HH.slot
       _date
       unit
       (Date.pickerWithConfig config fmt)
       unit
-      (\val → Just (Update (Left val) unit))
+      (\val → Just (Left val))
 
-evalDateTime ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → DateTimeQuery ~> DSL m
-evalDateTime format (Update msg next) = do
+handleAction ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → Action → DSL m Unit
+handleAction format msg = do
   transitionState case _ of
     Nothing → do
       dt ← buildDateTime format
@@ -115,9 +115,8 @@ evalDateTime format (Update msg next) = do
         Just (Right time) → Right $ setTimeDt time dt
         Just (Left x) → Left $ timeError x
         Nothing → Left $ emptyError
-  pure next
 
-resetChildErrorBasedOnMessage ∷ ∀ m. MonadError Ex.Error m ⇒ MessageIn → DSL m Unit
+resetChildErrorBasedOnMessage ∷ ∀ m. MonadError Ex.Error m ⇒ Action → DSL m Unit
 resetChildErrorBasedOnMessage (Left (Just (Left _))) = resetDate
 resetChildErrorBasedOnMessage (Right (Just (Left _))) = resetTime
 resetChildErrorBasedOnMessage _ = pure unit
@@ -187,16 +186,18 @@ buildDateTime format = do
   writeErr dt a b = tell (Just $ Tuple a b) *> pure dt
   biLast = bimap Last Last
 
-evalPicker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → QueryIn ~> DSL m
-evalPicker format (ResetError next) = do
-  H.put Nothing
-  resetChildError format
-  pure next
-evalPicker format (Base (SetValue dateTime reply)) = do
-  propagateChange format dateTime
-  H.put dateTime
-  pure $ reply unit
-evalPicker _ (Base (GetValue reply)) = H.get <#> reply
+handleQuery ∷ ∀ m a. MonadError Ex.Error m ⇒ F.Format → Query a → DSL m (Maybe a)
+handleQuery format = case _ of
+  ResetError a → do
+    H.put Nothing
+    resetChildError format
+    pure $ Just a
+  Base (SetValue dateTime k) → do
+    propagateChange format dateTime
+    H.put dateTime
+    pure $ Just $ k unit
+  Base (GetValue k) →
+    Just <<< k <$> H.get
 
 propagateChange ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → State → DSL m Unit
 propagateChange format dateTime = for_ (unwrap format) case _ of

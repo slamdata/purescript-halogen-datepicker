@@ -1,21 +1,4 @@
-module Halogen.Datepicker.Internal.Choice
-  ( picker
-  , ChoiceQuery
-  , Query
-  , QueryIn
-  , Slot
-  , Config
-  , ChoiceError(..)
-  , HasChoiceInputVal
-  , stringHasChoiceInputVal
-  , numberHasChoiceInputVal
-  , intHasChoiceInputVal
-  , boundedEnumHasChoiceInputVal
-  , maybeIntHasChoiceInputVal
-  , maybeBoundedEnumHasChoiceInputVal
-  , valueMustBeInValues
-  )
-  where
+module Halogen.Datepicker.Internal.Choice where
 
 import Prelude
 
@@ -23,7 +6,6 @@ import Control.Monad.Error.Class (class MonadError, throwError)
 import Data.Array (cons)
 import Data.Enum (class BoundedEnum, fromEnum, toEnum)
 import Data.Foldable (elem, for_)
-import Data.Functor.Coproduct (Coproduct, right)
 import Data.Int as Int
 import Data.Maybe (Maybe(..), maybe)
 import Data.NonEmpty (NonEmpty, fromNonEmpty, head, tail)
@@ -31,7 +13,6 @@ import Data.Number as N
 import Effect.Exception as Ex
 import Halogen as H
 import Halogen.Datepicker.Component.Types (BasePickerQuery(..))
-import Halogen.Datepicker.Internal.Utils (mapComponentHTMLQuery, mkEval)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -39,17 +20,15 @@ import Halogen.Query.HalogenM (HalogenM)
 
 type State val = {value ∷ val}
 
-type Query val = Coproduct (QueryIn val) (ChoiceQuery val)
-type QueryIn val = BasePickerQuery (Maybe ChoiceError) val
+type Query val = BasePickerQuery (Maybe ChoiceError) val
 data ChoiceError = ValueIsNotInValues
-data ChoiceQuery val a = Update (Maybe val) a
 
 type Slots = ()
 
 type Slot val = H.Slot (Query val) val
 
-type DSL val = H.HalogenM (State val) (Query val Unit) Slots val
-type HTML val m = H.ComponentHTML (ChoiceQuery val Unit) Slots m
+type DSL val = H.HalogenM (State val) (Maybe val) Slots val
+type HTML val m = H.ComponentHTML (Maybe val) Slots m
 
 type Config val =
   { title ∷ String
@@ -66,8 +45,11 @@ picker
 picker hasChoiceInputVal config =
   H.mkComponent
     { initialState: const { value: head config.values }
-    , render: render config hasChoiceInputVal >>> mapComponentHTMLQuery right
-    , eval: mkEval (evalPicker config hasChoiceInputVal) evalChoice
+    , render: render config hasChoiceInputVal
+    , eval: H.mkEval $ H.defaultEval
+        { handleAction = handleAction
+        , handleQuery = handleQuery config.values hasChoiceInputVal
+        }
     }
 
 render
@@ -81,7 +63,7 @@ render config hasChoiceInputVal {value} =
   HH.select
     [ HP.title config.title
     , HP.classes config.root
-    , HE.onValueChange (\val → Just (Update (hasChoiceInputVal.fromString val) unit))
+    , HE.onValueChange (\val → Just (hasChoiceInputVal.fromString val))
     ] (fromNonEmpty cons config.values <#> renderValue)
   where
   renderValue value' = HH.option
@@ -90,30 +72,30 @@ render config hasChoiceInputVal {value} =
     ]
     [ HH.text $ hasChoiceInputVal.toTitle value' ]
 
-evalChoice ∷ ∀ val m. Eq val ⇒ ChoiceQuery val ~> DSL val m
-evalChoice (Update value next) = do
+handleAction ∷ ∀ val m. Eq val ⇒ Maybe val → DSL val m Unit
+handleAction value = do
   s ← H.get
   -- there wouldn't be case when value is Nothing so it's fine to do `for_`
   for_ value \value' → do
     H.modify_ _{value = value'}
     when (value' /= s.value) $ H.raise value'
-  pure next
 
-evalPicker
-  ∷ ∀ val m
+handleQuery
+  ∷ ∀ val m a
   . Eq val
-  ⇒ Config val
+  ⇒ NonEmpty Array val
   → HasChoiceInputVal val
-  → QueryIn val
-  ~> DSL val m
-evalPicker {values} hasChoiceInputVal (SetValue value next) = do
-  if (value == head values || elem value (tail values))
-    then do
-      H.modify_ _{value = value}
-      pure $ next Nothing
-    else do
-      pure $ next (Just ValueIsNotInValues)
-evalPicker _ _ (GetValue next) = H.gets _.value <#> next
+  → Query val a
+  → DSL val m (Maybe a)
+handleQuery values hasChoiceInputVal = case _ of
+  SetValue value k
+    | value == head values || elem value (tail values) → do
+        H.modify_ _{value = value}
+        pure $ Just $ k Nothing
+    | otherwise →
+        pure $ Just $ k (Just ValueIsNotInValues)
+  GetValue k →
+    Just <<< k <$> H.gets _.value
 
 type HasChoiceInputVal a =
   { fromString ∷ String → Maybe a

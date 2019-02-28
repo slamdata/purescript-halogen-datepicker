@@ -5,10 +5,9 @@ import Prelude
 import Control.Alternative (class Alternative, empty)
 import Control.Monad.Error.Class (class MonadError, throwError)
 import Control.MonadPlus (guard)
-import Data.Bifunctor (bimap, lmap)
+import Data.Bifunctor (lmap)
 import Data.Either (Either(..), either)
 import Data.Foldable (fold)
-import Data.Functor.Coproduct (Coproduct, coproduct)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
@@ -18,18 +17,6 @@ import Halogen.Datepicker.Component.Types (PickerValue, isInvalid)
 import Halogen.Datepicker.Config (Config(..))
 import Halogen.HTML.Properties as HP
 import Halogen.Query.HalogenM (HalogenM)
-
-mkEval
-  ∷ ∀ state f g slots input output m
-  . (f ~> H.HalogenM state (Coproduct f g Unit) slots output m)
-  → (g ~> H.HalogenM state (Coproduct f g Unit) slots output m)
-  → H.HalogenQ (Coproduct f g) (Coproduct f g Unit) input
-  ~> H.HalogenM state (Coproduct f g Unit) slots output m
-mkEval f g =
-  H.mkEval $ H.defaultEval
-    { handleAction = coproduct f g
-    , handleQuery = coproduct (map Just <<< f) (map Just <<< g)
-    }
 
 mustBeMounted
   ∷ ∀ s f ps o m a
@@ -99,10 +86,3 @@ transitionState f = do
 
 foldSteps ∷ ∀ a. Monoid a ⇒ Array (Maybe a) → Maybe a
 foldSteps steps = map fold $ sequence steps
-
-mapComponentHTMLQuery
-  ∷ ∀ f f' ps m
-  . (f → f')
-  → H.ComponentHTML f ps m
-  → H.ComponentHTML f' ps m
-mapComponentHTMLQuery f = bimap (map f) f
