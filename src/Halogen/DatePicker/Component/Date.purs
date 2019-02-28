@@ -18,15 +18,15 @@ import Data.Symbol (SProxy(..))
 import Data.Traversable (for)
 import Effect.Exception as Ex
 import Halogen as H
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery(..), PickerValue, value)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery, PickerValue, value)
 import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.Date as F
 import Halogen.Datepicker.Internal.Choice as Choice
-import Halogen.Datepicker.Internal.Elements (textElement, PreChoiceConfig, renderChoice, renderNum)
+import Halogen.Datepicker.Internal.Elements (PreChoiceConfig, PreNumConfig, renderChoice, renderNum, textElement)
 import Halogen.Datepicker.Internal.Enums (MonthShort, Year2, Year4, setYear)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mustBeMounted, pickerProps, transitionState')
+import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, handlePickerQuery, mustBeMounted, pickerProps, transitionState')
 import Halogen.HTML as HH
 
 type State = PickerValue DateError Date
@@ -73,7 +73,7 @@ pickerWithConfig config format =
     , render: render config format
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction format
-        , handleQuery = handleQuery format
+        , handleQuery = handlePickerQuery (propagateChange format)
         }
     }
 
@@ -87,25 +87,26 @@ renderCommand config cmd = HH.li (componentProps config) $ pure case cmd of
   F.Placeholder str →
     textElement config { text: str}
   F.YearFull → renderNum'
-     { title: "Year", placeholder: "YYYY", range: (bottomTop ∷ Range Year4) <#> fromEnum }
+    { title: "Year", placeholder: "YYYY", range: (bottomTop ∷ Range Year4) <#> fromEnum }
   F.YearTwoDigits → renderNum'
-     { title: "Year", placeholder: "YY", range: (bottomTop ∷ Range Year2) <#> fromEnum }
+    { title: "Year", placeholder: "YY", range: (bottomTop ∷ Range Year2) <#> fromEnum }
   F.YearAbsolute → renderNum'
-     { title: "Year", placeholder: "Y", range: (bottomTop ∷ Range Year) <#> fromEnum }
+    { title: "Year", placeholder: "Y", range: (bottomTop ∷ Range Year) <#> fromEnum }
   F.MonthFull → renderChoice'
     { title: "Month", values: upFromIncluding (bottom ∷ Maybe Month) }
   F.MonthShort → renderChoice'
     { title: "Month", values: upFromIncluding (bottom ∷ Maybe MonthShort) }
   F.MonthTwoDigits → renderNum'
-     { title: "Month", placeholder: "MM", range: (bottomTop ∷ Range Month) <#> fromEnum }
+    { title: "Month", placeholder: "MM", range: (bottomTop ∷ Range Month) <#> fromEnum }
   F.DayOfMonthTwoDigits → renderNum'
-     { title: "Day", placeholder: "DD", range: (bottomTop ∷ Range Day) <#> fromEnum }
+    { title: "Day", placeholder: "DD", range: (bottomTop ∷ Range Day) <#> fromEnum }
   F.DayOfMonth → renderNum'
-     { title: "Day", placeholder: "D", range: (bottomTop ∷ Range Day) <#> fromEnum }
+    { title: "Day", placeholder: "D", range: (bottomTop ∷ Range Day) <#> fromEnum }
   where
-  renderNum' = renderNum _num identity F.toSetter cmd config
+  renderNum' ∷ PreNumConfig Int → HTML m
+  renderNum' = renderNum _num F.toSetter cmd config
   renderChoice' ∷ ∀ a. BoundedEnum a ⇒ Show a ⇒ PreChoiceConfig (Maybe a) → HTML m
-  renderChoice' = renderChoice _choice identity F.toSetter cmd config
+  renderChoice' = renderChoice _choice F.toSetter cmd config
 
 handleAction ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → Action → DSL m Unit
 handleAction format update = do
@@ -134,20 +135,8 @@ buildDate format = do
         pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     }
   runStep ∷ BuildStep → Maybe (Maybe Date)
-  runStep step = step <#> \(Join (Star f)) ->
+  runStep step = step <#> \(Join (Star f)) →
     (toEnum 0) >>= (_ `setYear` bottom) >>= f
-
-handleQuery ∷ ∀ m a. MonadError Ex.Error m ⇒ F.Format → Query a → DSL m (Maybe a)
-handleQuery format = case _ of
-  ResetError a → do
-    H.put Nothing
-    pure $ Just a
-  Base (SetValue date k) → do
-    propagateChange format date
-    H.put date
-    pure $ Just $ k unit
-  Base (GetValue k) →
-    Just <<< k <$> H.get
 
 propagateChange
   ∷ ∀ m

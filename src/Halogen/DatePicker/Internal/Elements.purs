@@ -33,24 +33,23 @@ toNumConf (Config {input, inputInvalid, inputLength}) ({title, placeholder, rang
 type OptionalUpdate a = a → Maybe a
 
 renderNum
-  ∷ ∀ m sym cmd px ps action queryVal
+  ∷ ∀ m sym cmd px ps queryVal
   . Row.Cons sym ((Num.Slot Int) cmd) px ps
   ⇒ IsSymbol sym
   ⇒ Ord cmd
   ⇒ SProxy sym
-  → (OptionalUpdate queryVal → action)
   → (cmd → Int → OptionalUpdate queryVal)
   → cmd
   → Config
   → PreNumConfig Int
-  → H.ComponentHTML action ps m
-renderNum sym update toSetter cmd mainConf preConf =
+  → H.ComponentHTML (OptionalUpdate queryVal) ps m
+renderNum sym toSetter cmd mainConf preConf =
   let
     conf = toNumConf mainConf preConf
   in
     HH.slot sym cmd
       (Num.picker Num.intHasNumberInputVal conf) unit
-      (\n → Just $ update \t → n >>= (_ `toSetter cmd` t))
+      (\n → Just \t → n >>= (_ `toSetter cmd` t))
 
 toChoiceConf
   ∷ ∀ a
@@ -61,20 +60,19 @@ toChoiceConf (Config {choice}) ({title, values}) =
   {title, values, root: choice }
 
 renderChoice
-  ∷ ∀ a m sym cmd px ps action queryVal
+  ∷ ∀ a m sym cmd px ps queryVal
   . BoundedEnum a
   ⇒ Show a
   ⇒ Row.Cons sym ((Choice.Slot (Maybe Int)) cmd) px ps
   ⇒ IsSymbol sym
   ⇒ Ord cmd
   ⇒ SProxy sym
-  → (OptionalUpdate queryVal → action)
   → (cmd → Int → OptionalUpdate queryVal)
   → cmd
   → Config
   → PreChoiceConfig (Maybe a)
-  → H.ComponentHTML action ps m
-renderChoice cpChoice update toSetter cmd mainConf preConf =
+  → H.ComponentHTML (OptionalUpdate queryVal) ps m
+renderChoice cpChoice toSetter cmd mainConf preConf =
   let
     conf = toChoiceConf mainConf preConf
     emptyVal = case mainConf of
@@ -86,4 +84,4 @@ renderChoice cpChoice update toSetter cmd mainConf preConf =
         (conf{values = conf.values <#> map fromEnum})
       )
       unit
-      (\n → Just $ update \t → n >>= (_ `toSetter cmd` t))
+      (\n → Just \t → n >>= (_ `toSetter cmd` t))

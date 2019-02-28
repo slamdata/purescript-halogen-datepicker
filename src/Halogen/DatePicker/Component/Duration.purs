@@ -19,13 +19,13 @@ import Data.Traversable (for)
 import Data.Tuple (Tuple(..))
 import Effect.Exception as Ex
 import Halogen as H
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery(..), PickerValue)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery, PickerValue)
 import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.Duration as F
 import Halogen.Datepicker.Internal.Elements (toNumConf)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (minRange)
-import Halogen.Datepicker.Internal.Utils (asRight, componentProps, foldSteps, mustBeMounted, pickerProps, transitionState)
+import Halogen.Datepicker.Internal.Utils (asRight, componentProps, foldSteps, handlePickerQuery, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
 
 type State = PickerValue DurationError IsoDuration
@@ -65,7 +65,7 @@ pickerWithConfig config format =
     , render: render config format
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction format
-        , handleQuery = handleQuery format
+        , handleQuery = handlePickerQuery (propagateChange format)
         }
     }
 
@@ -117,18 +117,6 @@ buildDuration format = do
     pure $ num <#> F.toSetter cmd >>> Endo
   runStep ∷ BuildStep → Maybe (Either Errors IsoDuration)
   runStep step = step <#> \(Endo f) → mkIsoDuration $ f mempty
-
-handleQuery ∷ ∀ m a. MonadError Ex.Error m ⇒ F.Format → Query a → DSL m (Maybe a)
-handleQuery format = case _ of
-  ResetError a → do
-    H.put Nothing
-    pure $ Just a
-  Base (SetValue duration k) → do
-    propagateChange format duration
-    H.put duration
-    pure $ Just $ k unit
-  Base (GetValue k) →
-    Just <<< k <$> H.get
 
 propagateChange ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → State → DSL m Unit
 propagateChange format duration = do

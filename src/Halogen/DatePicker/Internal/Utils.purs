@@ -13,10 +13,26 @@ import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Effect.Exception as Ex
 import Halogen as H
-import Halogen.Datepicker.Component.Types (PickerValue, isInvalid)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery(..), PickerValue, isInvalid)
 import Halogen.Datepicker.Config (Config(..))
 import Halogen.HTML.Properties as HP
 import Halogen.Query.HalogenM (HalogenM)
+
+handlePickerQuery
+  ∷ ∀ action slots output m a b
+  . (Maybe a → H.HalogenM (Maybe a) action slots output m Unit)
+  → PickerQuery Unit (Maybe a) b
+  → H.HalogenM (Maybe a) action slots output m (Maybe b)
+handlePickerQuery f = case _ of
+  ResetError a → do
+    H.put Nothing
+    pure $ Just a
+  Base (SetValue value k) → do
+    f value
+    H.put value
+    pure $ Just $ k unit
+  Base (GetValue k) →
+    Just <<< k <$> H.get
 
 mustBeMounted
   ∷ ∀ s f ps o m a

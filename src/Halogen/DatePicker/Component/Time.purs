@@ -19,15 +19,15 @@ import Data.Time (Time)
 import Data.Traversable (for)
 import Effect.Exception as Ex
 import Halogen as H
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery(..), PickerValue, value)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery, PickerValue, value)
 import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.Time as F
 import Halogen.Datepicker.Internal.Choice as Choice
-import Halogen.Datepicker.Internal.Elements (textElement, PreChoiceConfig, renderChoice, renderNum)
+import Halogen.Datepicker.Internal.Elements (PreChoiceConfig, PreNumConfig, renderChoice, renderNum, textElement)
 import Halogen.Datepicker.Internal.Enums (Hour12, Meridiem, Millisecond1, Millisecond2)
 import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
-import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mustBeMounted, pickerProps, transitionState')
+import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, handlePickerQuery, mustBeMounted, pickerProps, transitionState')
 import Halogen.HTML as HH
 
 type State = PickerValue TimeError Time
@@ -71,7 +71,7 @@ pickerWithConfig config format =
     , render: render config format
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction format
-        , handleQuery = handleQuery format
+        , handleQuery = handlePickerQuery (propagateChange format)
         }
     }
 
@@ -105,9 +105,10 @@ renderCommand config cmd = HH.li (componentProps config) $ pure case cmd of
   F.MillisecondsShort → renderNum'
     { title: "Milliseconds", placeholder: "M", range: (bottomTop ∷ Range Millisecond1) <#> fromEnum }
   where
-  renderNum' = renderNum _num identity F.toSetter cmd config
+  renderNum' ∷ PreNumConfig Int → HTML m
+  renderNum' = renderNum _num F.toSetter cmd config
   renderChoice' ∷ ∀ a. BoundedEnum a ⇒ Show a ⇒ PreChoiceConfig (Maybe a) → HTML m
-  renderChoice' = renderChoice _choice identity F.toSetter cmd config
+  renderChoice' = renderChoice _choice F.toSetter cmd config
 
 handleAction ∷ ∀ m.  MonadError Ex.Error m ⇒ F.Format → Action → DSL m Unit
 handleAction format update = do
@@ -135,19 +136,6 @@ buildTime format = do
     _ → do
       num ← queryNum cmd $ H.request GetValue
       pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
-
-
-handleQuery ∷ ∀ m a. MonadError Ex.Error m ⇒ F.Format → Query a → DSL m (Maybe a)
-handleQuery format = case _ of
-  ResetError a → do
-    H.put Nothing
-    pure $ Just a
-  Base (SetValue time k) → do
-    propagateChange format time
-    H.put time
-    pure $ Just $ k unit
-  Base (GetValue k) →
-    Just <<< k <$> H.get
 
 propagateChange ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → State → DSL m Unit
 propagateChange format time = for_ (unwrap format) \cmd → case cmd of
