@@ -65,7 +65,8 @@ go
   ∷ List Command
   → StateT FDT.Formatter (Either String) (List Command)
 go currFmt = get >>= \a → case (takeDate a <|> takeTime a) of
-  Just (Left err)  → lift $ Left err
+  Just (Left err) →
+    lift $ Left err
   Just (Right (Tuple restRes restFmt)) →
     let
       res = do
@@ -75,8 +76,9 @@ go currFmt = get >>= \a → case (takeDate a <|> takeTime a) of
       if null restFmt
         then res
         else res >>= go
-  Nothing → get >>= \restFmt → lift $
-  Left $ "left unconsumed format: " <> show restFmt
+  Nothing →
+    get >>= \restFmt →
+      lift $ Left $ "left unconsumed format: " <> show restFmt
 
 takeDate
   ∷ FDT.Formatter
