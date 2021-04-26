@@ -16,7 +16,6 @@ import Data.Monoid.Additive (Additive(..))
 import Data.Newtype (unwrap)
 import Data.Profunctor.Join (Join(..))
 import Data.Profunctor.Star (Star(..))
-import Data.Symbol (SProxy(..))
 import Data.Time (Time)
 import Data.Traversable (for, for_)
 import Data.Tuple (Tuple(..))
@@ -31,6 +30,7 @@ import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.DateTime as F
 import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
+import Type.Proxy (Proxy(..))
 
 type State = PickerValue DateTimeError DateTime
 type DateTimeError = DateTimeErrorF Maybe
@@ -47,15 +47,15 @@ type Slots =
   , time ∷ Time.Slot Unit
   )
 
-_date = SProxy ∷ SProxy "date"
-_time = SProxy ∷ SProxy "time"
+_date = Proxy ∷ Proxy "date"
+_time = Proxy ∷ Proxy "time"
 
 type Slot = H.Slot Query Message
 
 type HTML m = H.ComponentHTML Action Slots m
 type DSL = H.HalogenM State Action Slots Message
 
-picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component HH.HTML Query Unit Message m
+picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component Query Unit Message m
 picker = pickerWithConfig defaultConfig
 
 pickerWithConfig
@@ -63,7 +63,7 @@ pickerWithConfig
   . MonadError Ex.Error m
   ⇒ Config
   → F.Format
-  → H.Component HH.HTML Query Unit Message m
+  → H.Component Query Unit Message m
 pickerWithConfig config format =
   H.mkComponent
     { initialState: const Nothing
@@ -87,14 +87,14 @@ renderCommand config cmd = HH.div (componentProps config) $ pure case cmd of
       unit
       (Time.pickerWithConfig config fmt)
       unit
-      (\val → Just (Right val))
+      Right
   F.Date fmt →
     HH.slot
       _date
       unit
       (Date.pickerWithConfig config fmt)
       unit
-      (\val → Just (Left val))
+      Left
 
 handleAction ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → Action → DSL m Unit
 handleAction format msg = do
@@ -105,7 +105,7 @@ handleAction format msg = do
         Left (Tuple false _) → resetChildErrorBasedOnMessage msg
         _ → pure unit
       pure dt
-    Just (Left err) → buildDateTime format
+    Just (Left _) → buildDateTime format
     Just (Right dt) → pure $ lmap (Tuple false) case msg of
       Left newDate → case newDate of
         Just (Right date) → Right $ setDateDt date dt
@@ -162,7 +162,7 @@ buildDateTime format = do
     → Maybe (Either (Tuple Boolean DateTimeError) DateTime)
   runStep childCount step = step <#> \(Join (Star f)) → case runWriter $ f bottom of
     Tuple res Nothing → Right res
-    Tuple res (Just (Tuple (Additive errCount) err)) → Left $ Tuple
+    Tuple _ (Just (Tuple (Additive errCount) err)) → Left $ Tuple
       -- if we hit errCount == 0 or errCount == childCount we shuoldn't force
       (errCount > 0  && errCount < childCount)
       (bimap unwrap unwrap err)

@@ -23,6 +23,7 @@ type State val = {value ∷ val}
 type Query val = BasePickerQuery (Maybe ChoiceError) val
 data ChoiceError = ValueIsNotInValues
 
+type Slots ∷ ∀ k. Row k
 type Slots = ()
 
 type Slot val = H.Slot (Query val) val
@@ -41,14 +42,14 @@ picker
   . Ord val
   ⇒ HasChoiceInputVal val
   → Config val
-  → H.Component HH.HTML (Query val) Unit val m
+  → H.Component (Query val) Unit val m
 picker hasChoiceInputVal config =
   H.mkComponent
     { initialState: const { value: head config.values }
     , render: render config hasChoiceInputVal
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction
-        , handleQuery = handleQuery config.values hasChoiceInputVal
+        , handleQuery = handleQuery config.values
         }
     }
 
@@ -63,7 +64,7 @@ render config hasChoiceInputVal {value} =
   HH.select
     [ HP.title config.title
     , HP.classes config.root
-    , HE.onValueChange (\val → Just (hasChoiceInputVal.fromString val))
+    , HE.onValueChange hasChoiceInputVal.fromString
     ] (fromNonEmpty cons config.values <#> renderValue)
   where
   renderValue value' = HH.option
@@ -84,10 +85,9 @@ handleQuery
   ∷ ∀ val m a
   . Eq val
   ⇒ NonEmpty Array val
-  → HasChoiceInputVal val
   → Query val a
   → DSL val m (Maybe a)
-handleQuery values hasChoiceInputVal = case _ of
+handleQuery values = case _ of
   SetValue value k
     | value == head values || elem value (tail values) → do
         H.modify_ _{value = value}

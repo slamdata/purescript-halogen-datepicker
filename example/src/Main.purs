@@ -81,11 +81,11 @@ type Slots =
   , interval ∷ Interval.Slot IntervalIdx
   )
 
-_time = SProxy ∷ SProxy "time"
-_date = SProxy ∷ SProxy "date"
-_dateTime = SProxy ∷ SProxy "dateTime"
-_duration = SProxy ∷ SProxy "duration"
-_interval = SProxy ∷ SProxy "interval"
+_time = Proxy ∷ Proxy "time"
+_date = Proxy ∷ Proxy "date"
+_dateTime = Proxy ∷ Proxy "dateTime"
+_duration = Proxy ∷ Proxy "duration"
+_interval = Proxy ∷ Proxy "interval"
 
 type HTML m = H.ComponentHTML Action Slots m
 type DSL m = H.HalogenM State Action Slots Void m
@@ -101,7 +101,7 @@ example
   ∷ ∀ f m
   . MonadError Ex.Error m
   ⇒ Applicative m
-  ⇒ H.Component HH.HTML f Unit Void m
+  ⇒ H.Component f Unit Void m
 example =
   H.mkComponent
     { initialState: const initialState
@@ -274,7 +274,7 @@ example =
 type ExampleConfig fmtInput input fmt query out m =
   { mkFormat ∷ fmtInput → StrOr fmt
   , unformat ∷ fmt → String → StrOr input
-  , picker ∷ fmt → H.Component HH.HTML query Unit out m
+  , picker ∷ fmt → H.Component query Unit out m
   , handler ∷ Int → out → Action
   , setter ∷ Int → Maybe input → Action 
   }

@@ -10,7 +10,6 @@ import Data.Foldable (for_)
 import Data.Interval (Interval(..))
 import Data.Interval.Duration.Iso (IsoDuration)
 import Data.Maybe (Maybe(..), isNothing)
-import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Effect.Exception as Ex
 import Halogen as H
@@ -25,6 +24,7 @@ import Halogen.Datepicker.Format.Interval as F
 import Halogen.Datepicker.Internal.Elements (textElement)
 import Halogen.Datepicker.Internal.Utils (asLeft, componentProps, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
+import Type.Proxy (Proxy(..))
 
 type State = PickerValue IntervalError IsoInterval
 type IntervalError = Interval (Maybe DurationError) (Maybe DateTime.DateTimeError)
@@ -41,15 +41,15 @@ type Slots =
   , duration ∷ Duration.Slot Unit
   )
 
-_dateTime = SProxy ∷ SProxy "dateTime"
-_duration = SProxy ∷ SProxy "duration"
+_dateTime = Proxy ∷ Proxy "dateTime"
+_duration = Proxy ∷ Proxy "duration"
 
 type Slot = H.Slot Query Message
 
 type HTML m = H.ComponentHTML MessageIn Slots m
 type DSL = H.HalogenM State MessageIn Slots Message
 
-picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component HH.HTML Query Unit Message m
+picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component Query Unit Message m
 picker = pickerWithConfig defaultConfig
 
 pickerWithConfig
@@ -57,7 +57,7 @@ pickerWithConfig
   . MonadError Ex.Error m
   ⇒ Config
   → F.Format
-  → H.Component HH.HTML Query Unit Message m
+  → H.Component Query Unit Message m
 pickerWithConfig config format =
   H.mkComponent
     { initialState: const Nothing
@@ -95,7 +95,7 @@ renderDuration config fmt =
     unit
     (Duration.pickerWithConfig config fmt)
     unit
-    (\val → Just (Left val))
+    Left
 
 renderDateTime ∷ ∀ m. MonadError Ex.Error m ⇒ Config → DateTimeF.Format → Boolean → HTML m
 renderDateTime config fmt idx =
@@ -104,7 +104,7 @@ renderDateTime config fmt idx =
     idx
     (DateTime.pickerWithConfig config fmt)
     unit
-    (\val → Just (Right (Tuple idx val)))
+    (\val → Right (Tuple idx val))
 
 -- [1] - this case will not happen as interval will not be `Just Right`
 --       if any of it's child is `Nothing` so return nonsence value
@@ -117,7 +117,7 @@ handleAction format msg = do
         Left (Tuple false _) → resetChildErrorBasedOnMessage msg
         _ → pure unit
       pure newInterval
-    Just (Left err) → buildInterval format
+    Just (Left _) → buildInterval format
     Just (Right prevInterval) → pure $ lmap (Tuple false) case msg of
       Left newDuration → case newDuration of
         Just (Left x) → Left $ bimap (const $ Just x) (const Nothing) format
@@ -130,8 +130,8 @@ handleAction format msg = do
           StartEnd a b → case idx of
             true → StartEnd dateTime b
             false → StartEnd a dateTime
-          DurationEnd d a → DurationEnd d dateTime
-          StartDuration a d → StartDuration dateTime d
+          DurationEnd d _ → DurationEnd d dateTime
+          StartDuration _ d → StartDuration dateTime d
           DurationOnly d → DurationOnly d
 
 buildInterval ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → DSL m (Either (Tuple Boolean IntervalError) IsoInterval)
@@ -169,10 +169,10 @@ collectValues
   ⇒ Interval d a
   → DSL m (Interval Duration.State DateTime.State)
 collectValues format = case format of
-  StartEnd a b → StartEnd <$> getDateTime false <*> getDateTime true
-  DurationEnd d a → DurationEnd <$> getDuration <*> getDateTime false
-  StartDuration a d → StartDuration <$> getDateTime false <*> getDuration
-  DurationOnly d → DurationOnly <$> getDuration
+  StartEnd _ _ → StartEnd <$> getDateTime false <*> getDateTime true
+  DurationEnd _ _ → DurationEnd <$> getDuration <*> getDateTime false
+  StartDuration _ _ → StartDuration <$> getDateTime false <*> getDuration
+  DurationOnly _ → DurationOnly <$> getDuration
 
 resetChildErrorBasedOnMessage ∷ ∀ m. MonadError Ex.Error m ⇒ MessageIn → DSL m Unit
 resetChildErrorBasedOnMessage (Left (Just (Left _))) = resetDuration
@@ -191,10 +191,10 @@ onFormat
   → Interval d a
   → m Unit
 onFormat onDateTime onDuration format = case format of
-  StartEnd a b → onDateTime false *> onDateTime true
-  DurationEnd d a → onDuration *> onDateTime false
-  StartDuration a d → onDateTime false *> onDuration
-  DurationOnly d → onDuration
+  StartEnd _ _ → onDateTime false *> onDateTime true
+  DurationEnd _ _ → onDuration *> onDateTime false
+  StartDuration _ _ → onDateTime false *> onDuration
+  DurationOnly _ → onDuration
 
 handleQuery ∷ ∀ m a. MonadError Ex.Error m ⇒ F.Format → Query a → DSL m (Maybe a)
 handleQuery format = case _ of

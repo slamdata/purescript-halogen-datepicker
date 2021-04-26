@@ -1,7 +1,7 @@
-/example/example.js
-/output/
+/.*
+!/.gitignore
+!/.github
 /bower_components/
 /node_modules/
-npm-debug.log*
-.psc-ide-port
+/output/
 package-lock.json

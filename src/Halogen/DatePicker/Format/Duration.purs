@@ -10,13 +10,13 @@ import Data.Either (Either(..))
 import Data.Foldable (class Foldable)
 import Data.Formatter.Interval (unformatInterval, formatInterval)
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
 import Data.Interval (DurationComponent(..)) as ReExport
-import Data.Interval.Duration.Iso (IsoDuration)
 import Data.Interval as I
+import Data.Interval.Duration.Iso (IsoDuration)
 import Data.Map (insert, lookup)
 import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype, over, unwrap)
+import Data.Show.Generic (genericShow)
 import Data.String (joinWith)
 import Halogen.Datepicker.Internal.Constraint as C
 

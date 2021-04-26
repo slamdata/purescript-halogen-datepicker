@@ -1,11 +1,13 @@
 module Halogen.Datepicker.Internal.Constraint where
 
+import Prim hiding (Constraint)
+
 import Prelude
 
 import Control.Monad.State (State, get, put, execState)
 import Data.Foldable (class Foldable, any, null, length, for_)
 import Data.List as List
-import Data.Validation.Semigroup (V, invalid, unV)
+import Data.Validation.Semigroup (V, invalid, validation)
 
 
 data Error
@@ -31,7 +33,7 @@ showError = case _ of
 type Constraint a = a → V (Array Error) Unit
 
 runConstraint ∷ ∀ a g. Constraint (g a) → g a → Array String
-runConstraint f a = unV (map showError) (const []) $ f a
+runConstraint f a = validation (map showError) (const []) $ f a
 
 allowedValues ∷ ∀ g a. Foldable g ⇒ (a → String) → Array (EqPred a) → Constraint (g a)
 allowedValues showVal as as' = for_ as' \a → unless

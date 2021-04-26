@@ -9,12 +9,11 @@ import Data.Either (Either(..))
 import Data.Enum (class BoundedEnum, fromEnum, upFromIncluding)
 import Data.Foldable (for_)
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe(Nothing, Just), maybe)
 import Data.Newtype (unwrap)
 import Data.Profunctor.Join (Join(..))
 import Data.Profunctor.Star (Star(..))
-import Data.Symbol (SProxy(..))
+import Data.Show.Generic (genericShow)
 import Data.Time (Time)
 import Data.Traversable (for)
 import Effect.Exception as Ex
@@ -29,6 +28,7 @@ import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
 import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, handlePickerQuery, mustBeMounted, pickerProps, transitionState')
 import Halogen.HTML as HH
+import Type.Proxy (Proxy(..))
 
 type State = PickerValue TimeError Time
 
@@ -48,15 +48,15 @@ type Slots =
   , choice ∷ Choice.Slot (Maybe Int) F.Command
   )
 
-_num = SProxy ∷ SProxy "num"
-_choice = SProxy ∷ SProxy "choice"
+_num = Proxy ∷ Proxy "num"
+_choice = Proxy ∷ Proxy "choice"
 
 type Slot = H.Slot Query Message
 
 type HTML m = H.ComponentHTML Action Slots m
 type DSL = H.HalogenM State Action Slots Message
 
-picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component HH.HTML Query Unit Message m
+picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component Query Unit Message m
 picker = pickerWithConfig defaultConfig
 
 pickerWithConfig
@@ -64,7 +64,7 @@ pickerWithConfig
   . MonadError Ex.Error m
   ⇒ Config
   → F.Format
-  → H.Component HH.HTML Query Unit Message m
+  → H.Component Query Unit Message m
 pickerWithConfig config format =
   H.mkComponent
     { initialState: const Nothing
@@ -131,10 +131,10 @@ buildTime format = do
     F.Placeholder _ → do
       pure $ Just $ mempty
     F.Meridiem → do
-      num ← queryChoice cmd $ H.request GetValue
+      num ← queryChoice cmd $ H.mkRequest GetValue
       pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     _ → do
-      num ← queryNum cmd $ H.request GetValue
+      num ← queryNum cmd $ H.mkRequest GetValue
       pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
 
 propagateChange ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → State → DSL m Unit
@@ -142,11 +142,11 @@ propagateChange format time = for_ (unwrap format) \cmd → case cmd of
   F.Placeholder _ → pure unit
   F.Meridiem → do
     let val = value time >>= F.toGetter F.Meridiem
-    res ← queryChoice cmd $ H.request (SetValue val)
+    res ← queryChoice cmd $ H.mkRequest (SetValue val)
     Choice.valueMustBeInValues res
   _ → do
     let val = value time >>= F.toGetter cmd
-    queryNum cmd $ H.request (SetValue val)
+    queryNum cmd $ H.mkRequest (SetValue val)
 
 queryChoice ∷ ∀ m. MonadError Ex.Error m ⇒ F.Command → Choice.Query (Maybe Int) ~> DSL m
 queryChoice s q = H.query _choice s q >>= mustBeMounted

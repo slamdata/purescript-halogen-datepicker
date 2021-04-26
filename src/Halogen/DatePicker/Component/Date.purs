@@ -9,12 +9,11 @@ import Data.Either (Either(..))
 import Data.Enum (class BoundedEnum, fromEnum, toEnum, upFromIncluding)
 import Data.Foldable (for_)
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.Profunctor.Join (Join(..))
 import Data.Profunctor.Star (Star(..))
-import Data.Symbol (SProxy(..))
+import Data.Show.Generic (genericShow)
 import Data.Traversable (for)
 import Effect.Exception as Ex
 import Halogen as H
@@ -28,6 +27,7 @@ import Halogen.Datepicker.Internal.Num as Num
 import Halogen.Datepicker.Internal.Range (Range, bottomTop)
 import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, handlePickerQuery, mustBeMounted, pickerProps, transitionState')
 import Halogen.HTML as HH
+import Type.Proxy (Proxy(..))
 
 type State = PickerValue DateError Date
 
@@ -47,8 +47,8 @@ type Slots =
   , choice ∷ Choice.Slot (Maybe Int) F.Command
   )
 
-_num = SProxy ∷ SProxy "num"
-_choice = SProxy ∷ SProxy "choice"
+_num = Proxy ∷ Proxy "num"
+_choice = Proxy ∷ Proxy "choice"
 
 type Slot = H.Slot Query Message
 
@@ -58,7 +58,7 @@ type DSL = H.HalogenM State Action Slots Message
 picker
   ∷ ∀ m
   . MonadError Ex.Error m
-  ⇒ F.Format → H.Component HH.HTML Query Unit Message m
+  ⇒ F.Format → H.Component Query Unit Message m
 picker = pickerWithConfig defaultConfig
 
 pickerWithConfig
@@ -66,7 +66,7 @@ pickerWithConfig
   . MonadError Ex.Error m
   ⇒ Config
   → F.Format
-  → H.Component HH.HTML Query Unit Message m
+  → H.Component Query Unit Message m
 pickerWithConfig config format =
   H.mkComponent
     { initialState: const Nothing
@@ -126,12 +126,12 @@ buildDate format = do
   where
   mkBuildStep ∷ F.Command → DSL m BuildStep
   mkBuildStep = commandCata
-    { text: \cmd → pure $ Just mempty
+    { text: \_ → pure $ Just mempty
     , enum: \cmd → do
-        num ← queryNum cmd $ H.request GetValue
+        num ← queryNum cmd $ H.mkRequest GetValue
         pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     , choice: \cmd → do
-        num ← queryChoice cmd $ H.request GetValue
+        num ← queryChoice cmd $ H.mkRequest GetValue
         pure $ num <#> \n → Join $ Star $ \t → F.toSetter cmd n t
     }
   runStep ∷ BuildStep → Maybe (Maybe Date)
@@ -145,34 +145,34 @@ propagateChange
   → State
   → DSL m Unit
 propagateChange format date = for_ (unwrap format) $ commandCata
-  { text: \cmd → pure unit
+  { text: \_ → pure unit
   , enum: \cmd → do
       let val = value date >>= F.toGetter cmd
-      queryNum cmd $ H.request (SetValue val)
+      queryNum cmd $ H.mkRequest (SetValue val)
   , choice: \cmd → do
       let val = value date >>= F.toGetter cmd
-      res ← queryChoice cmd $ H.request (SetValue val)
+      res ← queryChoice cmd $ H.mkRequest (SetValue val)
       Choice.valueMustBeInValues res
   }
 
 commandCata
   ∷ ∀ a
-  . { text   ∷ F.Command → a
-    , enum   ∷ F.Command → a
+  . { text ∷ F.Command → a
+    , enum ∷ F.Command → a
     , choice ∷ F.Command → a
     }
   → F.Command
   → a
 commandCata p cmd = case cmd of
-  F.Placeholder str     → p.text cmd
-  F.YearFull            → p.enum cmd
-  F.YearTwoDigits       → p.enum cmd
-  F.YearAbsolute        → p.enum cmd
-  F.MonthFull           → p.choice cmd
-  F.MonthShort          → p.choice cmd
-  F.MonthTwoDigits      → p.enum cmd
+  F.Placeholder _ → p.text cmd
+  F.YearFull → p.enum cmd
+  F.YearTwoDigits → p.enum cmd
+  F.YearAbsolute → p.enum cmd
+  F.MonthFull → p.choice cmd
+  F.MonthShort → p.choice cmd
+  F.MonthTwoDigits → p.enum cmd
   F.DayOfMonthTwoDigits → p.enum cmd
-  F.DayOfMonth          → p.enum cmd
+  F.DayOfMonth → p.enum cmd
 
 queryChoice
   ∷ ∀ m

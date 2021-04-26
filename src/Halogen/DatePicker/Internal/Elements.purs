@@ -3,10 +3,10 @@ module Halogen.Datepicker.Internal.Elements where
 import Prelude
 
 import Data.Enum (class BoundedEnum, fromEnum, toEnum)
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe, fromMaybe, maybe)
 import Data.Newtype (unwrap)
 import Data.NonEmpty (NonEmpty)
-import Data.Symbol (class IsSymbol, SProxy)
+import Data.Symbol (class IsSymbol)
 import Halogen as H
 import Halogen.Datepicker.Config (Config(..))
 import Halogen.Datepicker.Internal.Choice as Choice
@@ -15,6 +15,7 @@ import Halogen.Datepicker.Internal.Range (Range)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Prim.Row as Row
+import Type.Proxy (Proxy)
 
 textElement ∷ ∀ p i. Config → {text ∷ String} → HH.HTML p i
 textElement (Config {placeholder}) {text} = HH.span [HP.classes placeholder] [HH.text text]
@@ -37,7 +38,7 @@ renderNum
   . Row.Cons sym ((Num.Slot Int) cmd) px ps
   ⇒ IsSymbol sym
   ⇒ Ord cmd
-  ⇒ SProxy sym
+  ⇒ Proxy sym
   → (cmd → Int → OptionalUpdate queryVal)
   → cmd
   → Config
@@ -49,7 +50,7 @@ renderNum sym toSetter cmd mainConf preConf =
   in
     HH.slot sym cmd
       (Num.picker Num.intHasNumberInputVal conf) unit
-      (\n → Just \t → n >>= (_ `toSetter cmd` t))
+      (\n t → n >>= (_ `toSetter cmd` t))
 
 toChoiceConf
   ∷ ∀ a
@@ -66,7 +67,7 @@ renderChoice
   ⇒ Row.Cons sym ((Choice.Slot (Maybe Int)) cmd) px ps
   ⇒ IsSymbol sym
   ⇒ Ord cmd
-  ⇒ SProxy sym
+  ⇒ Proxy sym
   → (cmd → Int → OptionalUpdate queryVal)
   → cmd
   → Config
@@ -84,4 +85,4 @@ renderChoice cpChoice toSetter cmd mainConf preConf =
         (conf{values = conf.values <#> map fromEnum})
       )
       unit
-      (\n → Just \t → n >>= (_ `toSetter cmd` t))
+      (\n t → n >>= (_ `toSetter cmd` t))

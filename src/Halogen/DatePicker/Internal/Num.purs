@@ -34,6 +34,7 @@ type Input val = Maybe val
 type Query val = BasePickerQuery Unit (Input val)
 type InputValue val = Tuple (Maybe val) (Maybe String)
 
+type Slots ∷ ∀ k. Row k
 type Slots = ()
 
 type Slot val = H.Slot (Query val) (Message val)
@@ -55,7 +56,7 @@ picker
   . Ord val
   ⇒ HasNumberInputVal val
   → Config val
-  → H.Component HH.HTML (Query val) Unit (Message val) m
+  → H.Component (Query val) Unit (Message val) m
 picker hasNumberInputVal conf =
   H.mkComponent
     { initialState: const emptyNumberInputValue
@@ -134,7 +135,7 @@ numberElement hasNumberInputVal conf value = HH.input $
   , HP.title conf.title
   , HP.placeholder conf.placeholder
   , HP.value valueStr
-  , HE.onInput \val → Just (isInputInRange conf.range (parseValidInput (inputValueFromEvent val)))
+  , HE.onInput \val → isInputInRange conf.range (parseValidInput (inputValueFromEvent val))
   ]
   <> (toArray (rangeMin conf.range) <#> hasNumberInputVal.toNumber >>> HP.min)
   <> (toArray (rangeMax conf.range) <#> hasNumberInputVal.toNumber >>> HP.max)

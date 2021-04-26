@@ -4,7 +4,7 @@ import Prelude
 
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), isJust)
-import Halogen (request, tell)
+import Halogen (mkRequest, mkTell)
 
 data PickerQuery err val next
   = ResetError next
@@ -17,13 +17,13 @@ data BasePickerQuery err val next
 type PickerValue e a = Maybe (Either e a)
 
 getValue ∷ ∀ val err. PickerQuery err val val
-getValue = request (Base <<< GetValue)
+getValue = mkRequest (Base <<< GetValue)
 
 setValue ∷ ∀ val err. val -> PickerQuery err val err
-setValue val = request (Base <<< SetValue val)
+setValue val = mkRequest (Base <<< SetValue val)
 
 resetError ∷ ∀ val err. PickerQuery err val Unit
-resetError = tell ResetError
+resetError = mkTell ResetError
 
 value ∷ ∀ e a. PickerValue e a → Maybe a
 value (Just (Right x)) = Just x

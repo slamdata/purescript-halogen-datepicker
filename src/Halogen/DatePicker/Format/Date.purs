@@ -10,9 +10,9 @@ import Data.Enum (fromEnum, toEnum)
 import Data.Foldable (class Foldable, foldMap)
 import Data.Formatter.DateTime as FDT
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
+import Data.Show.Generic (genericShow)
 import Data.String (joinWith)
 import Data.Traversable (traverse)
 import Halogen.Datepicker.Internal.Constraint as C
@@ -61,7 +61,7 @@ toGetter cmd d = case cmd of
   MonthTwoDigits → Just $ fromEnum $ month d
   DayOfMonthTwoDigits → Just $ fromEnum $ day d
   DayOfMonth → Just $ fromEnum $ day d
-  Placeholder str → Nothing
+  Placeholder _ → Nothing
 
 
 newtype Format = Format (Array Command)

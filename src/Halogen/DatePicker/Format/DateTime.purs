@@ -11,10 +11,10 @@ import Data.Either (Either(..))
 import Data.Foldable (foldMap)
 import Data.Formatter.DateTime as FDT
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
 import Data.List (List(..), null, span)
 import Data.Maybe (Maybe(..), isJust)
 import Data.Newtype (class Newtype)
+import Data.Show.Generic (genericShow)
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
 import Halogen.Datepicker.Format.Date as DateF
