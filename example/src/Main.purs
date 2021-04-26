@@ -6,7 +6,7 @@ import Control.Monad.Error.Class (class MonadError)
 import Data.Bitraversable (bitraverse)
 import Data.Date (Date, canonicalDate)
 import Data.DateTime (DateTime(..))
-import Data.Either (Either(..), either, fromRight)
+import Data.Either (Either(..), either, fromRight')
 import Data.Enum (class BoundedEnum, toEnum)
 import Data.Foldable (fold)
 import Data.Formatter.Interval (unformatInterval)
@@ -14,9 +14,10 @@ import Data.Interval (Interval(..))
 import Data.Interval as I
 import Data.Interval.Duration.Iso (IsoDuration, mkIsoDuration)
 import Data.Map (Map, lookup, insert)
+import Data.Map as Map
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Maybe.Last (Last(..))
-import Data.Symbol (class IsSymbol, SProxy(..))
+import Data.Symbol (class IsSymbol)
 import Data.Time (Time, setHour, setMinute)
 import Effect (Effect)
 import Effect.Exception as Ex
@@ -38,8 +39,9 @@ import Halogen.Datepicker.Internal.Utils (mustBeMounted)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.VDom.Driver (runUI)
-import Partial.Unsafe (unsafePartial)
+import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import Prim.Row as Row
+import Type.Proxy (Proxy(..))
 
 type TimeIdx = Int
 type DateIdx = Int
@@ -110,11 +112,11 @@ example =
     }
   where
   initialState =
-    { times: mempty
-    , dates: mempty
-    , dateTimes: mempty
-    , durations: mempty
-    , intervals: mempty
+    { times: Map.empty
+    , dates: Map.empty
+    , dateTimes: Map.empty
+    , durations: Map.empty
+    , intervals: Map.empty
     }
   render ∷ State → HTML m
   render s = HH.div_
@@ -201,7 +203,7 @@ example =
   testDateTime = DateTime testDate (bottom # setHour (enum 2) # setMinute (enum 2))
 
   testDuration ∷ IsoDuration
-  testDuration = unsafePartial fromRight -- this duration must be valid
+  testDuration = fromRight' (unsafeCrashWith "testDuration is an invalid IsoDuration")
     $ mkIsoDuration
     $ fold
       [ I.year 100.0
@@ -276,7 +278,7 @@ type ExampleConfig fmtInput input fmt query out m =
   , unformat ∷ fmt → String → StrOr input
   , picker ∷ fmt → H.Component query Unit out m
   , handler ∷ Int → out → Action
-  , setter ∷ Int → Maybe input → Action 
+  , setter ∷ Int → Maybe input → Action
   }
 
 renderExample
@@ -284,7 +286,7 @@ renderExample
   . Row.Cons sym (H.Slot query out Int) px Slots
   ⇒ IsSymbol sym
   ⇒ ExampleConfig fmtInput input fmt query out m
-  → SProxy sym
+  → Proxy sym
   → Map Int String
   → Int
   → fmtInput
@@ -295,7 +297,7 @@ renderExample c sp items idx fmt' value'= unEither $ do
   value ← either (c.unformat fmt) Right value'
   let cmp = c.picker fmt
   pure
-    [ HH.slot sp idx cmp unit (Just <<< c.handler idx)
+    [ HH.slot sp idx cmp unit (c.handler idx)
     , btn (Just value) "reset"
     , btn Nothing "clear"
     , case lookup idx items of
@@ -305,7 +307,7 @@ renderExample c sp items idx fmt' value'= unEither $ do
   where
   btn ∷ Maybe input → String → HTML m
   btn val txt = HH.button
-    [ HE.onClick \_ → Just (c.setter idx val) ]
+    [ HE.onClick \_ → c.setter idx val ]
     [ HH.text txt]
   unEither ∷ StrOr (Array (HTML m)) → Array (HTML m)
   unEither = either (HH.text >>> pure >>> HH.div_ >>> pure) identity
