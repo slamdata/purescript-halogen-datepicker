@@ -3,11 +3,11 @@ module Halogen.Datepicker.Config where
 import Prelude
 
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Monoid (genericMempty)
-import Data.Generic.Rep.Semigroup (genericAppend)
 import Data.Maybe (Maybe(..))
 import Data.Maybe.Last (Last(..))
+import Data.Monoid.Generic (genericMempty)
 import Data.Newtype (class Newtype)
+import Data.Semigroup.Generic (genericAppend)
 import Halogen.HTML (ClassName(..))
 
 newtype Config = Config

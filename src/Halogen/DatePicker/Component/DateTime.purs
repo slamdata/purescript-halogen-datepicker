@@ -2,16 +2,14 @@ module Halogen.Datepicker.Component.DateTime where
 
 import Prelude
 
+import Control.Monad.Error.Class (class MonadError)
 import Control.Monad.Writer (Writer, runWriter, tell)
 import Data.Array (sort)
 import Data.Bifunctor (bimap, lmap)
 import Data.Date (Date)
 import Data.DateTime (DateTime, date, modifyDate, modifyTime, time)
 import Data.Either (Either(..))
-import Data.Either.Nested (Either2)
 import Data.Foldable (length)
-import Data.Functor.Coproduct (Coproduct, coproduct, right)
-import Data.Functor.Coproduct.Nested (Coproduct2)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Maybe.Last (Last(..))
 import Data.Monoid.Additive (Additive(..))
@@ -21,67 +19,85 @@ import Data.Profunctor.Star (Star(..))
 import Data.Time (Time)
 import Data.Traversable (for, for_)
 import Data.Tuple (Tuple(..))
+import Effect.Exception as Ex
 import Halogen as H
-import Halogen.Component.ChildPath as CP
 import Halogen.Datepicker.Component.Date (DateError)
 import Halogen.Datepicker.Component.Date as Date
 import Halogen.Datepicker.Component.Time (TimeError)
 import Halogen.Datepicker.Component.Time as Time
-import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerMessage(..), PickerQuery(..), PickerValue, value, getValue, setValue, resetError)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..), PickerQuery(..), PickerValue, value, getValue, setValue, resetError)
 import Halogen.Datepicker.Config (Config, defaultConfig)
 import Halogen.Datepicker.Format.DateTime as F
-import Halogen.Datepicker.Internal.Utils (mapParentHTMLQuery, componentProps, foldSteps, mustBeMounted, pickerProps, transitionState)
+import Halogen.Datepicker.Internal.Utils (componentProps, foldSteps, mustBeMounted, pickerProps, transitionState)
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
+import Type.Proxy (Proxy(..))
 
 type State = PickerValue DateTimeError DateTime
 type DateTimeError = DateTimeErrorF Maybe
 type DateTimeErrorF f = Tuple (f DateError) (f TimeError)
 type DateTimeErrorLast = DateTimeErrorF Last
 
-type Message = PickerMessage State
+type Message = PickerValue DateTimeError DateTime
 
-type Query = Coproduct QueryIn DateTimeQuery
-type QueryIn = PickerQuery Unit State
-data DateTimeQuery a = Update MessageIn a
-type MessageIn = Either Date.Message Time.Message
+type Query = PickerQuery Unit State
+type Action = Either Date.Message Time.Message
 
-type ChildQuery = Coproduct2 Date.Query Time.Query
-type Slot = Either2 Unit Unit
+type Slots =
+  ( date ∷ Date.Slot Unit
+  , time ∷ Time.Slot Unit
+  )
 
-cpDate ∷ CP.ChildPath Date.Query ChildQuery Unit Slot
-cpDate = CP.cp1
-cpTime ∷ CP.ChildPath Time.Query ChildQuery Unit Slot
-cpTime = CP.cp2
+_date = Proxy ∷ Proxy "date"
+_time = Proxy ∷ Proxy "time"
 
-type HTML m = H.ParentHTML DateTimeQuery ChildQuery Slot m
-type DSL m = H.ParentDSL State Query ChildQuery Slot Message m
+type Slot = H.Slot Query Message
 
+type HTML m = H.ComponentHTML Action Slots m
+type DSL = H.HalogenM State Action Slots Message
 
-picker ∷ ∀ m. F.Format → H.Component HH.HTML Query Unit Message m
+picker ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → H.Component Query Unit Message m
 picker = pickerWithConfig defaultConfig
 
-pickerWithConfig ∷ ∀ m. Config → F.Format → H.Component HH.HTML Query Unit Message m
-pickerWithConfig config format = H.parentComponent
-  { initialState: const Nothing
-  , render: render config format >>> mapParentHTMLQuery right
-  , eval: coproduct (evalPicker format) (evalDateTime format)
-  , receiver: const Nothing
-  }
+pickerWithConfig
+  ∷ ∀ m
+  . MonadError Ex.Error m
+  ⇒ Config
+  → F.Format
+  → H.Component Query Unit Message m
+pickerWithConfig config format =
+  H.mkComponent
+    { initialState: const Nothing
+    , render: render config format
+    , eval: H.mkEval $ H.defaultEval
+        { handleAction = handleAction format
+        , handleQuery = handleQuery format
+        }
+    }
 
-render ∷ ∀ m. Config → F.Format → State → HTML m
+render ∷ ∀ m. MonadError Ex.Error m ⇒ Config → F.Format → State → HTML m
 render config format dateTime = HH.div
   (pickerProps config dateTime)
   (unwrap format <#> renderCommand config)
 
-renderCommand ∷ ∀ m. Config → F.Command → HTML m
+renderCommand ∷ ∀ m. MonadError Ex.Error m ⇒ Config → F.Command → HTML m
 renderCommand config cmd = HH.div (componentProps config) $ pure case cmd of
-  F.Time fmt → HH.slot' cpTime unit (Time.pickerWithConfig config fmt) unit (HE.input $ Right >>> Update)
-  F.Date fmt → HH.slot' cpDate unit (Date.pickerWithConfig config fmt) unit (HE.input $ Left >>> Update)
+  F.Time fmt →
+    HH.slot
+      _time
+      unit
+      (Time.pickerWithConfig config fmt)
+      unit
+      Right
+  F.Date fmt →
+    HH.slot
+      _date
+      unit
+      (Date.pickerWithConfig config fmt)
+      unit
+      Left
 
-
-evalDateTime ∷ ∀ m . F.Format → DateTimeQuery ~> DSL m
-evalDateTime format (Update msg next) = do
+handleAction ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → Action → DSL m Unit
+handleAction format msg = do
   transitionState case _ of
     Nothing → do
       dt ← buildDateTime format
@@ -89,29 +105,27 @@ evalDateTime format (Update msg next) = do
         Left (Tuple false _) → resetChildErrorBasedOnMessage msg
         _ → pure unit
       pure dt
-    Just (Left err) → buildDateTime format
+    Just (Left _) → buildDateTime format
     Just (Right dt) → pure $ lmap (Tuple false) case msg of
-      Left  (NotifyChange newDate) → case newDate of
+      Left newDate → case newDate of
         Just (Right date) → Right $ setDateDt date dt
         Just (Left x) → Left $ dateError x
         Nothing → Left $ emptyError
-      Right (NotifyChange newTime) → case newTime of
+      Right newTime → case newTime of
         Just (Right time) → Right $ setTimeDt time dt
         Just (Left x) → Left $ timeError x
         Nothing → Left $ emptyError
-  pure next
 
-resetChildErrorBasedOnMessage ∷ ∀ m. MessageIn → DSL m Unit
-resetChildErrorBasedOnMessage (Left (NotifyChange (Just (Left _)))) = resetDate
-resetChildErrorBasedOnMessage (Right (NotifyChange (Just (Left _)))) = resetTime
+resetChildErrorBasedOnMessage ∷ ∀ m. MonadError Ex.Error m ⇒ Action → DSL m Unit
+resetChildErrorBasedOnMessage (Left (Just (Left _))) = resetDate
+resetChildErrorBasedOnMessage (Right (Just (Left _))) = resetTime
 resetChildErrorBasedOnMessage _ = pure unit
 
-resetChildError ∷ ∀ m. F.Format → DSL m Unit
+resetChildError ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → DSL m Unit
 resetChildError format = do
   for_ (unwrap format) case _ of
     F.Time _ → resetTime
     F.Date _ → resetDate
-
 
 timeError ∷ TimeError → DateTimeError
 timeError x = Tuple Nothing (Just x)
@@ -121,6 +135,7 @@ dateError x = Tuple (Just x) Nothing
 
 setTimeDt ∷ Time → DateTime → DateTime
 setTimeDt x dt = modifyTime (const x) dt
+
 setDateDt ∷ Date → DateTime → DateTime
 setDateDt x dt = modifyDate (const x) dt
 
@@ -130,8 +145,10 @@ type BuildStep
       (Star (Writer (Maybe (Tuple (Additive Int) DateTimeErrorLast))))
       DateTime)
 
-buildDateTime ∷ ∀ m
-  . F.Format
+buildDateTime
+  ∷ ∀ m
+  . MonadError Ex.Error m
+  ⇒ F.Format
   → DSL m (Either (Tuple Boolean DateTimeError) DateTime)
 buildDateTime format = do
   buildSteps ← for (sort $ unwrap format) mkBuildStep
@@ -145,7 +162,7 @@ buildDateTime format = do
     → Maybe (Either (Tuple Boolean DateTimeError) DateTime)
   runStep childCount step = step <#> \(Join (Star f)) → case runWriter $ f bottom of
     Tuple res Nothing → Right res
-    Tuple res (Just (Tuple (Additive errCount) err)) → Left $ Tuple
+    Tuple _ (Just (Tuple (Additive errCount) err)) → Left $ Tuple
       -- if we hit errCount == 0 or errCount == childCount we shuoldn't force
       (errCount > 0  && errCount < childCount)
       (bimap unwrap unwrap err)
@@ -169,19 +186,20 @@ buildDateTime format = do
   writeErr dt a b = tell (Just $ Tuple a b) *> pure dt
   biLast = bimap Last Last
 
+handleQuery ∷ ∀ m a. MonadError Ex.Error m ⇒ F.Format → Query a → DSL m (Maybe a)
+handleQuery format = case _ of
+  ResetError a → do
+    H.put Nothing
+    resetChildError format
+    pure $ Just a
+  Base (SetValue dateTime k) → do
+    propagateChange format dateTime
+    H.put dateTime
+    pure $ Just $ k unit
+  Base (GetValue k) →
+    Just <<< k <$> H.get
 
-evalPicker ∷ ∀ m. F.Format → QueryIn ~> DSL m
-evalPicker format (ResetError next) = do
-  H.put Nothing
-  resetChildError format
-  pure next
-evalPicker format (Base (SetValue dateTime reply)) = do
-  propagateChange format dateTime
-  H.put dateTime
-  pure $ reply unit
-evalPicker _ (Base (GetValue reply)) = H.get <#> reply
-
-propagateChange ∷ ∀ m . F.Format → State → DSL m Unit
+propagateChange ∷ ∀ m. MonadError Ex.Error m ⇒ F.Format → State → DSL m Unit
 propagateChange format dateTime = for_ (unwrap format) case _ of
   F.Time _ → setTime $ value dateTime <#> (time >>> Right)
   F.Date _ → setDate $ value dateTime <#> (date >>> Right)
@@ -189,20 +207,20 @@ propagateChange format dateTime = for_ (unwrap format) case _ of
 emptyError ∷ DateTimeError
 emptyError = Tuple Nothing Nothing
 
-setTime ∷ ∀ m. PickerValue TimeError Time → DSL m Unit
+setTime ∷ ∀ m. MonadError Ex.Error m ⇒ PickerValue TimeError Time → DSL m Unit
 setTime val = queryTime $ setValue val
 
-setDate ∷ ∀ m. PickerValue DateError Date → DSL m Unit
+setDate ∷ ∀ m. MonadError Ex.Error m ⇒ PickerValue DateError Date → DSL m Unit
 setDate val = queryDate $ setValue val
 
-resetTime ∷ ∀ m. DSL m Unit
-resetTime = queryTime $ resetError
+resetTime ∷ ∀ m. MonadError Ex.Error m ⇒ DSL m Unit
+resetTime = queryTime resetError
 
-resetDate ∷ ∀ m. DSL m Unit
-resetDate = queryDate $ resetError
+resetDate ∷ ∀ m. MonadError Ex.Error m ⇒ DSL m Unit
+resetDate = queryDate resetError
 
-queryTime ∷ ∀ m a. Time.Query a → DSL m a
-queryTime q = H.query' cpTime unit q >>= mustBeMounted
+queryTime ∷ ∀ m. MonadError Ex.Error m ⇒ Time.Query ~> DSL m
+queryTime q = H.query _time unit q >>= mustBeMounted
 
-queryDate ∷ ∀ m a. Date.Query a → DSL m a
-queryDate q = H.query' cpDate unit q >>= mustBeMounted
+queryDate ∷ ∀ m. MonadError Ex.Error m ⇒ Date.Query ~> DSL m
+queryDate q = H.query _date unit q >>= mustBeMounted

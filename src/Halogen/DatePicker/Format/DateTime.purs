@@ -1,11 +1,4 @@
-module Halogen.Datepicker.Format.DateTime
-  ( Format
-  , Command(..)
-  , fromString
-  , toDateTimeFormatter
-  , unformat
-  , format
-  ) where
+module Halogen.Datepicker.Format.DateTime where
 
 import Prelude
 
@@ -18,10 +11,10 @@ import Data.Either (Either(..))
 import Data.Foldable (foldMap)
 import Data.Formatter.DateTime as FDT
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
 import Data.List (List(..), null, span)
 import Data.Maybe (Maybe(..), isJust)
 import Data.Newtype (class Newtype)
+import Data.Show.Generic (genericShow)
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..))
 import Halogen.Datepicker.Format.Date as DateF
@@ -72,7 +65,8 @@ go
   ∷ List Command
   → StateT FDT.Formatter (Either String) (List Command)
 go currFmt = get >>= \a → case (takeDate a <|> takeTime a) of
-  Just (Left err)  → lift $ Left err
+  Just (Left err) →
+    lift $ Left err
   Just (Right (Tuple restRes restFmt)) →
     let
       res = do
@@ -82,8 +76,9 @@ go currFmt = get >>= \a → case (takeDate a <|> takeTime a) of
       if null restFmt
         then res
         else res >>= go
-  Nothing → get >>= \restFmt → lift $
-  Left $ "left unconsumed format: " <> show restFmt
+  Nothing →
+    get >>= \restFmt →
+      lift $ Left $ "left unconsumed format: " <> show restFmt
 
 takeDate
   ∷ FDT.Formatter

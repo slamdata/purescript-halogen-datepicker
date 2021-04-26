@@ -1,15 +1,4 @@
-module Halogen.Datepicker.Format.Time
-  ( Format
-  , Command(..)
-  , fromString
-  , fromDateTimeFormatter
-  , toDateTimeFormatter
-  , toCommand
-  , unformat
-  , format
-  , toSetter
-  , toGetter
-  ) where
+module Halogen.Datepicker.Format.Time where
 
 import Prelude
 
@@ -20,9 +9,9 @@ import Data.Enum (fromEnum, toEnum)
 import Data.Foldable (class Foldable, foldMap)
 import Data.Formatter.DateTime as FDT
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
+import Data.Show.Generic (genericShow)
 import Data.String (joinWith)
 import Data.Time (Time, hour, millisecond, minute, second, setHour, setMillisecond, setMinute, setSecond)
 import Data.Traversable (traverse)

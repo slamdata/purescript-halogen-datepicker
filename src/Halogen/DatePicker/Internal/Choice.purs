@@ -1,51 +1,35 @@
-module Halogen.Datepicker.Internal.Choice
-  ( picker
-  , ChoiceQuery
-  , Query
-  , QueryIn
-  , Config
-  , ChoiceError(..)
-  , HasChoiceInputVal
-  , stringHasChoiceInputVal
-  , numberHasChoiceInputVal
-  , intHasChoiceInputVal
-  , boundedEnumHasChoiceInputVal
-  , maybeIntHasChoiceInputVal
-  , maybeBoundedEnumHasChoiceInputVal
-  , valueMustBeInValues
-  )
-  where
+module Halogen.Datepicker.Internal.Choice where
 
 import Prelude
 
+import Control.Monad.Error.Class (class MonadError, throwError)
 import Data.Array (cons)
 import Data.Enum (class BoundedEnum, fromEnum, toEnum)
 import Data.Foldable (elem, for_)
-import Data.Functor.Coproduct (Coproduct, coproduct, right)
 import Data.Int as Int
 import Data.Maybe (Maybe(..), maybe)
 import Data.NonEmpty (NonEmpty, fromNonEmpty, head, tail)
 import Data.Number as N
+import Effect.Exception as Ex
 import Halogen as H
-import Halogen.Datepicker.Component.Types (PickerMessage(..), BasePickerQuery(..))
-import Halogen.Datepicker.Internal.Utils (mapComponentHTMLQuery)
+import Halogen.Datepicker.Component.Types (BasePickerQuery(..))
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Query.HalogenM (HalogenM, halt)
-
+import Halogen.Query.HalogenM (HalogenM)
 
 type State val = {value ∷ val}
 
-type Message val = PickerMessage val
-
-type Query val = Coproduct (QueryIn val) (ChoiceQuery val)
-type QueryIn val = BasePickerQuery (Maybe ChoiceError) val
+type Query val = BasePickerQuery (Maybe ChoiceError) val
 data ChoiceError = ValueIsNotInValues
-data ChoiceQuery val a = Update (Maybe val) a
 
-type DSL val = H.ComponentDSL (State val) (Query val) (Message val)
-type HTML val = H.ComponentHTML (ChoiceQuery val)
+type Slots ∷ ∀ k. Row k
+type Slots = ()
+
+type Slot val = H.Slot (Query val) val
+
+type DSL val = H.HalogenM (State val) (Maybe val) Slots val
+type HTML val m = H.ComponentHTML (Maybe val) Slots m
 
 type Config val =
   { title ∷ String
@@ -53,24 +37,35 @@ type Config val =
   , root ∷ Array HH.ClassName
   }
 
-picker ∷ ∀ val m
+picker
+  ∷ ∀ val m
   . Ord val
   ⇒ HasChoiceInputVal val
   → Config val
-  → H.Component HH.HTML (Query val) Unit (Message val) m
-picker hasChoiceInputVal config = H.component
-  { initialState: const { value: head $ config.values }
-  , render: render config hasChoiceInputVal >>> mapComponentHTMLQuery right
-  , eval: coproduct (evalPicker config hasChoiceInputVal) evalChoice
-  , receiver: const Nothing
-  }
+  → H.Component (Query val) Unit val m
+picker hasChoiceInputVal config =
+  H.mkComponent
+    { initialState: const { value: head config.values }
+    , render: render config hasChoiceInputVal
+    , eval: H.mkEval $ H.defaultEval
+        { handleAction = handleAction
+        , handleQuery = handleQuery config.values
+        }
+    }
 
-render ∷ ∀ val. Eq val ⇒ Config val → HasChoiceInputVal val → State val → HTML val
-render config hasChoiceInputVal {value}  = HH.select
-  [ HP.title config.title
-  , HP.classes config.root
-  , HE.onValueChange (HE.input (hasChoiceInputVal.fromString >>> Update))
-  ] (fromNonEmpty cons config.values <#> renderValue)
+render
+  ∷ ∀ val m
+  . Eq val
+  ⇒ Config val
+  → HasChoiceInputVal val
+  → State val
+  → HTML val m
+render config hasChoiceInputVal {value} =
+  HH.select
+    [ HP.title config.title
+    , HP.classes config.root
+    , HE.onValueChange hasChoiceInputVal.fromString
+    ] (fromNonEmpty cons config.values <#> renderValue)
   where
   renderValue value' = HH.option
     [ HP.value $ hasChoiceInputVal.toValue value'
@@ -78,27 +73,29 @@ render config hasChoiceInputVal {value}  = HH.select
     ]
     [ HH.text $ hasChoiceInputVal.toTitle value' ]
 
-
-evalChoice ∷ ∀ val m . Eq val ⇒ ChoiceQuery val ~> DSL val m
-evalChoice (Update value next) = do
+handleAction ∷ ∀ val m. Eq val ⇒ Maybe val → DSL val m Unit
+handleAction value = do
   s ← H.get
   -- there wouldn't be case when value is Nothing so it's fine to do `for_`
   for_ value \value' → do
     H.modify_ _{value = value'}
-    when (value' /= s.value) $ H.raise (NotifyChange $ value')
-  pure next
+    when (value' /= s.value) $ H.raise value'
 
-
-evalPicker ∷ ∀ val m . Eq val ⇒ Config val → HasChoiceInputVal val → QueryIn val ~> DSL val m
-evalPicker {values} hasChoiceInputVal (SetValue value next) = do
-  if (value == head values || elem value (tail values))
-    then do
-      H.modify_ _{value = value}
-      pure $ next Nothing
-    else do
-      pure $ next (Just ValueIsNotInValues)
-evalPicker _ _ (GetValue next) = H.gets _.value <#> next
-
+handleQuery
+  ∷ ∀ val m a
+  . Eq val
+  ⇒ NonEmpty Array val
+  → Query val a
+  → DSL val m (Maybe a)
+handleQuery values = case _ of
+  SetValue value k
+    | value == head values || elem value (tail values) → do
+        H.modify_ _{value = value}
+        pure $ Just $ k Nothing
+    | otherwise →
+        pure $ Just $ k (Just ValueIsNotInValues)
+  GetValue k →
+    Just <<< k <$> H.gets _.value
 
 type HasChoiceInputVal a =
   { fromString ∷ String → Maybe a
@@ -112,6 +109,7 @@ stringHasChoiceInputVal =
   , toValue: identity
   , toTitle: identity
   }
+
 numberHasChoiceInputVal ∷ HasChoiceInputVal Number
 numberHasChoiceInputVal =
   { fromString: N.fromString
@@ -126,14 +124,20 @@ intHasChoiceInputVal =
   , toTitle: show
   }
 
-boundedEnumHasChoiceInputVal ∷ ∀ a. BoundedEnum a ⇒ (a → String) → HasChoiceInputVal a
+boundedEnumHasChoiceInputVal
+  ∷ ∀ a
+  . BoundedEnum a
+  ⇒ (a → String)
+  → HasChoiceInputVal a
 boundedEnumHasChoiceInputVal showTitle =
   { fromString: intHasChoiceInputVal.fromString >=> toEnum
   , toValue: fromEnum >>> intHasChoiceInputVal.toValue
   , toTitle: showTitle
   }
 
-maybeIntHasChoiceInputVal ∷ (Maybe Int → String) → HasChoiceInputVal (Maybe Int)
+maybeIntHasChoiceInputVal
+  ∷ (Maybe Int → String)
+  → HasChoiceInputVal (Maybe Int)
 maybeIntHasChoiceInputVal showTitle =
   { fromString: \str → if str == ""
       then pure Nothing
@@ -142,7 +146,11 @@ maybeIntHasChoiceInputVal showTitle =
   , toTitle: showTitle
   }
 
-maybeBoundedEnumHasChoiceInputVal ∷ ∀ a. BoundedEnum a ⇒ (a → String) → HasChoiceInputVal (Maybe a)
+maybeBoundedEnumHasChoiceInputVal
+  ∷ ∀ a
+  . BoundedEnum a
+  ⇒ (a → String)
+  → HasChoiceInputVal (Maybe a)
 maybeBoundedEnumHasChoiceInputVal showTitle =
   { fromString: \str → if str == ""
       then pure Nothing
@@ -151,9 +159,13 @@ maybeBoundedEnumHasChoiceInputVal showTitle =
   , toTitle: maybe "" showTitle
   }
 
-valueMustBeInValues :: ∀ s f g p o m. Maybe ChoiceError → HalogenM s f g p o m Unit
+valueMustBeInValues
+  ∷ ∀ s f ps o m
+  . MonadError Ex.Error m
+  ⇒ Maybe ChoiceError
+  → HalogenM s f ps o m Unit
 valueMustBeInValues = case _ of
   Just ValueIsNotInValues →
-    halt "Value being set in Choice is not in values"
+    throwError $ Ex.error "Value being set in Choice is not in values"
   Nothing →
     pure unit

@@ -3,7 +3,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git://github.com/slamdata/purescript-halogen-datepicker.git"
+    "url": "https://github.com/slamdata/purescript-halogen-datepicker.git"
   },
   "authors": [
     "Irakli Safareli <i.safareli@gmail.com>"
@@ -20,15 +20,14 @@
     "example"
   ],
   "dependencies": {
-    "purescript-enums": "^4.0.0",
-    "purescript-formatters": "^4.0.0",
-    "purescript-datetime": "^4.1.0",
-    "purescript-halogen": "^4.0.0",
-    "purescript-halogen-css": "^8.0.0",
-    "purescript-generics-rep": "^6.1.0",
-    "purescript-validation": "^4.0.0",
-    "purescript-profunctor": "^4.0.0",
-    "purescript-numbers": "^6.0.0",
-    "purescript-these": "^4.0.0"
+    "purescript-enums": "^5.0.0",
+    "purescript-formatters": "^5.0.0",
+    "purescript-datetime": "^5.0.2",
+    "purescript-halogen": "^6.1.1",
+    "purescript-halogen-css": "^9.0.0",
+    "purescript-validation": "^5.0.0",
+    "purescript-profunctor": "^5.0.0",
+    "purescript-numbers": "^8.0.0",
+    "purescript-these": "^5.0.0"
   }
 }
